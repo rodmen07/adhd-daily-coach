@@ -21,7 +21,37 @@ export const FOCUS_SESSION_COPY = {
   timeUpNote: "That's the time you set, whenever you're ready to wrap up.",
   summaryToday: "focused today",
   emptyToday: "No sessions yet today, and that's okay.",
+  // v0.12: the weekly recap surfaced on /trends beside the check-in trends.
+  trendsHeading: "Focus sessions this week",
+  trendsSessionsLabel: "Sessions",
+  trendsMinutesLabel: "Minutes focused",
+  trendsEmptyWeek: "No focus sessions yet this week, and that's completely fine.",
 } as const;
+
+/**
+ * The weekly focus recap sentence rendered on /trends.
+ *
+ * Kept here rather than assembled in the page so the whole user-facing surface
+ * stays inside the one module the calm-tone guard test reads: a sentence built
+ * from fragments in a component would slip past that guard. Reports what
+ * happened and nothing else - no streak, no target, no completion rate.
+ */
+export function focusWeekRecap(sessionsThisWeek: number, minutesThisWeek: number): string {
+  if (sessionsThisWeek <= 0) {
+    return FOCUS_SESSION_COPY.trendsEmptyWeek;
+  }
+
+  const sessions = `${sessionsThisWeek} ${sessionsThisWeek === 1 ? "session" : "sessions"}`;
+
+  // Sessions shorter than a minute round down to zero; say so plainly rather
+  // than reporting "0 minutes", which reads like a failed session.
+  if (minutesThisWeek <= 0) {
+    return `You focused through ${sessions} this week.`;
+  }
+
+  const minutes = `${minutesThisWeek} ${minutesThisWeek === 1 ? "minute" : "minutes"}`;
+  return `You focused through ${sessions} this week, ${minutes} in total.`;
+}
 
 /** The gentle OS-notification copy for when the planned time elapses. */
 export const FOCUS_SESSION_NOTIFICATION_TITLE = "Focus time";

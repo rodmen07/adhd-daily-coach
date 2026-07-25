@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TrendsPage from "@/app/trends/page";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { addCheckin, listCheckins, listCheckinsInRange } from "@/lib/browser-checkins";
+import { addFocusSession } from "@/lib/focus-session";
 import { getFirestoreCheckinsInRange } from "@/lib/firestore-checkins";
 import { getFirebaseFirestore } from "@/lib/firebase";
 import { bucketCheckinsByWeek } from "@/lib/trend-insights";
@@ -257,6 +258,125 @@ describe("Trends page", () => {
       return sum + (match ? Number(match[1]) : 0);
     }, 0);
     expect(totalCompleted).toBe(2);
+  });
+
+  // v0.12 PR1 (docs/design/FOCUS_IN_TRENDS.md section 3.1): the focus card.
+  // These are behavior-difference tests, not presence checks - each asserts a
+  // NUMBER or a sentence derived from seeded store data, so a card that
+  // rendered but was wired to nothing (the "shipped surface that silently does
+  // nothing" class) fails them.
+  it("surfaces this week's focus sessions from the real local focus store", async () => {
+    vi.mocked(useCoachAuth).mockReturnValue(guestAuthMock as never);
+
+    addCheckin(
+      { date: utcDateKey(1), focus: "Deep Work", dose: "deep", minutes: 30, status: "done" },
+      "guest",
+    );
+    addFocusSession(
+      { task: "draft the intro", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    addFocusSession(
+      { task: "tidy inbox", plannedMinutes: 15, focusedSeconds: 600, outcome: "stopped-early" },
+      "guest",
+    );
+
+    render(<TrendsPage />);
+
+    const card = await screen.findByTestId("focus-week-card");
+    expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("2");
+    // 1500s + 600s = 2100s -> 35 whole minutes.
+    expect(within(card).getByTestId("focus-week-minutes").textContent).toBe("35");
+    expect(within(card).getByTestId("focus-week-recap").textContent).toBe(
+      "You focused through 2 sessions this week, 35 minutes in total.",
+    );
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Focus sessions this week" }),
+    ).toBeTruthy();
+  });
+
+  it("shows a neutral zero state when there are check-ins but no focus sessions", async () => {
+    vi.mocked(useCoachAuth).mockReturnValue(guestAuthMock as never);
+
+    addCheckin(
+      { date: utcDateKey(1), focus: "Deep Work", dose: "deep", minutes: 30, status: "done" },
+      "guest",
+    );
+
+    render(<TrendsPage />);
+
+    const card = await screen.findByTestId("focus-week-card");
+    expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("0");
+    expect(within(card).getByTestId("focus-week-recap").textContent).toBe(
+      "No focus sessions yet this week, and that's completely fine.",
+    );
+    // The calm bar: nothing on this card frames zero as a lapse.
+    expect(card.textContent).not.toMatch(/streak|goal|target|rate|missed|failed|should/i);
+  });
+
+  it("stands alone for someone who has focused but never checked in", async () => {
+    // Without this, the check-in empty state would swallow the whole page and
+    // a person's real /now sessions would be invisible on the one screen that
+    // exists to show them how their week went.
+    vi.mocked(useCoachAuth).mockReturnValue(guestAuthMock as never);
+
+    addFocusSession(
+      { task: "read one chapter", plannedMinutes: 5, focusedSeconds: 300, outcome: "wrapped-up" },
+      "guest",
+    );
+
+    render(<TrendsPage />);
+
+    const card = await screen.findByTestId("focus-week-card");
+    expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("1");
+    expect(within(card).getByTestId("focus-week-recap").textContent).toBe(
+      "You focused through 1 session this week, 5 minutes in total.",
+    );
+    // The check-in empty state is untouched: the card is additive, not a
+    // replacement for it.
+    expect(screen.getByTestId("empty-state-insights")).toBeTruthy();
+  });
+
+  it("keeps the page a single calm empty state when there is neither kind of history", async () => {
+    vi.mocked(useCoachAuth).mockReturnValue(guestAuthMock as never);
+
+    render(<TrendsPage />);
+
+    expect(await screen.findByTestId("empty-state-insights")).toBeTruthy();
+    expect(screen.queryByTestId("focus-week-card")).toBeNull();
+  });
+
+  it("reads focus sessions under the signed-in user's scope, not the guest scope", async () => {
+    // Same defect class as the review-page adapter bypass fixed in PR #106:
+    // reading the wrong scope shows a signed-in person somebody else's (here,
+    // the guest bucket's) history. Both buckets are seeded with DIFFERENT
+    // counts so a scope mix-up cannot pass by coincidence.
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([
+      firestoreCheckin({ id: "f1", date: utcDateKey(2), focus: "Deep Work", status: "done" }),
+    ]);
+
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    addFocusSession(
+      { task: "their work", plannedMinutes: 15, focusedSeconds: 900, outcome: "wrapped-up" },
+      "user-123",
+    );
+    addFocusSession(
+      { task: "their other work", plannedMinutes: 15, focusedSeconds: 900, outcome: "wrapped-up" },
+      "user-123",
+    );
+
+    render(<TrendsPage />);
+
+    const card = await screen.findByTestId("focus-week-card");
+    await waitFor(() => {
+      expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("2");
+    });
+    expect(within(card).getByTestId("focus-week-minutes").textContent).toBe("30");
   });
 });
 

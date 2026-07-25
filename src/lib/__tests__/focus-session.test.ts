@@ -5,7 +5,7 @@ import {
   summarizeFocusSessions,
   type FocusSession,
 } from "@/lib/focus-session";
-import { FOCUS_SESSION_COPY } from "@/lib/focus-session-copy";
+import { FOCUS_SESSION_COPY, focusWeekRecap } from "@/lib/focus-session-copy";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -116,5 +116,60 @@ describe("focus-session copy stays calm and pressure-free", () => {
     expect(all).not.toMatch(/\bshould\b/i);
     expect(all).not.toMatch(/don'?t break/i);
     expect(all).not.toMatch(/\bmissed\b/i);
+  });
+
+  // The /trends recap (v0.12) is COMPOSED at runtime, so the static join
+  // above cannot see the sentence a person actually reads. Run the real
+  // builder across the shapes the page can produce and hold it to the same
+  // bar, including the zero week - the one most likely to acquire pressure
+  // language later.
+  const PRESSURE_PATTERNS = [
+    /streak/i,
+    /\bfail(ed|ure)?\b/i,
+    /\bshould\b/i,
+    /\bmissed\b/i,
+    /\b(goal|target|quota)\b/i,
+    /\b\d+% (of|complete)\b/i,
+  ];
+
+  function pressureLanguageIn(line: string): string[] {
+    return PRESSURE_PATTERNS.filter((pattern) => pattern.test(line)).map(String);
+  }
+
+  it("keeps the composed weekly recap calm across every shape", () => {
+    const shapes: Array<[number, number]> = [
+      [0, 0],
+      [1, 0],
+      [1, 5],
+      [2, 35],
+      [9, 240],
+    ];
+
+    for (const [sessions, minutes] of shapes) {
+      expect(pressureLanguageIn(focusWeekRecap(sessions, minutes))).toEqual([]);
+    }
+  });
+
+  // Negative control (the done-when in docs/design/FOCUS_IN_TRENDS.md section
+  // 5 asks for it explicitly): a guard nobody has watched fail is not a guard.
+  // Proves the battery above can actually fire, so the empty result for the
+  // real copy means something.
+  it("the calm-tone guard actually fires on pressuring copy", () => {
+    expect(
+      pressureLanguageIn("You failed your 5-session goal, missed 2 days, and broke a 3-day streak."),
+    ).toHaveLength(4);
+    expect(pressureLanguageIn("You should have hit 80% complete this week.")).toHaveLength(2);
+  });
+
+  it("reports what happened, singular and plural, and never '0 minutes'", () => {
+    expect(focusWeekRecap(0, 0)).toBe(FOCUS_SESSION_COPY.trendsEmptyWeek);
+    expect(focusWeekRecap(1, 5)).toBe("You focused through 1 session this week, 5 minutes in total.");
+    expect(focusWeekRecap(1, 1)).toBe("You focused through 1 session this week, 1 minute in total.");
+    expect(focusWeekRecap(2, 35)).toBe(
+      "You focused through 2 sessions this week, 35 minutes in total.",
+    );
+    // A sub-minute session still happened; saying "0 minutes" would read as a
+    // failed session, which the product rules forbid.
+    expect(focusWeekRecap(1, 0)).toBe("You focused through 1 session this week.");
   });
 })
