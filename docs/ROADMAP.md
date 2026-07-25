@@ -70,6 +70,11 @@ is written next to.
 - All six items of the frontend functionality plan (action rail, onboarding, weekly
   insights, plan editor, browser reminders, offline/sync status) are complete as of
   2026-07-18.
+- New surfaces since this snapshot (added 2026-07-25): `/trends`, a 4-week
+  check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
+  calm focus-session timer (NF-6, PR #104) backed by a local-first
+  `src/lib/focus-session.ts` store. v0.12 (below) surfaces those focus sessions
+  on `/trends` and optionally syncs them.
 - The repo also hosts a Python dev-agent pipeline in agents/dev-agent/ (backlog ids
   cdc-001 through cdc-016). Roadmap items may reference cdc ids, but files under
   agents/dev-agent/ must never be edited by roadmap work.
@@ -317,7 +322,7 @@ review gate.
   not in this definition. **Confirmed met**: all conditions verified green on
   PR #93 and re-verified on PR #94.
 
-### v0.11 - Trends: a longer-horizon insight view (agent-doable now)
+### v0.11 - Trends: a longer-horizon insight view (DONE)
 
 Defined 2026-07-20 (product-role increment). Every "trend" the app shows
 today is a single rolling 7-day window compared against the prior 7 days
@@ -352,6 +357,59 @@ in that document is an explicitly flagged, overridable default.
   is fully met and `npm run lint`, `npm run typecheck`, `npm test`, and
   `npm run build` are green on the quality-gate check. package.json bumps to
   0.11.0 in the implementation PR, not in this definition.
+- DONE (2026-07-20, PR #96): shipped `/trends` as a 4-week check-in view -
+  `getCheckinsInRange` on `CheckinStoreAdapter` (never a direct
+  `browser-checkins.ts` call, exactly as the design doc required),
+  `src/lib/trend-insights.ts`, the new page with its `g` then `t` chord, all
+  reusing existing CSS primitives with no new chart library. 331 tests (was
+  304). package.json bumped to 0.11.0. **Confirmed met**: the four gate
+  commands verified green on the PR before merge.
+- DONE (2026-07-20, PR #97, QA a11y audit): promoted the three visually-styled
+  `/trends` subheadings from `<p>` to real `<h2>` so screen-reader heading
+  navigation works, with regression tests; the other five audit areas (bar
+  text alternatives, keyboard reach, reduced motion, contrast, empty-state
+  announcement) were checked and confirmed clean, not invented as issues.
+
+### v0.12 - Focus in Trends: surface focus sessions + optional sync (agent-doable now)
+
+Defined 2026-07-25 (product-role increment). Since the last product pass,
+**NF-6 "one thing now"** (`/now`, PR #104) shipped a calm single-task focus
+timer with a local-first `src/lib/focus-session.ts` store that already exposes
+a pure `summarizeFocusSessions()`. That summary is only shown on `/now`; the
+`/trends` page - where a person goes to see "how has my week been" - reads
+check-ins exclusively and imports nothing from the focus-session module
+(verified by grep 2026-07-25). This milestone closes that gap and was filed as
+backlog item NF-6b on 2026-07-23. It was chosen over reminder-reach via FCM
+(multiple USER-ONLY gates, not agent-doable now), a performance pass (no
+web-vitals baseline exists to make "faster" checkable), Playwright E2E (a QA
+item), and the mailer.ts dead-code removal (a hygiene cleanup, not a
+user-visible milestone). Full audit, plan, and done-when:
+[docs/design/FOCUS_IN_TRENDS.md](design/FOCUS_IN_TRENDS.md); every choice in
+that document is an explicitly flagged, overridable default.
+
+- PR1 (frontend only, ships first): add a calm "Focus sessions this week" card
+  to `/trends` reading `summarizeFocusSessions`'s `sessionsThisWeek` +
+  `minutesThisWeek`, neutral zero state, reusing existing `summary-card` /
+  `focus-row` primitives - no new chart library, no streak/target/rate. Local
+  read, matching how `/now` reads today.
+- PR2 (optional Firestore sync, BaaS-only): new
+  `src/lib/firestore-focus-sessions.ts` + `src/lib/focus-session-store.ts`
+  mirroring the v0.9 journal pattern (`firestore-journal.ts` +
+  `journal-store.ts`), resolving the backend through the existing
+  `resolveCheckinBackend` / `NEXT_PUBLIC_CHECKIN_BACKEND` policy with a tested
+  local fallback (no new env var), plus a `users/{uid}/focusSessions/{sessionId}`
+  block in `docs/FIRESTORE_RULES.md`. Guest-to-account migration is out of
+  scope, matching how v0.9 scoped journal migration out. Publishing the ruleset
+  in the Firebase console stays USER-ONLY and does not block the code (local
+  fallback keeps sessions working until then, exactly like the journal today).
+- Product rules enforced by design: no streak, no target, no completion rate,
+  no "you skipped" record on the Trends card; a copy-guard test enforces it,
+  matching NF-6's own guard.
+- Done when: the done-when checklist in
+  [docs/design/FOCUS_IN_TRENDS.md section 5](design/FOCUS_IN_TRENDS.md#5-done-when-checkable)
+  is met and `npm run lint`, `npm run typecheck`, `npm test`, and
+  `npm run build` are green on the quality-gate check. package.json bumps to
+  0.12.0 in the first implementation PR, not in this definition.
 
 ## Later / candidates (unscheduled)
 
