@@ -6,6 +6,12 @@ import { CalmEmptyState } from "@/app/components/empty-state";
 import { createCheckinStore, type CheckinStoreAdapter } from "@/lib/checkin-store";
 import type { BrowserCheckin } from "@/lib/browser-checkins";
 import { getTrendSummary } from "@/lib/trend-insights";
+import {
+  listFocusSessions,
+  summarizeFocusSessions,
+  type FocusSession,
+} from "@/lib/focus-session";
+import { FOCUS_SESSION_COPY, focusWeekRecap } from "@/lib/focus-session-copy";
 
 // A fixed 28-day / 4-week window (docs/design/TRENDS_OVER_TIME.md section
 // 3.1): an overridable default, not a hard product decision. A selectable
@@ -32,12 +38,21 @@ export default function TrendsPage() {
   );
 
   const [checkins, setCheckins] = useState<BrowserCheckin[]>([]);
+  // v0.12 (docs/design/FOCUS_IN_TRENDS.md section 3.1): NF-6 focus sessions
+  // are local-first, so PR1 reads them straight from the store the way /now
+  // does. The Firestore-backed adapter (so a signed-in person's sessions sync)
+  // is PR2 and lands behind the same resolveCheckinBackend policy the check-in
+  // store already uses - which is why this read is loaded alongside the
+  // check-ins rather than during render: listFocusSessions returns [] on the
+  // server, so a render-time read would make the static export's markup
+  // disagree with the hydrated client, and PR2's read is async anyway.
+  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
 
-    async function loadCheckins() {
+    async function loadHistory() {
       const inRange = await checkinStore.getCheckinsInRange(
         TREND_WINDOW_DAYS,
         undefined,
@@ -49,15 +64,18 @@ export default function TrendsPage() {
       }
 
       setCheckins(inRange);
+      setFocusSessions(listFocusSessions(storageScope));
       setLoaded(true);
     }
 
-    void loadCheckins();
+    void loadHistory();
 
     return () => {
       active = false;
     };
   }, [storageScope, checkinStore]);
+
+  const focusSummary = useMemo(() => summarizeFocusSessions(focusSessions), [focusSessions]);
 
   const trendSummary = useMemo(
     () => getTrendSummary(checkins, TREND_WEEKS),
@@ -66,6 +84,14 @@ export default function TrendsPage() {
 
   const hasAnyCheckins = trendSummary.buckets.some((bucket) => bucket.total > 0);
   const totalCheckins = trendSummary.buckets.reduce((sum, bucket) => sum + bucket.total, 0);
+
+  // The focus card is additive: it never replaces or reshapes a check-in
+  // panel. It appears whenever the page has real content to sit beside, and
+  // also stands alone for someone who has used /now but not checked in yet -
+  // otherwise their sessions would be invisible behind the check-in empty
+  // state. With neither kind of history the page stays one calm empty state
+  // (and one heading), which is what the v0.11 a11y audit asked for.
+  const showFocusCard = loaded && (hasAnyCheckins || focusSummary.sessionsThisWeek > 0);
 
   const focusTotals = useMemo(() => {
     const totals = new Map<string, { done: number; total: number }>();
@@ -221,6 +247,31 @@ export default function TrendsPage() {
                 </div>
                 <p className="leading-6">{trendSummary.narrative}</p>
               </div>
+            </div>
+          )}
+
+          {showFocusCard && (
+            <div className="mt-5 space-y-2" data-testid="focus-week-card">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                {FOCUS_SESSION_COPY.trendsHeading}
+              </h2>
+              <div className="summary-grid grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 sm:text-base">
+                <div className="summary-card">
+                  <p className="summary-label">{FOCUS_SESSION_COPY.trendsSessionsLabel}</p>
+                  <p className="summary-value" data-testid="focus-week-sessions">
+                    {focusSummary.sessionsThisWeek}
+                  </p>
+                </div>
+                <div className="summary-card">
+                  <p className="summary-label">{FOCUS_SESSION_COPY.trendsMinutesLabel}</p>
+                  <p className="summary-value" data-testid="focus-week-minutes">
+                    {focusSummary.minutesThisWeek}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm leading-6 text-slate-700" data-testid="focus-week-recap">
+                {focusWeekRecap(focusSummary.sessionsThisWeek, focusSummary.minutesThisWeek)}
+              </p>
             </div>
           )}
         </section>
