@@ -80,14 +80,20 @@ is written next to.
   #110): `/trends` now carries a "Focus sessions this week" card and sessions
   optionally sync to `users/{uid}/focusSessions`. v0.13 shipped the same day too
   (PR #113 + PR #115): guest-to-account migration for journal entries and focus
-  sessions on a shared primitive. package.json reads 0.13.0.
-- Access: **every route is behind a Google sign-in wall on the deployed build**
-  (`src/app/components/subscription-guard.tsx:85-86` via `layout.tsx:79`;
-  verified 2026-07-25 against the live bundle, which carries a real Firebase
-  config, so this is the production front door and not a misconfiguration).
-  That contradicts the local-first stores, the `GUEST (LOCAL)` header badge, and
-  v0.13's whole purpose, and it means an expired-trial account cannot reach
-  `/pricing` either. v0.14 below is the milestone that decides and fixes this.
+  sessions on a shared primitive. v0.14 followed on 2026-07-26 (PR #117 + PR
+  #118 + PR #121) and opened the app to signed-out visitors, which is what makes
+  v0.13's migration reachable at all. package.json reads 0.14.0.
+- Access (corrected 2026-07-26 by v0.14): **the app is open to a signed-out
+  person on every route.** Until v0.14 it was not - `subscription-guard.tsx`
+  answered `!authUser` with a full-screen "Sign in required" wall via
+  `layout.tsx`, so the deployed build showed a visitor no product at all, which
+  contradicted the local-first stores, the `GUEST (LOCAL)` header badge, and
+  v0.13's whole purpose. The gate now blocks exactly one thing: a SIGNED-IN
+  account that is out of entitlement (trial finished and not subscribed, or
+  explicitly `"expired"`), and `/pricing` is exempt so that screen's Subscribe
+  link reaches checkout. Signing in is an upgrade to sync and backup, offered by
+  the in-page buttons on `/`, `/focus`, and `/pricing` that no signed-out
+  visitor could previously reach.
 - The repo also hosts a Python dev-agent pipeline in agents/dev-agent/ (backlog ids
   cdc-001 through cdc-016). Roadmap items may reference cdc ids, but files under
   agents/dev-agent/ must never be edited by roadmap work.
@@ -520,7 +526,35 @@ choice in that document is an explicitly flagged, overridable default.
   quality-gate check. package.json bumps to 0.13.0 in the first implementation
   PR, not in this definition.
 
-### v0.14 - Let people in: guest access and a reachable checkout (agent-doable now)
+### v0.14 - Let people in: guest access and a reachable checkout (DONE)
+
+**DONE 2026-07-26**, three PRs merged and deployed:
+
+- PR1 [#117](https://github.com/rodmen07/calm-daily-coach/pull/117): the gate is
+  route-aware and exempts `/pricing` unconditionally (D2), through the shared
+  `src/lib/route-path.ts` so the trailing-slash form the static export actually
+  serves matches the bare route the allowlist is written with. A blocked
+  account's only call to action now leads somewhere.
+- PR2a [#118](https://github.com/rodmen07/calm-daily-coach/pull/118):
+  `subscriptionStatus === "expired"` blocks on its own terms (D5) and
+  `getTrialDaysRemaining`'s documented contract matches its behavior (D6), both
+  through new `src/lib/entitlement.ts` - one shared answer to "what does this
+  account get", replacing the two copies of that arithmetic that disagreed in
+  production on a malformed `createdAt`.
+- PR2 [#121](https://github.com/rodmen07/calm-daily-coach/pull/121): **the
+  `!authUser` wall is gone (D1, approved by the user 2026-07-26)**. Every route
+  renders for a signed-out person, ahead of the account read rather than after
+  it, so the prerendered HTML of the static export carries the page instead of
+  the "Loading account details..." spinner it used to ship. The membership is
+  unchanged for signed-in accounts (D4). package.json bumped to 0.14.0.
+- All four filed bugs this milestone targeted are closed: two HIGH (no guest
+  mode; the paywall's only CTA behind the paywall), one MED (dead `"expired"`
+  status), one LOW (`getTrialDaysRemaining` returning NaN for a malformed date).
+- Accepted consequence, stated by the design doc and confirmed by the user: a
+  lapsed subscriber can sign out and keep using the local app. The membership
+  sells sync and backup, not the ability to run a timer.
+
+Original definition follows.
 
 Defined 2026-07-25 (product-role increment), the milestone after v0.13.
 

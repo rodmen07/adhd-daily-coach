@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SubscriptionGuard } from "@/app/components/subscription-guard";
+import JournalPage from "@/app/journal/page";
 import type { UserAccount } from "@/lib/firestore-user";
 
 /**
@@ -12,18 +13,32 @@ import type { UserAccount } from "@/lib/firestore-user";
  * mocks it out to a pass-through, and every page test mounts its page
  * directly, so no test in the suite had ever rendered the real gate.
  *
- * These tests pin the gate's REAL current behavior rather than the behavior
- * the surrounding product assumes. Three of them documented defects that were
- * filed in the backlog's `## Bugs` section rather than fixed here, because
- * changing who may reach the app is a product decision, not a QA call. Each
- * such test says so on its own line.
+ * These tests pinned the gate's REAL behavior rather than the behavior the
+ * surrounding product assumed. Three of them documented defects that were filed
+ * in the backlog's `## Bugs` section rather than fixed there, because changing
+ * who may reach the app is a product decision, not a QA call.
  *
- * v0.14 PR1 closed the first - the paywall's only call to action pointed at
- * `/pricing`, which this same gate blocked - so that test now asserts the fix
- * and the group below it pins the exemption's edges. v0.14 PR2a closed the
- * second: an account marked `"expired"` is blocked on its own terms (D5), read
- * through the shared `@/lib/entitlement`. Exactly ONE documenting test is left,
- * the sign-in wall, and it waits on decision D1 rather than on more code.
+ * All three are now closed and every test below asserts intended behavior:
+ * v0.14 PR1 exempted `/pricing` (the paywall's only call to action pointed at a
+ * route this same gate blocked), PR2a made `"expired"` block on its own terms
+ * through the shared `@/lib/entitlement` (D5), and PR2 - this change - removed
+ * the sign-in wall per decision D1, approved by the user 2026-07-26. **No test
+ * in this file describes a shipped defect as expected behavior any more.**
+ *
+ * The two halves worth keeping straight while reading:
+ * - a GUEST is never gated (D1), and never waits on the account read either,
+ *   since there is no account to read;
+ * - a SIGNED-IN account is gated exactly as before (D4), which is why the
+ *   blocked-account tests below are unchanged.
+ *
+ * The sign-in-failure announcement that used to be asserted here moved with the
+ * surface it belongs to: the wall was the only place this component rendered
+ * `authMessage`, and the dashboard's own sign-in block (`src/app/page.tsx`,
+ * `role="alert" aria-live="assertive"`) is where a signed-out person now
+ * actually signs in. The assertion lives in `src/app/__tests__/page.test.tsx`
+ * ("announces a sign-in failure in an assertive live region"), against the REAL
+ * `useCoachAuth` hook rather than a mocked message, so the capability is
+ * covered more strongly than it was here, not dropped.
  */
 
 const mockUseCoachAuth = vi.fn();
@@ -129,60 +144,97 @@ describe("SubscriptionGuard", () => {
     expect(screen.queryByTestId("app-content")).toBeNull();
   });
 
-  it("shows a signed-out visitor the sign-in wall instead of the page, on every gated route", async () => {
-    // DOCUMENTS A DEFECT (backlog `## Bugs`, HIGH, filed not fixed): there is no
-    // guest mode. The rest of the product is local-first by design - the stores
-    // resolve to localStorage when signed out, and v0.13 exists to migrate data
-    // a person created "signed out" into their account - but this gate renders
-    // nothing at all until a Google account exists, so that data can never be
-    // created on the deployed site. (v0.14 PR1 exempted `/pricing` only; every
-    // other route is still walled, which is what this test holds.)
-    mockUseCoachAuth.mockReturnValue(authState({ authUser: null }));
+  describe("guest access (v0.14 PR2, decision D1)", () => {
+    it("lets a signed-out visitor use the app, on an ordinary gated route", async () => {
+      // CLOSES A FILED BUG (backlog `## Bugs`, HIGH): there was no guest mode,
+      // and the rest of the product was built as if there were. The stores
+      // resolve to localStorage when signed out and v0.13 exists to migrate
+      // data a person created signed out - data the deployed build gave them no
+      // way to create, because this gate rendered a full-screen "Sign in
+      // required" wall on every route instead of the page.
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: null }));
 
-    render(
-      <SubscriptionGuard>
-        <AppContent />
-      </SubscriptionGuard>,
-    );
+      render(
+        <SubscriptionGuard>
+          <AppContent />
+        </SubscriptionGuard>,
+      );
 
-    expect(await screen.findByText("Sign in required")).toBeTruthy();
-    expect(screen.queryByTestId("app-content")).toBeNull();
-  });
+      expect(await screen.findByTestId("app-content")).toBeTruthy();
+      expect(screen.queryByText("Sign in required")).toBeNull();
+    });
 
-  it("still walls the app off when Firebase auth is unconfigured, and says so", async () => {
-    // A deployment with no NEXT_PUBLIC_FIREBASE_* values cannot sign anyone in,
-    // so this branch is the whole app for that build, not a degraded corner.
-    mockUseCoachAuth.mockReturnValue(
-      authState({ authUser: null, authConfigured: false }),
-    );
+    it("renders the app for a guest without waiting on any account read", () => {
+      // Synchronous on purpose - `getByTestId`, not `findByTestId`. This
+      // component renders during the static export, where no effect has run and
+      // `authUser` is null, so anything the guest branch waits for lands in the
+      // prerendered HTML of every page. The deployed site used to serve exactly
+      // that: "Loading account details..." and no content on every route.
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: null }));
+      mockUpsertUserAccount.mockReturnValue(new Promise(() => {}));
 
-    render(
-      <SubscriptionGuard>
-        <AppContent />
-      </SubscriptionGuard>,
-    );
+      render(
+        <SubscriptionGuard>
+          <AppContent />
+        </SubscriptionGuard>,
+      );
 
-    expect(await screen.findByText("Sign in required")).toBeTruthy();
-    expect(
-      screen.getByText(/Google login is not configured yet/),
-    ).toBeTruthy();
-    expect(screen.queryByTestId("app-content")).toBeNull();
-  });
+      expect(screen.getByTestId("app-content")).toBeTruthy();
+      expect(screen.queryByText("Loading account details...")).toBeNull();
+    });
 
-  it("announces a sign-in failure in an assertive live region", async () => {
-    mockUseCoachAuth.mockReturnValue(
-      authState({ authUser: null, authMessage: "Popup blocked. Try again." }),
-    );
+    it("never asks Firestore about a person who is not signed in", async () => {
+      // Guest access must not turn every anonymous page view into an account
+      // read: there is no uid to read, and a request per visitor is both a cost
+      // and a privacy surface the local-first design does not need.
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: null }));
 
-    render(
-      <SubscriptionGuard>
-        <AppContent />
-      </SubscriptionGuard>,
-    );
+      render(
+        <SubscriptionGuard>
+          <AppContent />
+        </SubscriptionGuard>,
+      );
 
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toBe("Popup blocked. Try again.");
-    expect(alert.getAttribute("aria-live")).toBe("assertive");
+      expect(await screen.findByTestId("app-content")).toBeTruthy();
+      expect(mockUpsertUserAccount).not.toHaveBeenCalled();
+    });
+
+    it("runs as a purely local app when Firebase is not configured at all", async () => {
+      // A deployment with no NEXT_PUBLIC_FIREBASE_* values can sign nobody in,
+      // so this branch IS the whole app for that build. It used to be the wall,
+      // which made such a build unusable rather than merely unsynced.
+      mockUseCoachAuth.mockReturnValue(
+        authState({ authUser: null, authConfigured: false }),
+      );
+
+      render(
+        <SubscriptionGuard>
+          <AppContent />
+        </SubscriptionGuard>,
+      );
+
+      expect(await screen.findByTestId("app-content")).toBeTruthy();
+      expect(screen.queryByText("Sign in required")).toBeNull();
+    });
+
+    it("reaches a real local-first page through the real gate", async () => {
+      // The end-to-end shape of the milestone, not a stand-in child: the
+      // journal is one of the surfaces v0.13 taught to carry a guest's data
+      // into an account, and until now no signed-out person could open it.
+      mockUsePathname.mockReturnValue("/journal/");
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: null }));
+
+      render(
+        <SubscriptionGuard>
+          <JournalPage />
+        </SubscriptionGuard>,
+      );
+
+      expect(
+        await screen.findByRole("button", { name: "Save today's entry" }),
+      ).toBeTruthy();
+      expect(screen.queryByText("Sign in required")).toBeNull();
+    });
   });
 
   it("lets a signed-in person through while their trial is still running", async () => {
