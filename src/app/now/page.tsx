@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
+import type { AsyncStatus } from "@/lib/async-status";
 import { REDUCED_MOTION_QUERY, prefersReducedMotion } from "@/lib/reduced-motion";
 import {
   summarizeFocusSessions,
@@ -75,15 +76,33 @@ export default function NowPage() {
   // rather than triggering a re-read, which keeps the tally correct on both
   // backends without a second round trip per session.
   const [sessions, setSessions] = useState<FocusSession[]>([]);
+  const [migrationStatus, setMigrationStatus] = useState<AsyncStatus>({ type: "idle" });
   const summary = useMemo(() => summarizeFocusSessions(sessions), [sessions]);
 
   useEffect(() => {
     let active = true;
 
     async function loadSessions() {
+      // v0.13: bring sessions recorded signed out along, BEFORE the first
+      // read, so signing in never shows a zeroed tally while the real
+      // sessions sit in guest-scoped storage. Sequenced ahead of the read
+      // exactly as /journal and planner-session.ts sequence theirs. A no-op
+      // for the guest scope, for an empty guest history, and on every load
+      // after the first successful copy.
+      const migration = await focusStore.migrateGuestFocusSessions(scope);
       const stored = await focusStore.listFocusSessions(scope);
-      if (active) {
-        setSessions(stored);
+      if (!active) {
+        return;
+      }
+
+      setSessions(stored);
+      // Calm and one-directional (GUEST_DATA_MIGRATION.md D5): only a copy
+      // that actually moved something says anything. "skipped",
+      // "already-migrated" and "error" all stay silent, because a person who
+      // never used the app signed out should never be told about a migration,
+      // and a failure changed nothing they can see or need to retry.
+      if (migration.status === "migrated" && migration.migratedCount > 0) {
+        setMigrationStatus({ type: "ok", message: C.migrationNote });
       }
     }
 
@@ -168,6 +187,16 @@ export default function NowPage() {
           Back
         </Link>
       </div>
+
+      {migrationStatus.type === "ok" ? (
+        <p
+          className="mb-4 text-sm text-emerald-700"
+          aria-live="polite"
+          data-testid="focus-migration-note"
+        >
+          {migrationStatus.message}
+        </p>
+      ) : null}
 
       {phase === "setup" && (
         <div className="rounded-2xl border border-[--line] bg-[--panel] p-6 shadow-xl">

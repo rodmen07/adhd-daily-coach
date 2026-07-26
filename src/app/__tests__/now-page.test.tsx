@@ -2,8 +2,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NowPage from "@/app/now/page";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
-import { listFocusSessions } from "@/lib/focus-session";
-import { addFirestoreFocusSession } from "@/lib/firestore-focus-sessions";
+import { addFocusSession, listFocusSessions } from "@/lib/focus-session";
+import {
+  addFirestoreFocusSession,
+  putFirestoreFocusSession,
+} from "@/lib/firestore-focus-sessions";
 import { getFirebaseFirestore } from "@/lib/firebase";
 import { FOCUS_SESSION_COPY as C } from "@/lib/focus-session-copy";
 import type { Firestore } from "firebase/firestore";
@@ -29,6 +32,9 @@ vi.mock("@/lib/firestore-focus-sessions", () => ({
     }),
   ),
   listFirestoreFocusSessions: vi.fn(() => Promise.resolve([])),
+  putFirestoreFocusSession: vi.fn((_db: unknown, stored: unknown) =>
+    Promise.resolve(stored),
+  ),
 }));
 
 vi.mock("@/lib/reminder-notifications", () => ({
@@ -128,6 +134,95 @@ describe("Now page", () => {
       expect(listFocusSessions("user-123")).toHaveLength(1);
     });
     expect(screen.getByText(C.wrappedUpNote)).toBeTruthy();
+  });
+
+  // v0.13 (docs/design/GUEST_DATA_MIGRATION.md section 3.2). These run against
+  // REAL local storage - `@/lib/focus-session` is not mocked in this file - so
+  // they prove the copy actually lands and the guest records actually survive,
+  // rather than proving a mock returned what it was told to.
+  it("brings sessions recorded signed out along on first signed-in load", async () => {
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+
+    render(<NowPage />);
+
+    // The tally is the observable consequence: 1500s = 25 minutes, and it can
+    // only appear here if the guest session reached the user-123 scope before
+    // the read that feeds it.
+    await waitFor(() => {
+      expect(listFocusSessions("user-123")).toHaveLength(1);
+    });
+    expect(listFocusSessions("user-123")[0].task).toBe("guest work");
+    // Verbatim, not restamped: the copied record keeps its original id.
+    expect(listFocusSessions("user-123")[0].id).toBe(listFocusSessions("guest")[0].id);
+    // D4: the guest copy is never deleted, so nothing is lost if this browser
+    // is later used signed out again.
+    expect(listFocusSessions("guest")).toHaveLength(1);
+    expect(await screen.findByTestId("focus-migration-note")).toBeTruthy();
+    expect(screen.getByTestId("focus-migration-note").textContent).toBe(C.migrationNote);
+  });
+
+  it("copies once, then stays silent on every later load", async () => {
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+
+    const first = render(<NowPage />);
+    await waitFor(() => {
+      expect(listFocusSessions("user-123")).toHaveLength(1);
+    });
+    first.unmount();
+
+    render(<NowPage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(C.taskLabel)).toBeTruthy();
+    });
+    // The marker short-circuits the second run, so no duplicate arrives and
+    // no second announcement is made.
+    expect(listFocusSessions("user-123")).toHaveLength(1);
+    expect(screen.queryByTestId("focus-migration-note")).toBeNull();
+  });
+
+  it("says nothing to someone who never used the app signed out", async () => {
+    // The product guardrail (GUEST_DATA_MIGRATION.md section 4): silence when
+    // there is nothing to move.
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+
+    render(<NowPage />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(C.taskLabel)).toBeTruthy();
+    });
+    expect(screen.queryByTestId("focus-migration-note")).toBeNull();
+  });
+
+  it("copies a signed-in person's guest sessions into Firestore, keeping their ids", async () => {
+    const guestSession = addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+
+    render(<NowPage />);
+
+    await waitFor(() => {
+      expect(vi.mocked(putFirestoreFocusSession)).toHaveBeenCalledTimes(1);
+    });
+    const [, copied, scope] = vi.mocked(putFirestoreFocusSession).mock.calls[0];
+    // The id is the document id, which is what makes a retried copy land on
+    // the same document instead of duplicating the session.
+    expect(copied.id).toBe(guestSession.id);
+    expect(copied.task).toBe("guest work");
+    expect(scope).toBe("user-123");
+    // addFirestoreFocusSession would have restamped the record.
+    expect(vi.mocked(addFirestoreFocusSession)).not.toHaveBeenCalled();
   });
 
   it("never records a session that was only abandoned, not closed out", async () => {

@@ -97,15 +97,42 @@ export function buildFocusSession(input: FocusSessionInput): FocusSession {
 }
 
 /**
+ * Store an ALREADY-STAMPED session verbatim, keyed by its own id (v0.13).
+ *
+ * `addFocusSession` mints a fresh id, date, and createdAt, which is right for
+ * a session someone just closed out and wrong for a copy: guest-to-account
+ * migration has to land the same record in the account scope, or a session run
+ * last Tuesday is refiled under today and the week it belonged to loses it.
+ *
+ * Writing BY ID rather than appending also gives this backend the same
+ * idempotency the Firestore one already has by construction (`setDoc` on
+ * `focusSessions/{session.id}`), so a repeated copy overwrites one document
+ * instead of growing a duplicate. That equivalence is what lets the migration
+ * skip the conflict guard - see `focus-session-store.ts`.
+ *
+ * No-op-safe on the server, like every other writer here.
+ */
+export function putFocusSession(session: FocusSession, scopeKey = "guest"): FocusSession {
+  if (typeof window === "undefined") return session;
+  const existing = listFocusSessions(scopeKey);
+  const index = existing.findIndex((stored) => stored.id === session.id);
+  const next =
+    index === -1
+      ? [...existing, session]
+      : existing.map((stored, position) => (position === index ? session : stored));
+  window.localStorage.setItem(storageKey(scopeKey), JSON.stringify(next));
+  return session;
+}
+
+/**
  * Record a closed-out session. Returns the stored record. No-op-safe on the
  * server (returns the record without persisting).
  */
 export function addFocusSession(input: FocusSessionInput, scopeKey = "guest"): FocusSession {
-  const session = buildFocusSession(input);
-  if (typeof window === "undefined") return session;
-  const existing = listFocusSessions(scopeKey);
-  window.localStorage.setItem(storageKey(scopeKey), JSON.stringify([...existing, session]));
-  return session;
+  // A freshly built session always carries a new id, so this appends; the
+  // shared writer exists so the local backend has exactly one place that
+  // serialises the list.
+  return putFocusSession(buildFocusSession(input), scopeKey);
 }
 
 /** Whole minutes focused across a set of sessions (rounded down, floored at 0). */

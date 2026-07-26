@@ -18,9 +18,22 @@
  * storage on error, so a recorded session is never lost - which matters more
  * here than anywhere else in the app, because the product rule is that a
  * session the person chose to close out is the only thing ever recorded.
- * Explicitly out of scope for v0.12, matching v0.9: migrating existing guest
- * localStorage sessions into a signed-in scope (tracked as a named follow-up,
- * not silently dropped).
+ * Guest-to-account migration (v0.13) closes the gap v0.12 named and left open:
+ * sessions recorded while signed out used to stay stranded in the guest scope,
+ * so signing in zeroed the /trends focus card and /now's tally while the real
+ * sessions sat intact in local storage. `migrateGuestFocusSessions` copies
+ * them on first signed-in load.
+ *
+ * Unlike the journal, this collection does NOT opt into the primitive's
+ * conflict guard, and that is a decision rather than an omission. The guard
+ * exists to stop an upsert from overwriting account data on a shared identity
+ * key; focus sessions have no upsert to protect. Every write goes to the
+ * session's OWN id (`putFocusSession` locally, `setDoc` on
+ * `focusSessions/{id}` in Firestore), ids are minted per browser, and a
+ * repeated copy therefore rewrites the identical record rather than
+ * duplicating or clobbering anything. Paying for an extra account-wide read on
+ * every sign-in to guard against a collision that cannot happen would be cost
+ * without safety.
  */
 import {
   resolveCheckinBackend,
@@ -28,8 +41,16 @@ import {
   type CheckinBackendMode,
 } from "@/lib/checkin-store";
 import {
+  GUEST_SCOPE_KEY,
+  guestMigrationMarker,
+  migrateGuestRecords,
+  type GuestMigrationPlan,
+  type GuestMigrationResult,
+} from "@/lib/guest-migration";
+import {
   addFocusSession as addLocalFocusSession,
   listFocusSessions as listLocalFocusSessions,
+  putFocusSession as putLocalFocusSession,
   type FocusSession,
   type FocusSessionInput,
 } from "@/lib/focus-session";
@@ -37,6 +58,7 @@ import { getFirebaseFirestore } from "@/lib/firebase";
 import {
   addFirestoreFocusSession,
   listFirestoreFocusSessions,
+  putFirestoreFocusSession,
 } from "@/lib/firestore-focus-sessions";
 
 export type FocusSessionBackendContext = CheckinBackendContext;
@@ -49,7 +71,34 @@ export type FocusSessionStoreAdapter = {
     input: FocusSessionInput,
     scopeKey: string,
   ) => Promise<FocusSession>;
+  /**
+   * Copy guest-scoped sessions into the signed-in scope, once (v0.13). Safe to
+   * call on every load: the guest scope, an empty guest history, and an
+   * already-migrated marker all return without writing.
+   */
+  migrateGuestFocusSessions: (
+    targetScopeKey: string,
+  ) => Promise<GuestMigrationResult>;
 };
+
+type FocusSessionMigrationIO = {
+  writeSession: (session: FocusSession, scopeKey: string) => Promise<void>;
+};
+
+function focusSessionMigrationPlan(
+  backend: FocusSessionStoreAdapter["backend"],
+  targetScopeKey: string,
+  io: FocusSessionMigrationIO,
+): GuestMigrationPlan<FocusSession> {
+  return {
+    markerKey: guestMigrationMarker(targetScopeKey, backend, "focusSessions"),
+    listGuestRecords: () => listLocalFocusSessions(GUEST_SCOPE_KEY),
+    // No conflictGuard, deliberately: see the module doc above. Both writers
+    // key on the session's own id, so a re-copy is idempotent by construction
+    // and there is no upsert for an account record to lose.
+    write: (session) => io.writeSession(session, targetScopeKey),
+  };
+}
 
 export function createFocusSessionStore(
   rawBackend?: string,
@@ -66,6 +115,15 @@ export function createFocusSessionStore(
     listFocusSessions: async (scopeKey) => listLocalFocusSessions(scopeKey),
     addFocusSession: async (input, scopeKey) =>
       addLocalFocusSession(input, scopeKey),
+    migrateGuestFocusSessions: async (targetScopeKey) =>
+      migrateGuestRecords(
+        focusSessionMigrationPlan("local", targetScopeKey, {
+          writeSession: async (session, scopeKey) => {
+            putLocalFocusSession(session, scopeKey);
+          },
+        }),
+        targetScopeKey,
+      ),
   };
 
   if (backend === "firestore") {
@@ -91,6 +149,26 @@ export function createFocusSessionStore(
         } catch {
           return addLocalFocusSession(input, scopeKey);
         }
+      },
+      migrateGuestFocusSessions: async (targetScopeKey) => {
+        // Deliberately unguarded, mirroring migrateGuestCheckins and
+        // migrateGuestJournalEntries: a thrown Firestore write must surface as
+        // `error` so the local retry below runs, rather than being swallowed
+        // per record and leaving half a history behind.
+        const result = await migrateGuestRecords(
+          focusSessionMigrationPlan("firestore", targetScopeKey, {
+            writeSession: async (session, scopeKey) => {
+              await putFirestoreFocusSession(db, session, scopeKey);
+            },
+          }),
+          targetScopeKey,
+        );
+
+        if (result.status === "error") {
+          return localStore.migrateGuestFocusSessions(targetScopeKey);
+        }
+
+        return result;
       },
     };
   }
