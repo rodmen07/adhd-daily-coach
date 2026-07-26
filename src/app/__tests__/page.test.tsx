@@ -297,6 +297,26 @@ describe("Dashboard page", () => {
     });
   });
 
+  it("announces a sign-in failure in an assertive live region", async () => {
+    // Moved here from `subscription-guard.test.tsx` by v0.14 PR2. The gate used
+    // to render its own "Continue with Google" button, and its wall was the only
+    // place `authMessage` appeared; with the wall gone (decision D1), the
+    // dashboard's account block is where a signed-out person actually signs in,
+    // so this is where the announcement has to hold. Stronger than the version
+    // it replaces: the message is produced by the REAL `useCoachAuth` hook
+    // failing for a real reason (no Firebase config) rather than handed in by a
+    // mock, so a hook that stopped reporting failures would fail this test too.
+    vi.mocked(getFirebaseAuth).mockReturnValue(null);
+
+    render(<Home />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Google login is not configured yet.");
+    expect(alert.getAttribute("aria-live")).toBe("assertive");
+  });
+
   it("renders weekly summary metrics and focus breakdown", async () => {
     vi.mocked(getWeeklySummary).mockReturnValue({
       windowStart: "2026-06-21",
