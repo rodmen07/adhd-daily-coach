@@ -553,13 +553,19 @@ rule, no new console gate. Full audit, plan, and every overridable default:
   route-aware and exempt `/pricing` unconditionally, using the same
   `usePathname` mechanism `site-nav.tsx` already uses. **The package.json bump
   moves to PR2** (see the note below).
+- PR2a (2026-07-26, ships ahead of the decision because it is correct under
+  either answer): `subscriptionStatus === "expired"` now blocks on its own terms
+  (D5), and `getTrialDaysRemaining`'s documented contract matches its behavior -
+  the unreachable `catch` deleted, the NaN return documented, the return value
+  unchanged (D6). Both land through new `src/lib/entitlement.ts`, one shared
+  answer to "what does this account get", replacing the copy of that arithmetic
+  the gate and the dashboard's membership card each kept. The copies disagreed
+  in production on a malformed `createdAt`: the gate admitted the person while
+  the card told them their trial had ended.
 - PR2 (carries decision D1, default = restore guest access): remove the
-  `!authUser` wall so every route renders for a guest; treat
-  `subscriptionStatus === "expired"` as blocking (D5); correct
-  `getTrialDaysRemaining`'s documented contract without changing its return
-  value (D6); flip the four tests in
-  `src/app/components/__tests__/subscription-guard.test.tsx` that currently
-  document defects into assertions of the new behavior.
+  `!authUser` wall so every route renders for a guest; flip the one remaining
+  documenting test in `src/app/components/__tests__/subscription-guard.test.tsx`
+  into an assertion of the new behavior; bump `package.json` to 0.14.0.
 - Closes four filed bugs: two HIGH (no guest mode; the paywall's only CTA is
   behind the paywall), one MED (dead `"expired"` status), one LOW
   (`getTrialDaysRemaining` returns NaN for a malformed date).

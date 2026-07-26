@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { getFirebaseFirestore } from "@/lib/firebase";
-import { upsertUserAccount, getTrialDaysRemaining, type UserAccount } from "@/lib/firestore-user";
+import { upsertUserAccount, type UserAccount } from "@/lib/firestore-user";
+import { blocksAccess, resolveEntitlement } from "@/lib/entitlement";
 import { isRoute } from "@/lib/route-path";
 import Link from "next/link";
 
@@ -170,14 +171,13 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     );
   }
 
-  const daysLeft = account ? getTrialDaysRemaining(account.createdAt) : 0;
-  const isTrialFinished = daysLeft <= 0;
-  const isSubscribed = account?.subscriptionStatus === "active";
-
-  // Fail open: only block when we have a real account whose trial is genuinely finished.
-  // A null account (still provisioning, or a transient Firestore read issue) must never be
-  // treated as an expired trial, otherwise brand-new users get locked out on first login.
-  const isBlocked = account !== null && isTrialFinished && !isSubscribed;
+  // Fail open: only block when we have a real account that is genuinely out of
+  // entitlement. A null account (still provisioning, or a transient Firestore read
+  // issue) must never be treated as an expired trial, otherwise brand-new users get
+  // locked out on first login. `resolveEntitlement` keeps the same posture for an
+  // account whose `createdAt` is unreadable - it resolves to `unknown`, not expired.
+  const entitlement = account ? resolveEntitlement(account) : null;
+  const isBlocked = entitlement !== null && blocksAccess(entitlement);
 
   if (isBlocked) {
     return (

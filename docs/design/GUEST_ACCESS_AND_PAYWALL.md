@@ -166,10 +166,24 @@ independent of D1.
 > gate one increment after it was built to catch this exact class.
 
 **PR2 - the D1 half.** Remove the `!authUser` wall so every route renders for a
-guest; apply D5 and D6; flip the four documenting tests to assertions and add
-the regression tests from D7. If D1 is overridden to Alternative A, PR2 becomes
+guest; flip the remaining documenting test to an assertion and add the guest
+regression test from D7. If D1 is overridden to Alternative A, PR2 becomes
 "delete the guest-shaped code the product does not actually have" instead, and
-the milestone still closes with the same done-when structure.
+the milestone still closes with the same done-when structure. **This PR carries
+the `package.json` bump to 0.14.0** and marks the v0.14 section terminal, both
+halves of the drift guard's contract landing together.
+
+> **Split while implementing (2026-07-26): PR2a shipped D5 and D6 ahead of D1.**
+> Both are correct under either answer to D1 - an explicit `"expired"` status
+> should mean something whether or not guests get in, and a docstring should
+> describe what its function does regardless - so they were split out on the
+> same reasoning that put `/pricing` in PR1, rather than being held hostage to a
+> question only the user can answer. PR2a also removed the duplicated
+> entitlement arithmetic (the gate and the dashboard's membership card each had
+> their own copy and disagreed out loud about a record with a malformed
+> `createdAt`: the gate admitted the person, the card told them their trial had
+> ended). Both now read `resolveEntitlement` in `src/lib/entitlement.ts`. What
+> remains for PR2 is D1 alone, plus the version bump.
 
 **Explicitly out of scope:** any change to the header badge's copy, a new
 onboarding or sign-in-nag surface, entitlement automation (v0.5, deprioritized),
@@ -185,13 +199,19 @@ and anything in `agents/dev-agent/`.
       somewhere" in `src/app/components/__tests__/subscription-guard.test.tsx`.)
 - [ ] Per D1 default: a test renders a route with `authUser = null` and asserts
       page content is present and the "Sign in required" wall is absent.
-- [ ] A test asserts an account with `subscriptionStatus === "expired"` is
+- [x] A test asserts an account with `subscriptionStatus === "expired"` is
       blocked even inside the 30-day window (D5), replacing the current test
-      that documents the opposite.
-- [ ] `getTrialDaysRemaining`'s documented contract matches its behavior, proven
-      by the existing malformed-date test (D6).
+      that documents the opposite. (PR2a: `blocks an account marked "expired"
+      even inside the trial window`, in both
+      `src/app/components/__tests__/subscription-guard.test.tsx` and
+      `src/lib/__tests__/entitlement.test.ts`.)
+- [x] `getTrialDaysRemaining`'s documented contract matches its behavior, proven
+      by the existing malformed-date test (D6). (PR2a: the unreachable `catch`
+      is gone and the docstring states the NaN return; `resolveEntitlement` is
+      where callers are protected from it.)
 - [ ] No test in `subscription-guard.test.tsx` still describes a shipped defect
-      as expected behavior.
+      as expected behavior. (PR2a left exactly one: the sign-in wall, which is
+      D1's.)
 - [ ] `package.json` reads 0.14.0 (bumped in PR2, see the note in section 4).
 - [ ] The five CI-pinned gate commands from `.github/workflows/ci.yml`
       (lines 39/42/45/48/54) are green: `npm run lint`, `npm run typecheck`,

@@ -61,16 +61,28 @@ export async function getUserAccount(db: Firestore, uid: string): Promise<UserAc
 }
 
 /**
- * Calculates remaining days in free trial.
+ * Calculates remaining days in the 30-day free trial, clamped at 0.
+ *
+ * Returns **NaN for a date this cannot read**, and that is deliberate. The
+ * arithmetic below cannot throw - `new Date("nope")` is an Invalid Date rather
+ * than an error, and `.getTime()` on it yields NaN, which propagates through
+ * `Math.max` - so the `catch { return 0 }` this function used to carry was
+ * unreachable code documenting a contract it never delivered (the file's only
+ * uncovered lines, which is how it was found). Returning 0 would mean "trial
+ * finished", so the tidier-looking fix would silently start locking out every
+ * account with a corrupt `createdAt`; the docstring was corrected to match the
+ * behavior instead (decision D6 in docs/design/GUEST_ACCESS_AND_PAYWALL.md).
+ *
+ * Callers must therefore not render this number without checking it, and must
+ * not read a comparison against it as an answer: NaN answers "no" to `> 0` and
+ * to `<= 0` alike. `resolveEntitlement` in `@/lib/entitlement` is where that
+ * check lives for the whole app - it maps a non-finite result to an `unknown`
+ * entitlement that neither blocks anyone nor prints a day count.
  */
 export function getTrialDaysRemaining(createdAtIsoStr: string): number {
-  try {
-    const createdDate = new Date(createdAtIsoStr);
-    const now = new Date();
-    const diffTime = now.getTime() - createdDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, 30 - diffDays);
-  } catch {
-    return 0;
-  }
+  const createdDate = new Date(createdAtIsoStr);
+  const now = new Date();
+  const diffTime = now.getTime() - createdDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return Math.max(0, 30 - diffDays);
 }

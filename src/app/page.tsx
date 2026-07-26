@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
 import { getFirebaseFirestore } from "@/lib/firebase";
-import { getTrialDaysRemaining, getUserAccount } from "@/lib/firestore-user";
+import { getUserAccount } from "@/lib/firestore-user";
+import { resolveEntitlement } from "@/lib/entitlement";
 import { getMonetizationEvents, summarizeMonetizationEvents, trackMonetizationEvent } from "@/lib/monetization";
 import { deriveTodayLoopPercent } from "@/lib/planner-derivations";
 import { prefersReducedMotion } from "@/lib/reduced-motion";
@@ -227,17 +228,21 @@ export default function Home() {
       };
     }
 
-    if (membershipLookup.account.subscriptionStatus === "active") {
+    // One shared decision rather than a second copy of the gate's arithmetic:
+    // this card and `subscription-guard.tsx` used to compute entitlement
+    // separately and could disagree about the same record.
+    const entitlement = resolveEntitlement(membershipLookup.account);
+
+    if (entitlement.status === "trial") {
       return {
-        status: "active" as const,
-        trialDaysRemaining: null as number | null,
+        status: "trial" as const,
+        trialDaysRemaining: entitlement.daysRemaining,
       };
     }
 
-    const daysLeft = getTrialDaysRemaining(membershipLookup.account.createdAt);
     return {
-      status: daysLeft > 0 ? ("trial" as const) : ("expired" as const),
-      trialDaysRemaining: daysLeft,
+      status: entitlement.status,
+      trialDaysRemaining: null as number | null,
     };
   }, [authConfigured, authUser, membershipLookup]);
 
@@ -592,6 +597,7 @@ export default function Home() {
                 {membershipView.status === "checking" && "Checking membership status..."}
                 {membershipView.status === "active" && "Membership active"}
                 {membershipView.status === "expired" && "Trial ended - membership required"}
+                {membershipView.status === "unknown" && "Membership status unavailable - access is unchanged"}
                 {membershipView.status === "trial" &&
                   `${membershipView.trialDaysRemaining ?? 30} day${
                     (membershipView.trialDaysRemaining ?? 30) === 1 ? "" : "s"

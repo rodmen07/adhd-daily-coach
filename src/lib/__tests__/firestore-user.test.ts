@@ -58,14 +58,16 @@ describe("getTrialDaysRemaining", () => {
     expect(getTrialDaysRemaining(isoDaysAgo(400))).toBe(0);
   });
 
-  it("returns NaN for a malformed date, not the documented 0", () => {
-    // DOCUMENTS A DEFECT (backlog `## Bugs`, LOW, filed not fixed): the
-    // function's `catch { return 0 }` is unreachable - `new Date("nope")` and
-    // `.getTime()` yield NaN rather than throwing - so a corrupt `createdAt`
-    // produces NaN, which `Math.max` propagates. It is pinned rather than
-    // "fixed" because returning 0 would mean "trial finished", i.e. changing it
-    // would LOCK OUT every account with a bad date. Any caller that renders
-    // "N days left" would print "NaN days left" today.
+  it("returns NaN for a malformed date, exactly as documented", () => {
+    // Was a documenting test for the LOW bug: the function's `catch { return 0 }`
+    // was unreachable - `new Date("nope")` and `.getTime()` yield NaN rather
+    // than throwing - so a corrupt `createdAt` produced NaN while the docstring
+    // promised 0. Decision D6 corrected the DOCSTRING and deleted the dead
+    // catch, deliberately keeping the return value: returning 0 would mean
+    // "trial finished", i.e. it would start locking out every account with a
+    // bad date. The caller-side hazard it warned about ("NaN days left") is
+    // handled once, in `resolveEntitlement`, which maps a non-finite result to
+    // an `unknown` entitlement carrying no day count at all.
     expect(Number.isNaN(getTrialDaysRemaining("not-a-date"))).toBe(true);
     expect(Number.isNaN(getTrialDaysRemaining(""))).toBe(true);
   });
