@@ -1,5 +1,6 @@
 import { createJournalStore } from "@/lib/journal-store";
-import { listJournalEntries, saveJournalEntry } from "@/lib/journal";
+import { guestMigrationMarker } from "@/lib/guest-migration";
+import { listJournalEntries, saveJournalEntry, type JournalEntry } from "@/lib/journal";
 import {
   addFirestoreJournalEntry,
   listFirestoreJournalEntries,
@@ -144,5 +145,161 @@ describe("journal-store", () => {
 
     expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(addFirestoreJournalEntry)).not.toHaveBeenCalled();
+  });
+
+  // v0.13 "Bring your data with you". The primitive itself is unit-tested in
+  // guest-migration.test.ts; these cover the journal's own wiring of it
+  // across all three backend branches, mirroring how the read/write pair is
+  // covered above.
+  describe("guest-to-account migration", () => {
+    const guestEntries: JournalEntry[] = [
+      {
+        date: "2026-07-19",
+        text: "Guest wrote this on the 19th.",
+        createdAt: "2026-07-19T00:00:00.000Z",
+        updatedAt: "2026-07-19T00:00:00.000Z",
+      },
+      {
+        date: "2026-07-20",
+        text: "Guest wrote this on the 20th.",
+        createdAt: "2026-07-20T00:00:00.000Z",
+        updatedAt: "2026-07-20T00:00:00.000Z",
+      },
+    ];
+
+    function seedLocal(accountEntries: JournalEntry[] = []) {
+      vi.mocked(listJournalEntries).mockImplementation((scopeKey = "guest") =>
+        scopeKey === "guest" ? guestEntries : accountEntries,
+      );
+    }
+
+    it("local: copies guest entries into the signed-in scope, once", async () => {
+      seedLocal();
+      const store = createJournalStore("local");
+
+      const first = await store.migrateGuestJournalEntries("user-123");
+      const second = await store.migrateGuestJournalEntries("user-123");
+
+      expect(first).toEqual({ status: "migrated", migratedCount: 2 });
+      expect(second).toEqual({ status: "already-migrated", migratedCount: 0 });
+      expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledWith(
+        "2026-07-19",
+        "Guest wrote this on the 19th.",
+        "user-123",
+      );
+    });
+
+    it("local: account data wins, so a shared date is never overwritten", async () => {
+      // saveJournalEntry upserts by date: without the conflict guard this
+      // copy would destroy the account's own words for the 20th.
+      seedLocal([
+        {
+          date: "2026-07-20",
+          text: "The ACCOUNT wrote this on the 20th.",
+          createdAt: "2026-07-20T09:00:00.000Z",
+          updatedAt: "2026-07-20T09:00:00.000Z",
+        },
+      ]);
+      const store = createJournalStore("local");
+
+      const result = await store.migrateGuestJournalEntries("user-123");
+
+      expect(result).toEqual({ status: "migrated", migratedCount: 1 });
+      expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledWith(
+        "2026-07-19",
+        "Guest wrote this on the 19th.",
+        "user-123",
+      );
+      expect(vi.mocked(saveJournalEntry)).not.toHaveBeenCalledWith(
+        "2026-07-20",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("local: migrating the journal does not mark check-ins as migrated", async () => {
+      seedLocal();
+      const store = createJournalStore("local");
+
+      await store.migrateGuestJournalEntries("user-123");
+
+      expect(
+        window.localStorage.getItem(guestMigrationMarker("user-123", "local", "journal")),
+      ).toBe("1");
+      // The v0.4 check-in marker (no collection segment) must be untouched.
+      expect(
+        window.localStorage.getItem(guestMigrationMarker("user-123", "local")),
+      ).toBeNull();
+    });
+
+    it("firestore: reads the account and writes the copy through Firestore", async () => {
+      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      vi.mocked(listJournalEntries).mockReturnValue(guestEntries);
+      vi.mocked(listFirestoreJournalEntries).mockResolvedValue([]);
+
+      const store = createJournalStore(undefined, { signedIn: true });
+      expect(store.backend).toBe("firestore");
+
+      const result = await store.migrateGuestJournalEntries("user-123");
+
+      expect(result).toEqual({ status: "migrated", migratedCount: 2 });
+      expect(vi.mocked(listFirestoreJournalEntries)).toHaveBeenCalledWith(
+        expect.anything(),
+        "user-123",
+      );
+      expect(vi.mocked(addFirestoreJournalEntry)).toHaveBeenCalledTimes(2);
+      // The guest read is still local: a signed-out person has no cloud scope.
+      expect(vi.mocked(listJournalEntries)).toHaveBeenCalledWith("guest");
+      expect(vi.mocked(saveJournalEntry)).not.toHaveBeenCalled();
+    });
+
+    it("firestore: a thrown Firestore write retries the whole copy locally", async () => {
+      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      vi.mocked(listFirestoreJournalEntries).mockResolvedValue([]);
+      vi.mocked(addFirestoreJournalEntry).mockRejectedValueOnce(
+        new Error("permission-denied"),
+      );
+      seedLocal();
+
+      const store = createJournalStore(undefined, { signedIn: true });
+      const result = await store.migrateGuestJournalEntries("user-123");
+
+      expect(result).toEqual({ status: "migrated", migratedCount: 2 });
+      expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledTimes(2);
+      // The failed firestore attempt left its own marker unset, so a later
+      // online load can still sync; only the local marker is set here.
+      expect(
+        window.localStorage.getItem(
+          guestMigrationMarker("user-123", "firestore", "journal"),
+        ),
+      ).toBeNull();
+      expect(
+        window.localStorage.getItem(guestMigrationMarker("user-123", "local", "journal")),
+      ).toBe("1");
+    });
+
+    it("firestore-fallback: migrates locally when Firestore is unavailable", async () => {
+      seedLocal();
+      const store = createJournalStore("firestore");
+      expect(store.backend).toBe("firestore-fallback");
+
+      const result = await store.migrateGuestJournalEntries("user-123");
+
+      expect(result).toEqual({ status: "migrated", migratedCount: 2 });
+      expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(addFirestoreJournalEntry)).not.toHaveBeenCalled();
+    });
+
+    it("stays a no-op for a signed-out visitor", async () => {
+      seedLocal();
+      const store = createJournalStore("local");
+
+      const result = await store.migrateGuestJournalEntries("guest");
+
+      expect(result).toEqual({ status: "skipped", migratedCount: 0 });
+      expect(vi.mocked(saveJournalEntry)).not.toHaveBeenCalled();
+    });
   });
 });

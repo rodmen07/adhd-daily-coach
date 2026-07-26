@@ -145,6 +145,59 @@ describe("Journal page", () => {
     expect(listJournalEntries("guest")[0]?.text).toBe("Original words");
   });
 
+  // v0.13 "Bring your data with you". Firebase is unconfigured in tests, so
+  // the store resolves to the local backend and the whole copy is observable
+  // through real localStorage: no mock stands between the page and the
+  // migration, which is what makes this a wiring proof rather than a
+  // restatement of journal-store.test.ts.
+  describe("guest-to-account migration on first signed-in load", () => {
+    function signIn(uid = "user-123") {
+      vi.mocked(useCoachAuth).mockReturnValue({
+        ...authMock,
+        authUser: { uid },
+      } as never);
+    }
+
+    it("brings entries written signed out along, without deleting the guest copy", async () => {
+      saveJournalEntry(pastDateKey(1), "Written before signing in.", "guest");
+      signIn();
+
+      render(<JournalPage />);
+
+      expect(await screen.findByText("Written before signing in.")).toBeTruthy();
+      expect(listJournalEntries("user-123")[0]?.text).toBe(
+        "Written before signing in.",
+      );
+      // D4: migration copies, it never moves.
+      expect(listJournalEntries("guest")[0]?.text).toBe(
+        "Written before signing in.",
+      );
+    });
+
+    it("leaves an entry the account already has on that date untouched", async () => {
+      const sharedDate = pastDateKey(1);
+      saveJournalEntry(sharedDate, "The guest version.", "guest");
+      saveJournalEntry(sharedDate, "The account version.", "user-123");
+      signIn();
+
+      render(<JournalPage />);
+
+      expect(await screen.findByText("The account version.")).toBeTruthy();
+      expect(screen.queryByText("The guest version.")).toBeNull();
+      expect(listJournalEntries("user-123")).toHaveLength(1);
+    });
+
+    it("does not migrate anything for a signed-out visitor", async () => {
+      saveJournalEntry(pastDateKey(1), "Written before signing in.", "guest");
+
+      render(<JournalPage />);
+
+      await screen.findByText("Written before signing in.");
+      // Nothing was copied anywhere: the guest scope is the only one used.
+      expect(listJournalEntries("user-123")).toHaveLength(0);
+    });
+  });
+
   it("shows earlier entries newest first in modest finite chunks", async () => {
     for (let daysAgo = 1; daysAgo <= 10; daysAgo += 1) {
       saveJournalEntry(pastDateKey(daysAgo), `Thankful note ${daysAgo}`, "guest");

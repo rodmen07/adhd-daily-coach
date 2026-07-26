@@ -41,6 +41,13 @@ import {
   getFirestoreCheckinsInRange,
   getFirestoreWeeklySummary,
 } from "@/lib/firestore-checkins";
+import {
+  GUEST_SCOPE_KEY,
+  guestMigrationMarker,
+  migrateGuestRecords,
+  type GuestMigrationPlan,
+  type GuestMigrationResult,
+} from "@/lib/guest-migration";
 
 export type CheckinBackendMode = "local" | "firestore";
 
@@ -68,58 +75,46 @@ export type CheckinStoreAdapter = {
   ) => Promise<WeeklySummary>;
   /**
    * Every check-in in a caller-chosen `days`-long window (v0.11 Trends). This
-   * is the ONLY sanctioned way to read a wider check-in history: a real bug
-   * was found in review/page.tsx (filed in the backlog, not fixed here)
-   * where the review page bypasses this adapter and calls
-   * browser-checkins.ts's listCheckins directly, silently showing empty data
-   * for signed-in Firestore-synced users. Every caller of check-in history
-   * beyond the current single-week summary must go through this method.
+   * is the ONLY sanctioned way to read a wider check-in history: the review
+   * page used to bypass this adapter and call browser-checkins.ts's
+   * listCheckins directly, silently showing empty data for signed-in
+   * Firestore-synced users (fixed in PR #106, with a regression test in
+   * src/app/__tests__/review-page.test.tsx asserting listCheckins is never
+   * called directly). Every caller of check-in history beyond the current
+   * single-week summary must go through this method.
    */
   getCheckinsInRange: (
     days: number,
     endDateInput: string | undefined,
     scopeKey: string,
   ) => Promise<BrowserCheckin[]>;
-  migrateGuestCheckins: (targetScopeKey: string) => Promise<{
-    status: "migrated" | "already-migrated" | "skipped" | "error";
-    migratedCount: number;
-  }>;
+  migrateGuestCheckins: (targetScopeKey: string) => Promise<GuestMigrationResult>;
 };
 
-const MIGRATION_MARKER_KEY = "calm-daily-coach-migrated-guest";
-
-function migrationMarker(targetScopeKey: string, backend: CheckinStoreAdapter["backend"]) {
-  return `${MIGRATION_MARKER_KEY}:${targetScopeKey}:${backend}`;
-}
-
-async function migrateGuestCheckinsWithAdapter(
-  adapter: Pick<CheckinStoreAdapter, "addCheckin" | "backend">,
+/**
+ * The check-in half of the shared v0.13 migration primitive.
+ *
+ * Note what is deliberately absent: no `conflictGuard`. The check-in log is
+ * append-only (`addCheckin` mints a fresh id per write and several check-ins
+ * can legitimately share a date), so there is no upsert for a guest record to
+ * overwrite and no identity key that survives the write. The marker alone
+ * prevents duplication, exactly as it has since v0.4. The journal opts in
+ * instead, because its writes upsert by date and a naive copy really would
+ * destroy account text (docs/design/GUEST_DATA_MIGRATION.md section 2).
+ *
+ * The marker key omits a collection segment on purpose - see
+ * guestMigrationMarker - so people who already migrated stay migrated.
+ */
+function checkinMigrationPlan(
+  backend: CheckinStoreAdapter["backend"],
   targetScopeKey: string,
-) {
-  if (typeof window === "undefined") {
-    return { status: "skipped" as const, migratedCount: 0 };
-  }
-
-  if (!targetScopeKey || targetScopeKey === "guest") {
-    return { status: "skipped" as const, migratedCount: 0 };
-  }
-
-  const marker = migrationMarker(targetScopeKey, adapter.backend);
-  if (window.localStorage.getItem(marker) === "1") {
-    return { status: "already-migrated" as const, migratedCount: 0 };
-  }
-
-  const guestCheckins = listCheckins("guest");
-  if (guestCheckins.length === 0) {
-    window.localStorage.setItem(marker, "1");
-    return { status: "skipped" as const, migratedCount: 0 };
-  }
-
-  let migratedCount = 0;
-
-  try {
-    for (const checkin of guestCheckins) {
-      await adapter.addCheckin(
+  writeCheckin: (input: CheckinInput, scopeKey: string) => Promise<void>,
+): GuestMigrationPlan<BrowserCheckin> {
+  return {
+    markerKey: guestMigrationMarker(targetScopeKey, backend),
+    listGuestRecords: () => listCheckins(GUEST_SCOPE_KEY),
+    write: (checkin) =>
+      writeCheckin(
         {
           date: checkin.date,
           focus: checkin.focus,
@@ -129,15 +124,8 @@ async function migrateGuestCheckinsWithAdapter(
           skipReason: checkin.skipReason,
         },
         targetScopeKey,
-      );
-      migratedCount += 1;
-    }
-
-    window.localStorage.setItem(marker, "1");
-    return { status: "migrated" as const, migratedCount };
-  } catch {
-    return { status: "error" as const, migratedCount };
-  }
+      ),
+  };
 }
 
 export function resolveCheckinBackend(
@@ -185,7 +173,12 @@ export function createCheckinStore(
       return listBrowserCheckinsInRange(days, endDateInput, scopeKey);
     },
     migrateGuestCheckins: async (targetScopeKey) => {
-      return migrateGuestCheckinsWithAdapter(localStore, targetScopeKey);
+      return migrateGuestRecords(
+        checkinMigrationPlan("local", targetScopeKey, async (input, scopeKey) => {
+          addBrowserCheckin(input, scopeKey);
+        }),
+        targetScopeKey,
+      );
     },
   };
 
@@ -221,17 +214,18 @@ export function createCheckinStore(
         }
       },
       migrateGuestCheckins: async (targetScopeKey) => {
-        const firestoreAdapter: Pick<CheckinStoreAdapter, "addCheckin" | "backend"> = {
-          backend: "firestore",
-          addCheckin: async (input, scopeKey) => {
+        // Deliberately unguarded: a thrown Firestore write must surface as
+        // `error` so the local retry below runs, rather than being swallowed
+        // into a silent local write under the firestore marker.
+        const result = await migrateGuestRecords(
+          checkinMigrationPlan("firestore", targetScopeKey, async (input, scopeKey) => {
             await addFirestoreCheckin(db, input, scopeKey);
-          },
-        };
-
-        const result = await migrateGuestCheckinsWithAdapter(firestoreAdapter, targetScopeKey);
+          }),
+          targetScopeKey,
+        );
 
         if (result.status === "error") {
-          return migrateGuestCheckinsWithAdapter(localStore, targetScopeKey);
+          return localStore.migrateGuestCheckins(targetScopeKey);
         }
 
         return result;

@@ -49,6 +49,14 @@ export default function JournalPage() {
     let active = true;
 
     async function loadEntries() {
+      // v0.13: bring a signed-out person's entries with them, before the
+      // first read, so signing in never shows an empty journal while the
+      // real entries sit in guest-scoped storage. Sequenced ahead of the
+      // read exactly as planner-session.ts sequences the check-in migration
+      // ahead of the weekly summary. A no-op for the guest scope, for an
+      // empty guest journal, and after the first successful run.
+      await journalStore.migrateGuestJournalEntries(scope);
+
       const loaded = await journalStore.listJournalEntries(scope);
       if (!active) {
         return;
