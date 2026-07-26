@@ -1,6 +1,6 @@
 # Focus (Calm Daily Coach) - Product Roadmap
 
-Canonical forward roadmap, last audited against real git/gh state 2026-07-20. This
+Canonical forward roadmap, last audited against real git/gh state 2026-07-25. This
 document supersedes the forward-looking sections of docs/FRONTEND_FUNCTIONALITY_PLAN.md,
 docs/AUTONOMOUS_IMPLEMENTATION_PLAN.md, and docs/MONETIZATION_PLAN.md; those files remain
 as historical records with status banners.
@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-07-20)
+## Current state (2026-07-25)
 
 - App: "Focus: Your ADHD friendly self-improvement coach" (rebranded from Calm Daily
   Coach in PR #59). Next.js 16 / React 19 TypeScript static export on GitHub Pages at
@@ -40,8 +40,11 @@ is written next to.
 - Persistence: since the v0.4 flip (2026-07-19), an unset
   `NEXT_PUBLIC_CHECKIN_BACKEND` resolves to Firestore for signed-in users on
   Firebase-configured deployments and to localStorage otherwise; explicit
-  `local|firestore` values still force their mode. Automatic local fallback and
-  idempotent guest-to-account migration are unchanged. Signed-out and
+  `local|firestore` values still force their mode. Automatic local fallback is
+  unchanged. Idempotent guest-to-account migration exists **for check-ins only**
+  (`migrateGuestCheckins` in `src/lib/checkin-store.ts`); journal entries (v0.9)
+  and focus sessions (v0.12) both scoped it out in writing, which is the gap
+  v0.13 below closes. Signed-out and
   Firebase-less usage stays localStorage-only. Gratitude journal entries (v0.7)
   gained the same adapter in v0.9 (PR #89, hardened in PR #90): the code path
   for signed-in, Firebase-configured sync exists and is tested, reusing this
@@ -73,15 +76,16 @@ is written next to.
 - New surfaces since this snapshot (added 2026-07-25): `/trends`, a 4-week
   check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
   calm focus-session timer (NF-6, PR #104) backed by a local-first
-  `src/lib/focus-session.ts` store. v0.12 (below) surfaces those focus sessions
-  on `/trends` and optionally syncs them.
+  `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
+  #110): `/trends` now carries a "Focus sessions this week" card and sessions
+  optionally sync to `users/{uid}/focusSessions`. package.json reads 0.12.0.
 - The repo also hosts a Python dev-agent pipeline in agents/dev-agent/ (backlog ids
   cdc-001 through cdc-016). Roadmap items may reference cdc ids, but files under
   agents/dev-agent/ must never be edited by roadmap work.
 
 ## Next milestones
 
-### v0.2 - Roadmap consolidation and reminder delivery design (target week of 2026-07-25)
+### v0.2 - Roadmap consolidation and reminder delivery design (DONE)
 
 Resets the paper trail to reality and unblocks v0.3 and v0.5 with the design decisions
 they wait on. All items agent-doable now.
@@ -94,16 +98,17 @@ they wait on. All items agent-doable now.
   tradeoffs; ship as a docs-only PR for user review (1 PR).
 - Done when: ROADMAP.md and banners are merged, package.json reads 0.2.0, and the
   reminder design doc is merged and awaiting user sign-off.
+- DONE (2026-07-19, PR #78 + PR #79): this document plus the legacy-doc banners and
+  the README pointer shipped in #78 with package.json bumped to 0.2.0, and the
+  reminder scheduling design doc shipped in #79.
 
-### v0.3 - Reminder delivery v1 (target week of 2026-08-01)
+### v0.3 - Reminder delivery v1 (DONE)
 
-BLOCKED until the v0.2 reminder design doc merges with user sign-off.
-
-- Design doc under review: [docs/design/REMINDER_SCHEDULING.md](design/REMINDER_SCHEDULING.md) scores the delivery options and proposes the phased plan this milestone implements.
-- BLOCKED (design approval): implement the approved delivery mechanism (for example
-  Web Notifications opt-in nudges that fire with the tab backgrounded, or a GitHub
-  Actions cron email digest) behind the existing ReminderSettingsPanel channel choice
-  (1 to 2 PRs).
+- Design doc: [docs/design/REMINDER_SCHEDULING.md](design/REMINDER_SCHEDULING.md) scores the delivery options and proposes the phased plan this milestone implemented.
+- DONE (2026-07-19, PR #80 + PR #81): the approved delivery mechanisms shipped behind
+  the existing ReminderSettingsPanel channel choice - a deterministic RFC 5545 `.ics`
+  calendar channel (#80) and an OS Notification API channel with strict opt-in
+  permission UX and a drift cap (#81).
 - Keep the "nothing is sent automatically" copy truthful: update copy, README, and
   reminder tests to match the shipped behavior exactly.
 - Product rules apply: reminders stay opt-in, single daily nudge, no escalation or
@@ -111,12 +116,14 @@ BLOCKED until the v0.2 reminder design doc merges with user sign-off.
 - Done when: an opted-in user receives exactly one daily nudge via the chosen channel
   and all reminder copy matches actual behavior.
 
-### v0.4 - Sync by default: Firestore flip with safe fallback (target week of 2026-08-08)
+### v0.4 - Sync by default: Firestore flip with safe fallback (DONE, one USER-ONLY item outstanding)
 
 The adapter, migration, and honest sync badge (PR #72) already exist, so the flip is
 small and testable. Agent-doable now, except the listed USER-ONLY item.
 
-Status (2026-07-19): agent-side work implemented; awaiting the USER-ONLY items below.
+Status (verified 2026-07-25): agent-side work shipped as PR #82 (merged
+2026-07-19); the USER-ONLY console items below are still outstanding, which is
+why live behavior is local-fallback for every real user today.
 
 - DONE (2026-07-19): flipped the `NEXT_PUBLIC_CHECKIN_BACKEND` default with a safe
   resolution matrix (unset resolves to `firestore` only when Firebase config is
@@ -160,7 +167,7 @@ manually-set entitlement.
 - Done when: the design doc is merged for review and the dashboard reflects real
   Firestore entitlement state with calm fallback copy.
 
-### v0.6 - Calm UX polish from the dev-agent backlog (target week of 2026-08-22)
+### v0.6 - Calm UX polish from the dev-agent backlog (DONE)
 
 Burns down pending cdc items that fit the product rules, keeping the autonomous
 pipeline fed with small well-scoped work. Agent-doable now. Reference cdc ids in PR
@@ -183,7 +190,7 @@ bodies but never edit agents/dev-agent/ files.
   pending. Skip any infinite-scroll-adjacent items as product-rule violations.
 - Done when: both feature PRs are merged with tests and no product rule is violated.
 
-### v0.7 - Gratitude journal (target week of 2026-08-29)
+### v0.7 - Gratitude journal (DONE)
 
 Agent-doable now. A single small PR, matching the one-or-two-PR milestone size.
 
@@ -370,7 +377,7 @@ in that document is an explicitly flagged, overridable default.
   text alternatives, keyboard reach, reduced motion, contrast, empty-state
   announcement) were checked and confirmed clean, not invented as issues.
 
-### v0.12 - Focus in Trends: surface focus sessions + optional sync (agent-doable now)
+### v0.12 - Focus in Trends: surface focus sessions + optional sync (DONE)
 
 Defined 2026-07-25 (product-role increment). Since the last product pass,
 **NF-6 "one thing now"** (`/now`, PR #104) shipped a calm single-task focus
@@ -410,12 +417,75 @@ that document is an explicitly flagged, overridable default.
   is met and `npm run lint`, `npm run typecheck`, `npm test`, and
   `npm run build` are green on the quality-gate check. package.json bumps to
   0.12.0 in the first implementation PR, not in this definition.
+- DONE (2026-07-25, PR #109, PR1): `/trends` renders a "Focus sessions this
+  week" card on the existing `summary-card` / `summary-grid` primitives, with
+  its recap sentence composed inside `focus-session-copy.ts` so the calm-tone
+  guard reads the sentence a person actually sees. It also stands alone for
+  someone who has used `/now` but never checked in, whose sessions were
+  previously invisible behind the check-in empty state. 360 tests (was 352).
+  package.json bumped to 0.12.0.
+- DONE (2026-07-25, PR #110, PR2): `src/lib/firestore-focus-sessions.ts` +
+  `src/lib/focus-session-store.ts` mirror the v0.9 journal pattern, resolving
+  through the existing `resolveCheckinBackend` policy with no new env var; the
+  locally generated session id is also the Firestore document id, so a retried
+  write cannot duplicate a session. Both `/now` and `/trends` were wired
+  through the adapter in the same PR. `docs/FIRESTORE_RULES.md` gained the
+  `users/{uid}/focusSessions/{sessionId}` block (read + create only; update and
+  delete denied). 376 tests (was 360). Publishing that ruleset in the console
+  remains USER-ONLY and blocks nothing that shipped.
+
+### v0.13 - Bring your data with you: guest-to-account migration (agent-doable now)
+
+Defined 2026-07-25 (product-role increment), the milestone after v0.12. Verified
+by reading the code rather than the changelog: `src/lib/checkin-store.ts` has
+shipped an idempotent `migrateGuestCheckins` since v0.4, but
+`src/lib/journal-store.ts` and `src/lib/focus-session-store.ts` each carve
+migration out **in their own module docs** ("Explicitly out of scope for v0.9"
+and "Explicitly out of scope for v0.12"). So a person who journals or runs a
+`/now` focus session signed out, then signs in, sees an empty journal and a
+zeroed focus card while their entries sit intact in guest-scoped localStorage -
+even though their check-ins follow them across. The app is inconsistent about
+its own promise, and this is the third time the gap has been deferred in
+writing.
+
+Chosen over reminder reach via FCM (still USER-ONLY console gates), a
+performance pass (still no web-vitals baseline to make "faster" checkable),
+Playwright E2E (QA-stream work), and the `mailer.ts` dead-code removal
+(hygiene, not a user-visible milestone). Frontend/BaaS-only: no new env var, no
+new Firestore collection, no new security rule, no new console gate. Full
+audit, plan, and done-when:
+[docs/design/GUEST_DATA_MIGRATION.md](design/GUEST_DATA_MIGRATION.md); every
+choice in that document is an explicitly flagged, overridable default.
+
+- PR1 (ships first): extract the guest-to-account copy loop out of
+  `checkin-store.ts` into a collection-agnostic `src/lib/guest-migration.ts`,
+  refactor check-ins onto it **behavior-preservingly** (the existing check-in
+  migration tests must pass unchanged), then add `migrateGuestJournalEntries`
+  to `journal-store.ts` across all three backend branches and wire `/journal`
+  to run it once on first signed-in load. package.json bumps to 0.13.0 here.
+- PR2: the same primitive for focus sessions in `focus-session-store.ts`,
+  wired into `/now` and `/trends`, plus one calm result line reusing the
+  existing `migrationStatus` channel rather than a new toast surface.
+- Conflict rule (a real hazard the audit found, not a hypothetical): the
+  journal's `saveJournalEntry` upserts by date, so a naive copy of the
+  check-in migration would silently overwrite an account entry with a guest
+  entry written on the same day. Account data wins; a guest record whose
+  identity key already exists is skipped, never merged and never written over.
+- Product rules apply: silent when there is nothing to move, no counts framed
+  as targets, no "you missed" language, and a failure is calm and
+  non-destructive (the guest copy is never deleted).
+- Done when: the done-when checklist in
+  [docs/design/GUEST_DATA_MIGRATION.md section 5](design/GUEST_DATA_MIGRATION.md#5-done-when-checkable)
+  is met and `npm run lint`, `npm run typecheck`, `npm run test:coverage`,
+  `npm run build`, and `npm audit --audit-level=high` are green on the
+  quality-gate check. package.json bumps to 0.13.0 in the first implementation
+  PR, not in this definition.
 
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
-monetization ladder, plus housekeeping. Nothing here is scheduled until v0.2 through
-v0.11 land.
+monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through v0.12
+have all landed, and v0.13 above is the next milestone.
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a
@@ -449,17 +519,25 @@ v0.11 land.
 
 Blocked (with reasons):
 
-- Reminder delivery v1 (v0.3): blocked on the v0.2 design doc being approved by the
-  user; a static GitHub Pages site cannot run background schedulers itself.
+- ~~Reminder delivery v1 (v0.3): blocked on the v0.2 design doc being approved by the
+  user~~ - **no longer blocked; v0.3 SHIPPED 2026-07-19** as PR #80 (`.ics` calendar
+  channel) plus PR #81 (OS Notification API). This entry, and the "BLOCKED until the
+  v0.2 reminder design doc merges" line that still headed the v0.3 section above, were
+  both stale for six days; corrected 2026-07-25. A static GitHub Pages site still
+  cannot run a background scheduler itself, which is why both shipped channels are
+  client-side.
 - Stripe webhook entitlement implementation: blocked on the v0.5 design doc approval
   and on the user provisioning Firebase Functions billing; a static site cannot
   receive webhooks. As of 2026-07-19, v0.5 itself is deprioritized per the user's
   frontend/UI-UX direction, so this has no active target date at all right now.
-- Rust coach bridge deployment (`NEXT_PUBLIC_RUST_COACH_BRIDGE_URL`): blocked; no
-  backend exists to host it. The portfolio GCP/Fly infrastructure was decommissioned
-  to zero on 2026-06-04 with all runtime data gone, so any idea that assumed reusing
-  that infrastructure stays blocked until something is redeployed. This repo itself
-  (GitHub Pages plus Firebase) is unaffected.
+- Rust coach bridge deployment (`NEXT_PUBLIC_RUST_COACH_BRIDGE_URL`): blocked because
+  no coach-bridge service exists anywhere and this repo is a static export with no
+  backend of its own. (Corrected 2026-07-25: this entry used to justify the block with
+  a claim that "the portfolio GCP/Fly infrastructure was decommissioned to zero on
+  2026-06-04." That premise was not re-verified for this audit and is not what blocks
+  the item, so it has been removed rather than restated. The block rests only on the
+  fact that no bridge service has ever been written or hosted.) This repo itself
+  (GitHub Pages plus Firebase) is unaffected either way.
 
 User-only (paid-account and console actions an agent must not perform):
 
@@ -531,3 +609,41 @@ User-only (paid-account and console actions an agent must not perform):
   signed-in Firestore-synced users) - filed in the backlog `## Bugs` section,
   not fixed here, and the new milestone's own technical plan is written to
   avoid repeating it.
+- 2026-07-25 roadmap truth pass + milestone definition (product-role
+  increment, second product pass this day after PR #108). PR #108 corrected
+  v0.11's header and defined v0.12; this pass audited the whole document
+  against real `gh` state (`gh pr view 78/79/80/81/82/83/84/85/109/110 --json
+  state,mergedAt` before writing anything) and found **six** sections still
+  describing shipped work as future work:
+  - v0.2, v0.4, v0.6, and v0.7 still carried "target week of ..." headers
+    although every one of them had merged on 2026-07-19 (PRs #78/#79, #82,
+    #83/#84, #85). Corrected to DONE headers with PR citations, matching the
+    v0.8-v0.11 treatment. The "target week" dates were also the last
+    calendar-sized planning left in this file; agent throughput does not track
+    a weekly cadence, so dependency order and user gates are the only
+    sequencing constraints that remain.
+  - v0.3 was worse than stale, it was **false**: its section still opened
+    "BLOCKED until the v0.2 reminder design doc merges with user sign-off" and
+    carried a "BLOCKED (design approval)" bullet, six days after v0.3 shipped
+    in full as PR #80 (`.ics` calendar channel) plus PR #81 (OS Notification
+    API). A reader of this file alone would have concluded the reminder track
+    was frozen. The matching entry in "Blocked and user-only summary" was
+    stale in the same direction and is now struck through.
+  - v0.12's header still read "(agent-doable now)" although PR #109 and PR
+    #110 had both merged and package.json reads 0.12.0 - the exact defect PR
+    #108 had just corrected for v0.11, recurring one milestone later.
+  Also removed an unverified premise: the Rust-coach-bridge blocked entry
+  justified itself with "the portfolio GCP/Fly infrastructure was
+  decommissioned to zero on 2026-06-04." That claim was inherited, not
+  re-checked, and is not what blocks the item; the entry now rests only on the
+  fact that no bridge service exists.
+  **v0.13 defined** (guest-to-account migration for journal entries and focus
+  sessions, see [docs/design/GUEST_DATA_MIGRATION.md](design/GUEST_DATA_MIGRATION.md)),
+  chosen over FCM push (USER-ONLY console gates), a performance pass (still no
+  web-vitals baseline), Playwright E2E (QA stream), and the `mailer.ts` removal
+  (hygiene). The audit that produced it read the three store modules rather
+  than the changelog, which is how it found both the gap itself (journal and
+  focus sessions carve migration out in their own module docs) and a real
+  hazard in the obvious implementation (`saveJournalEntry` upserts by date, so
+  copying the check-in migration verbatim would let a guest entry overwrite an
+  account entry silently).
