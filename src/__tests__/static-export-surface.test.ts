@@ -34,8 +34,9 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
+import { shippedSourceFiles, withoutComments } from "@/__tests__/helpers/source-scan";
 
 const ROOT = process.cwd();
 const SRC_DIR = path.join(ROOT, "src");
@@ -85,16 +86,6 @@ const NODE_BUILTINS = new Set([
   "zlib",
 ]);
 
-/**
- * Strip comments before scanning. A module's own doc comment is allowed to
- * NAME a forbidden import (this file's does), and prose must never be read as
- * code. The `[^:]` guard keeps `https://` inside a string from being treated
- * as the start of a line comment.
- */
-export function withoutComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
-}
-
 /** Every module specifier a file imports: static, side-effect, dynamic, require. */
 export function importSpecifiers(source: string): string[] {
   const matches = withoutComments(source).matchAll(
@@ -126,31 +117,6 @@ export function packageNameFromSpecifier(specifier: string): string | null {
   }
   const segments = specifier.split("/");
   return specifier.startsWith("@") ? segments.slice(0, 2).join("/") : segments[0];
-}
-
-/** Every shipped `.ts`/`.tsx` file under `src/`, excluding tests. */
-function shippedSourceFiles(dir: string): string[] {
-  const found: string[] = [];
-
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const absolute = path.join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      if (entry.name === "__tests__") {
-        continue;
-      }
-      found.push(...shippedSourceFiles(absolute));
-      continue;
-    }
-
-    if (!/\.tsx?$/.test(entry.name) || /\.test\.tsx?$/.test(entry.name)) {
-      continue;
-    }
-
-    found.push(absolute);
-  }
-
-  return found;
 }
 
 const SHIPPED_FILES = shippedSourceFiles(SRC_DIR);
