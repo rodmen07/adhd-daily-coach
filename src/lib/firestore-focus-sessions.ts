@@ -36,6 +36,29 @@ function focusSessionDocRef(db: Firestore, scopeKey: string, sessionId: string) 
 }
 
 /**
+ * Write an ALREADY-STAMPED session to its own document id (v0.13).
+ *
+ * The guest-to-account migration copies existing records, so it must preserve
+ * the id, date, and createdAt it is copying rather than minting new ones. This
+ * is also why that migration needs no conflict guard: `setDoc` on
+ * `focusSessions/{session.id}` is idempotent, so re-running a copy rewrites
+ * the same document instead of creating a second session. The local writer
+ * `putFocusSession` deliberately has the same by-id semantics.
+ *
+ * Still a `create` against the documented ruleset for the case that actually
+ * happens (the account has never held this id, because ids are minted
+ * per-browser), so no rule change is required - see docs/FIRESTORE_RULES.md.
+ */
+export async function putFirestoreFocusSession(
+  db: Firestore,
+  session: FocusSession,
+  scopeKey: string,
+): Promise<FocusSession> {
+  await setDoc(focusSessionDocRef(db, scopeKey, session.id), session);
+  return session;
+}
+
+/**
  * Record a closed-out session for a signed-in person. Returns the stored
  * record so the caller can treat it exactly like `addFocusSession`'s return.
  */
@@ -44,9 +67,7 @@ export async function addFirestoreFocusSession(
   input: FocusSessionInput,
   scopeKey: string,
 ): Promise<FocusSession> {
-  const session = buildFocusSession(input);
-  await setDoc(focusSessionDocRef(db, scopeKey, session.id), session);
-  return session;
+  return putFirestoreFocusSession(db, buildFocusSession(input), scopeKey);
 }
 
 /**

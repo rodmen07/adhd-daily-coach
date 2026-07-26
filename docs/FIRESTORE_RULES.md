@@ -55,6 +55,30 @@ Firebase Auth uid:
 
 Everything else should be denied.
 
+### v0.13 guest-to-account migration adds no path and no permission
+
+The "bring your data with you" milestone
+([docs/design/GUEST_DATA_MIGRATION.md](design/GUEST_DATA_MIGRATION.md)) copies
+records a person created while signed out into their account on first
+signed-in load. It writes through the two paths already listed above and
+nothing else:
+
+- Journal entries go through `addFirestoreJournalEntry`, the same function
+  `/journal` already uses, so the copy is a `create` (or, for a date the
+  account already holds, no write at all - the conflict guard skips it).
+- Focus sessions go through `putFirestoreFocusSession`, which is the write
+  half of `addFirestoreFocusSession` split out so an existing record keeps its
+  own id, date, and creation time instead of being restamped. The document id
+  is still the session id, and ids are minted per browser, so the account has
+  never held the id being copied and the write is a `create`.
+
+So **this milestone needs no rules change and no new console publish.** The
+still-pending publish of the v0.9 `journal` block and the v0.12
+`focusSessions` block is unchanged by it: until that happens, the migration
+writes are denied exactly like every other Firestore write, the adapters fall
+back to local storage, and the copy is retried on the next load because the
+idempotency marker is only set after a clean run.
+
 The field list above is not prose to be trusted: it is checked against the
 `FocusSession` type in code by a drift guard
 ([src/lib/\_\_tests\_\_/firestore-focus-sessions.test.ts](../src/lib/__tests__/firestore-focus-sessions.test.ts)),

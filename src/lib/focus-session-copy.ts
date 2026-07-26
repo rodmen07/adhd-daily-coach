@@ -26,6 +26,12 @@ export const FOCUS_SESSION_COPY = {
   trendsSessionsLabel: "Sessions",
   trendsMinutesLabel: "Minutes focused",
   trendsEmptyWeek: "No focus sessions yet this week, and that's completely fine.",
+  // v0.13 (docs/design/GUEST_DATA_MIGRATION.md D5): the one calm line, shown
+  // once, on whichever page happened to run the copy. It reports that the
+  // sessions arrived and nothing else - no count, because a count here would
+  // invite comparing it to something, and no retry ask, because a failed copy
+  // is silent and leaves the local sessions exactly where they were.
+  migrationNote: "Your earlier focus sessions are here now.",
 } as const;
 
 /**

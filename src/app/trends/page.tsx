@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { CalmEmptyState } from "@/app/components/empty-state";
+import type { AsyncStatus } from "@/lib/async-status";
 import { createCheckinStore, type CheckinStoreAdapter } from "@/lib/checkin-store";
 import type { BrowserCheckin } from "@/lib/browser-checkins";
 import { getTrendSummary } from "@/lib/trend-insights";
@@ -49,19 +50,23 @@ export default function TrendsPage() {
 
   const [checkins, setCheckins] = useState<BrowserCheckin[]>([]);
   const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
+  const [migrationStatus, setMigrationStatus] = useState<AsyncStatus>({ type: "idle" });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
 
     async function loadHistory() {
-      // Both reads are backend-resolved and independent, so they run
-      // together: a signed-in Firestore round trip for each would otherwise
-      // be serialized for no reason.
-      const [inRange, sessions] = await Promise.all([
+      // v0.13: the guest copy has to land BEFORE the session read, or someone
+      // who focused signed out and then signed in sees a zeroed card here and
+      // their sessions only appear on the next visit. The check-in read does
+      // not depend on either, so it still runs alongside rather than queuing
+      // behind a Firestore round trip.
+      const [inRange, migration] = await Promise.all([
         checkinStore.getCheckinsInRange(TREND_WINDOW_DAYS, undefined, storageScope),
-        focusStore.listFocusSessions(storageScope),
+        focusStore.migrateGuestFocusSessions(storageScope),
       ]);
+      const sessions = await focusStore.listFocusSessions(storageScope);
 
       if (!active) {
         return;
@@ -69,6 +74,12 @@ export default function TrendsPage() {
 
       setCheckins(inRange);
       setFocusSessions(sessions);
+      // Same calm rule as /now (GUEST_DATA_MIGRATION.md D5), and the marker is
+      // what keeps the line to ONCE across both pages: whichever loads first
+      // does the copy, the other sees "already-migrated" and stays silent.
+      if (migration.status === "migrated" && migration.migratedCount > 0) {
+        setMigrationStatus({ type: "ok", message: FOCUS_SESSION_COPY.migrationNote });
+      }
       setLoaded(true);
     }
 
@@ -128,6 +139,16 @@ export default function TrendsPage() {
             A longer-horizon view of your check-ins, so a single busy or quiet
             week never looks like the whole story.
           </p>
+
+          {migrationStatus.type === "ok" ? (
+            <p
+              className="mb-4 text-sm text-emerald-700"
+              aria-live="polite"
+              data-testid="focus-migration-note"
+            >
+              {migrationStatus.message}
+            </p>
+          ) : null}
 
           {!loaded || !hasAnyCheckins ? (
             <section aria-label="No trends yet">

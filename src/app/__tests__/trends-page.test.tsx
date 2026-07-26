@@ -3,9 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TrendsPage from "@/app/trends/page";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { addCheckin, listCheckins, listCheckinsInRange } from "@/lib/browser-checkins";
-import { addFocusSession, type FocusSession } from "@/lib/focus-session";
+import { addFocusSession, listFocusSessions, type FocusSession } from "@/lib/focus-session";
 import { getFirestoreCheckinsInRange } from "@/lib/firestore-checkins";
-import { listFirestoreFocusSessions } from "@/lib/firestore-focus-sessions";
+import {
+  listFirestoreFocusSessions,
+  putFirestoreFocusSession,
+} from "@/lib/firestore-focus-sessions";
+import { FOCUS_SESSION_COPY } from "@/lib/focus-session-copy";
 import { getFirebaseFirestore } from "@/lib/firebase";
 import { bucketCheckinsByWeek } from "@/lib/trend-insights";
 import type { Firestore } from "firebase/firestore";
@@ -46,6 +50,9 @@ vi.mock("@/lib/firestore-checkins", () => ({
 vi.mock("@/lib/firestore-focus-sessions", () => ({
   addFirestoreFocusSession: vi.fn(),
   listFirestoreFocusSessions: vi.fn(() => Promise.resolve([])),
+  putFirestoreFocusSession: vi.fn((_db: unknown, stored: unknown) =>
+    Promise.resolve(stored),
+  ),
 }));
 
 const guestAuthMock = {
@@ -438,6 +445,72 @@ describe("Trends page", () => {
     // 900s under user-123, not the guest bucket's 1500s: the fallback keeps
     // the scope.
     expect(within(card).getByTestId("focus-week-minutes").textContent).toBe("15");
+  });
+
+  // v0.13 (docs/design/GUEST_DATA_MIGRATION.md section 3.2). /trends is the
+  // screen where a stranded history is most visible - a zeroed focus card
+  // reads as "you did nothing this week" - so the copy has to land before the
+  // read that feeds the card, not merely somewhere on the page's timeline.
+  it("shows a signed-in person the sessions they recorded signed out, in the same load", async () => {
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+
+    render(<TrendsPage />);
+
+    const card = await screen.findByTestId("focus-week-card");
+    // 1 session / 25 minutes can only render if the guest record reached the
+    // user-123 scope BEFORE listFocusSessions ran. Sequencing the migration
+    // after the read leaves this at "0" until the next visit.
+    await waitFor(() => {
+      expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("1");
+    });
+    expect(within(card).getByTestId("focus-week-minutes").textContent).toBe("25");
+    expect(screen.getByTestId("focus-migration-note").textContent).toBe(
+      FOCUS_SESSION_COPY.migrationNote,
+    );
+    // D4: the guest copy survives.
+    expect(listFocusSessions("guest")).toHaveLength(1);
+  });
+
+  it("stays silent for a signed-in person with nothing to bring across", async () => {
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([]);
+
+    render(<TrendsPage />);
+
+    expect(await screen.findByTestId("empty-state-insights")).toBeTruthy();
+    expect(screen.queryByTestId("focus-migration-note")).toBeNull();
+  });
+
+  it("copies guest sessions into Firestore for a synced person, then reads them back", async () => {
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([]);
+    const guestSession = addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    vi.mocked(listFirestoreFocusSessions).mockResolvedValue([
+      firestoreFocusSession({ id: guestSession.id, focusedSeconds: 1500 }),
+    ]);
+
+    render(<TrendsPage />);
+
+    await waitFor(() => {
+      expect(vi.mocked(putFirestoreFocusSession)).toHaveBeenCalledTimes(1);
+    });
+    const [, copied, scope] = vi.mocked(putFirestoreFocusSession).mock.calls[0];
+    expect(copied.id).toBe(guestSession.id);
+    expect(scope).toBe("user-123");
+    // The card then renders from the Firestore read, which is the path a
+    // second device would take.
+    const card = await screen.findByTestId("focus-week-card");
+    await waitFor(() => {
+      expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("1");
+    });
   });
 });
 

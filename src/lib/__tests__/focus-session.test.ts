@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   addFocusSession,
   listFocusSessions,
+  putFocusSession,
   summarizeFocusSessions,
   type FocusSession,
 } from "@/lib/focus-session";
@@ -62,6 +63,55 @@ describe("focus-session store", () => {
   it("survives corrupt storage without throwing", () => {
     window.localStorage.setItem("calm-daily-coach-focus-sessions:guest", "{not json");
     expect(listFocusSessions()).toEqual([]);
+  });
+});
+
+// v0.13: the writer the guest-to-account migration copies through. The whole
+// reason it exists separately from addFocusSession is that a copy must NOT be
+// restamped, so these assert the two properties the migration depends on.
+describe("putFocusSession", () => {
+  it("stores an existing session verbatim, keeping its id, date and createdAt", () => {
+    const original = mk({
+      id: "session-from-last-tuesday",
+      task: "read one chapter",
+      date: "2026-07-14",
+      createdAt: "2026-07-14T19:30:00.000Z",
+    });
+
+    putFocusSession(original, "user-123");
+
+    const [stored] = listFocusSessions("user-123");
+    // addFocusSession would have minted a fresh id and filed this under
+    // today, quietly moving a session out of the week it belonged to.
+    expect(stored).toEqual(original);
+  });
+
+  it("is idempotent by id, so a repeated copy rewrites rather than duplicates", () => {
+    // This is what lets the migration skip the conflict guard: the local
+    // backend has to behave like setDoc on focusSessions/{id}, not like an
+    // append. Without it a retried copy would double every session.
+    const session = mk({ id: "same-id", task: "draft the intro" });
+
+    putFocusSession(session, "user-123");
+    putFocusSession({ ...session, task: "draft the intro (edited upstream)" }, "user-123");
+
+    const stored = listFocusSessions("user-123");
+    expect(stored).toHaveLength(1);
+    expect(stored[0].task).toBe("draft the intro (edited upstream)");
+  });
+
+  it("leaves sessions already in the scope alone", () => {
+    const existing = addFocusSession(
+      { task: "their own work", plannedMinutes: 5, focusedSeconds: 300, outcome: "wrapped-up" },
+      "user-123",
+    );
+
+    putFocusSession(mk({ id: "copied-in", task: "guest work" }), "user-123");
+
+    const stored = listFocusSessions("user-123");
+    expect(stored).toHaveLength(2);
+    expect(stored.map((s) => s.id)).toContain(existing.id);
+    expect(stored.map((s) => s.id)).toContain("copied-in");
   });
 });
 
