@@ -15,15 +15,28 @@
  * degrades safely. createJournalStore returns the "firestore-fallback"
  * adapter (pure local semantics) when the Firestore client is unavailable,
  * and every Firestore write/read falls back to local storage on error, so a
- * journal entry is never lost. Explicitly out of scope for v0.9: migrating
- * existing guest localStorage entries into a signed-in scope (tracked as a
- * named follow-up, not silently dropped).
+ * journal entry is never lost.
+ *
+ * Guest-to-account migration (v0.13) closes the gap v0.9 named and left open:
+ * entries written while signed out used to stay stranded in the guest scope,
+ * so signing in showed an empty journal. `migrateGuestJournalEntries` copies
+ * them on first signed-in load. Unlike check-ins, the journal opts into the
+ * primitive's conflict guard - `saveJournalEntry` upserts by date, so a guest
+ * entry sharing a date with an account entry would otherwise overwrite the
+ * account's text. Account data wins; the guest copy is left untouched.
  */
 import {
   resolveCheckinBackend,
   type CheckinBackendContext,
   type CheckinBackendMode,
 } from "@/lib/checkin-store";
+import {
+  GUEST_SCOPE_KEY,
+  guestMigrationMarker,
+  migrateGuestRecords,
+  type GuestMigrationPlan,
+  type GuestMigrationResult,
+} from "@/lib/guest-migration";
 import {
   listJournalEntries as listLocalJournalEntries,
   saveJournalEntry as saveLocalJournalEntry,
@@ -46,7 +59,38 @@ export type JournalStoreAdapter = {
     text: string,
     scopeKey: string,
   ) => Promise<JournalEntry | null>;
+  /**
+   * Copy guest-scoped entries into the signed-in scope, once (v0.13). Safe to
+   * call on every load: the guest scope, an empty guest journal, and an
+   * already-migrated marker all return without writing.
+   */
+  migrateGuestJournalEntries: (
+    targetScopeKey: string,
+  ) => Promise<GuestMigrationResult>;
 };
+
+type JournalMigrationIO = {
+  listAccountEntries: (scopeKey: string) => Promise<JournalEntry[]>;
+  saveEntry: (entry: JournalEntry, scopeKey: string) => Promise<void>;
+};
+
+function journalMigrationPlan(
+  backend: JournalStoreAdapter["backend"],
+  targetScopeKey: string,
+  io: JournalMigrationIO,
+): GuestMigrationPlan<JournalEntry> {
+  return {
+    markerKey: guestMigrationMarker(targetScopeKey, backend, "journal"),
+    listGuestRecords: () => listLocalJournalEntries(GUEST_SCOPE_KEY),
+    conflictGuard: {
+      listAccountRecords: () => io.listAccountEntries(targetScopeKey),
+      // The date key is exactly what saveJournalEntry upserts on, so it is
+      // also exactly what an overwrite would collide on.
+      identityKey: (entry) => entry.date,
+    },
+    write: (entry) => io.saveEntry(entry, targetScopeKey),
+  };
+}
 
 export function createJournalStore(
   rawBackend?: string,
@@ -63,6 +107,16 @@ export function createJournalStore(
     listJournalEntries: async (scopeKey) => listLocalJournalEntries(scopeKey),
     saveJournalEntry: async (dateKey, text, scopeKey) =>
       saveLocalJournalEntry(dateKey, text, scopeKey),
+    migrateGuestJournalEntries: async (targetScopeKey) =>
+      migrateGuestRecords(
+        journalMigrationPlan("local", targetScopeKey, {
+          listAccountEntries: async (scopeKey) => listLocalJournalEntries(scopeKey),
+          saveEntry: async (entry, scopeKey) => {
+            saveLocalJournalEntry(entry.date, entry.text, scopeKey);
+          },
+        }),
+        targetScopeKey,
+      ),
   };
 
   if (backend === "firestore") {
@@ -88,6 +142,27 @@ export function createJournalStore(
         } catch {
           return saveLocalJournalEntry(dateKey, text, scopeKey);
         }
+      },
+      migrateGuestJournalEntries: async (targetScopeKey) => {
+        // Deliberately unguarded, mirroring migrateGuestCheckins: a thrown
+        // Firestore read or write must surface as `error` so the local retry
+        // runs, rather than being swallowed per record.
+        const result = await migrateGuestRecords(
+          journalMigrationPlan("firestore", targetScopeKey, {
+            listAccountEntries: (scopeKey) =>
+              listFirestoreJournalEntries(db, scopeKey),
+            saveEntry: async (entry, scopeKey) => {
+              await addFirestoreJournalEntry(db, entry.date, entry.text, scopeKey);
+            },
+          }),
+          targetScopeKey,
+        );
+
+        if (result.status === "error") {
+          return localStore.migrateGuestJournalEntries(targetScopeKey);
+        }
+
+        return result;
       },
     };
   }
