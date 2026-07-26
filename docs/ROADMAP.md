@@ -1,6 +1,6 @@
 # Focus (Calm Daily Coach) - Product Roadmap
 
-Canonical forward roadmap, last audited against real git/gh state 2026-07-25. This
+Canonical forward roadmap, last audited against real git/gh state 2026-07-26. This
 document supersedes the forward-looking sections of docs/FRONTEND_FUNCTIONALITY_PLAN.md,
 docs/AUTONOMOUS_IMPLEMENTATION_PLAN.md, and docs/MONETIZATION_PLAN.md; those files remain
 as historical records with status banners.
@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-07-25)
+## Current state (2026-07-26)
 
 - App: "Focus: Your ADHD friendly self-improvement coach" (rebranded from Calm Daily
   Coach in PR #59). Next.js 16 / React 19 TypeScript static export on GitHub Pages at
@@ -59,7 +59,19 @@ is written next to.
   automating that flip (v0.5) is deprioritized per the direction above.
 - Quality gate: PR #86 (2026-07-19) consolidated CI into a single required job (lint,
   typecheck, tests, build) so the branch-protection check now actually gates all of
-  them; it previously gated only lint and build.
+  them; it previously gated only lint and build. Verified 2026-07-26: the required
+  context is exactly `["lint-and-build"]`, posted by that one consolidated job.
+  Two DevSecOps increments have since extended the safety net around it, and this
+  bullet did not mention either until now. PR #111 (2026-07-25) added
+  `.github/workflows/security-audit.yml`, which runs the gate's own
+  `npm audit --audit-level=high` daily; it **gates nothing** and exists because that
+  command queries the live advisory database, so it had flipped an unchanged main
+  red four times (#99, #101, #102, #107), each time discovered reactively by the
+  next PR. PR #119 (2026-07-26) added `src/__tests__/static-export-surface.test.ts`
+  after removing the last pre-static-export server code. Five guard tests now run
+  inside the gate and compare two sources of truth rather than restating either:
+  `theme-token-guard`, `static-export-surface`, `workflow-audit-parity`,
+  `roadmap-milestone-status`, and `onboarding-storage-contract`.
 - Accessibility: PR #87 (2026-07-20, v0.8) added a global focus-visible ring, a
   skip-to-content link, a reduced-motion reset that covers every animated surface (it
   had previously only covered some), a single layout `<main>` landmark, aria-current
@@ -73,7 +85,8 @@ is written next to.
 - All six items of the frontend functionality plan (action rail, onboarding, weekly
   insights, plan editor, browser reminders, offline/sync status) are complete as of
   2026-07-18.
-- New surfaces since this snapshot (added 2026-07-25): `/trends`, a 4-week
+- New surfaces since the 2026-07-18 snapshot above (this bullet last extended
+  2026-07-26): `/trends`, a 4-week
   check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
   calm focus-session timer (NF-6, PR #104) backed by a local-first
   `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
@@ -625,11 +638,77 @@ rule, no new console gate. Full audit, plan, and every overridable default:
   what this file's own versioning convention says ("one bump per shipped feature
   milestone").
 
+### v0.15 - First run: the front door a stranger actually meets (agent-doable now)
+
+Defined 2026-07-26 (product-role increment), the milestone after v0.14.
+
+v0.14 opened every route to a signed-out person earlier the same day. Before
+that, `subscription-guard.tsx` answered `!authUser` with a full-screen wall on
+every page, so **no visitor has ever arrived at this app without an account**.
+The first-run path became reachable today and has never been exercised as a
+real product path. Three defects filed in the last two days all sit on exactly
+it, and each was found while doing something else:
+
+- Only one of the three sign-in surfaces tells the truth. `useCoachAuth` is a
+  hook, not a context, so each caller owns a private `authMessage`. `/`
+  (`page.tsx:684`) renders it in a `role="alert" aria-live="assertive"`
+  paragraph; `/focus` (`:17`) and `/pricing` (`:9`) destructure the hook without
+  it and render it nowhere, so a sign-in failure that does not self-recover
+  through the redirect fallback produces nothing at all on the checkout entry
+  point. Filed MED by PR #121.
+- `/focus` is the only one of the thirteen `page.tsx` routes with no test file,
+  and it carries one of the two silent buttons.
+- The onboarding gate reads localStorage in a `useState` initializer
+  (`page.tsx:138`), so a **first-time** visitor hydrates a mismatch: the static
+  HTML has no overlay (verified live by `curl`, which finds neither
+  "Personalize your coach" nor `GUEST (LOCAL)` in the prerender) while the first
+  client render has one. A returning visitor is unaffected, which is why this
+  has never mattered until now. Filed LOW by PR #120.
+
+Chosen over reminder reach via FCM (still USER-ONLY console gates), a
+performance pass (still no web-vitals baseline, so "faster" is not
+CI-checkable), extending guest migration to planner state and slicer history
+(cheap and now unblocked, but it deepens what a guest *keeps* rather than
+fixing what a guest *meets*), and Playwright E2E - whose recorded objection
+("a suite written now would encode the behavior v0.14 changes") **expired the
+moment v0.14 shipped**, making it the strongest runner-up and the recommended
+milestone after this one. It is declined here on ordering, not habit: a browser
+suite written now would pin the first-run path with its hydration warning and
+its silent sign-in intact. Frontend-only: no new env var, no new Firestore
+collection, no new security rule, no new console gate. Full audit, plan, and
+every overridable default:
+[docs/design/FIRST_RUN.md](design/FIRST_RUN.md).
+
+- PR1: extract the alert paragraph into a shared component (D2), render it on
+  `/focus` and `/pricing`, add a guard test asserting every `signInWithGoogle`
+  call site also renders it (D3), and give `/focus` its first page test (D4).
+  Closes the MED bug.
+- PR2: move the onboarding read out of the `useState` initializer to the
+  hydration-safe pattern `AnimatedCounter` already uses in the same file
+  (`page.tsx:56-65`, D5), with a test pinning the first client render. Closes
+  the LOW bug. **Carries the package.json bump to 0.15.0** and flips this
+  heading to DONE in the same commit, for the reason v0.14 recorded and
+  verified: `src/__tests__/roadmap-milestone-status.test.ts` fails when the
+  shipped version reaches a milestone whose heading is not terminal.
+- Product rules apply: no new banner, modal, interstitial, or countdown is
+  added for a guest (D6). The only copy this milestone adds already exists in
+  the codebase and is currently shown to nobody.
+- Explicitly NOT in scope (D7): the LOW "no single test walks
+  guest-writes-then-signs-in through the gate in one render" filed by PR #121,
+  which stays QA-stream work.
+- Done when: the checklist in
+  [docs/design/FIRST_RUN.md section 5](design/FIRST_RUN.md#5-done-when-checkable)
+  is met, and `npm run lint`, `npm run typecheck`, `npm run build`,
+  `npm audit --audit-level=high`, and `npm run test:coverage` are green on the
+  quality-gate check.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through
-v0.13 have all landed, and v0.14 above is the next milestone.
+v0.14 have all landed, and v0.15 above is the next milestone. (Corrected
+2026-07-26: this paragraph still read "v0.2 through v0.13 ... v0.14 above is the
+next milestone" after v0.14 shipped.)
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a
@@ -643,7 +722,11 @@ v0.13 have all landed, and v0.14 above is the next milestone.
 - Security hardening: replace the untouched template SECURITY.md with a real policy,
   secret scanning, dependency review (AUTONOMOUS plan Phase 5).
 - Playwright E2E smoke test for the daily loop plus a PR template (AUTONOMOUS plan
-  Phase 6).
+  Phase 6). **Newly eligible as of 2026-07-26**: the objection recorded against
+  it while scoping v0.14 ("a suite written now would encode the behavior v0.14
+  changes") expired when v0.14 shipped. It was weighed for v0.15 and is the
+  recommended milestone after it, once the first-run path it would pin is
+  correct. See v0.15 above for the ordering argument.
 - ~~Remove the dead reminder-email helper src/lib/mailer.ts plus its nodemailer
   dependency once the reminder design settles~~: DONE 2026-07-26 (PR #119,
   DevSecOps stream). The condition it was waiting on had been satisfied since
@@ -697,7 +780,12 @@ User-only (paid-account and console actions an agent must not perform):
   webhook automation ships.
 - Deploy Firestore security rules in the Firebase console (ruleset documented in
   docs/FIRESTORE_RULES.md).
-- Confirm Firebase quotas and billing before the v0.4 default flip.
+- Confirm Firebase quotas and billing. (Corrected 2026-07-26: this read "before
+  the v0.4 default flip", a condition that can no longer be met - v0.4 shipped
+  2026-07-19 as PR #82 and `NEXT_PUBLIC_CHECKIN_BACKEND` has resolved to
+  Firestore-for-signed-in-users ever since. The obligation is real and still
+  open, but it is now a running-cost check rather than a pre-flip gate, and no
+  real user has exercised it yet because the rules below are still unpublished.)
 
 ## History and supersession
 
@@ -824,3 +912,36 @@ User-only (paid-account and console actions an agent must not perform):
   that no signed-out visitor has ever been able to reach, because the wall
   preempts every one of them - so the invitation-shaped alternative to the wall
   is already built.
+- 2026-07-26 milestone definition + truth pass (product-role increment, wave):
+  the drift guard added in the previous pass now covers the milestone headers
+  mechanically, so this pass targeted what the guard cannot read - the
+  Current-state prose and the unscheduled lists. It found four stale statements.
+  (1) The "Later / candidates" preamble still read "v0.2 through v0.13 have all
+  landed, and v0.14 above is the next milestone" after v0.14 shipped, which is
+  the same shape as the header defect the guard now catches, one paragraph
+  outside its reach. (2) The Quality-gate bullet described CI as PR #86 left it
+  on 2026-07-19 and mentioned neither of the two DevSecOps increments that have
+  extended it since - the daily `security-audit.yml` detector (PR #111) and the
+  static-export surface guard (PR #119) - so a reader could not tell from this
+  file that five guard tests now run inside the gate; the required context was
+  re-read live (`["lint-and-build"]`) rather than restated. (3) The user-only
+  entry "confirm Firebase quotas and billing **before the v0.4 default flip**"
+  named a condition that can no longer be met, v0.4 having shipped on
+  2026-07-19; the obligation is real and still open, so it was re-stated as a
+  running-cost check rather than deleted. (4) The Current-state header still
+  read 2026-07-25 while carrying 2026-07-26 content. **v0.15 defined** (first
+  run: the front door a stranger actually meets, see
+  [docs/design/FIRST_RUN.md](design/FIRST_RUN.md)), chosen over FCM push, a
+  performance pass, the planner/slicer migration extension, and Playwright E2E.
+  The Playwright entry is the one this pass changed its mind about: the
+  objection recorded against it in the v0.14 definition expired the moment v0.14
+  shipped, so it was re-costed rather than deferred by habit, and it lost on
+  ordering alone (a browser suite written now would pin the first-run path with
+  its defects intact). The audit behind v0.15 was done by reading the source and
+  the live deployment, not the changelog: `grep -rn "authMessage" src/app` finds
+  the failure message rendered on exactly one of the three routes that offer
+  sign-in, `find src/app -name page.tsx` against `ls src/app/__tests__` finds
+  `/focus` the only untested route, and `curl` against the deployed `/` finds
+  neither the onboarding overlay nor the guest badge in the prerendered HTML,
+  which is what makes the hydration mismatch a first-time-visitor-only defect
+  and therefore one that could not have mattered before v0.14 opened the door.
