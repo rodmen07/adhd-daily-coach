@@ -6,11 +6,11 @@ import { CalmEmptyState } from "@/app/components/empty-state";
 import { createCheckinStore, type CheckinStoreAdapter } from "@/lib/checkin-store";
 import type { BrowserCheckin } from "@/lib/browser-checkins";
 import { getTrendSummary } from "@/lib/trend-insights";
+import { summarizeFocusSessions, type FocusSession } from "@/lib/focus-session";
 import {
-  listFocusSessions,
-  summarizeFocusSessions,
-  type FocusSession,
-} from "@/lib/focus-session";
+  createFocusSessionStore,
+  type FocusSessionStoreAdapter,
+} from "@/lib/focus-session-store";
 import { FOCUS_SESSION_COPY, focusWeekRecap } from "@/lib/focus-session-copy";
 
 // A fixed 28-day / 4-week window (docs/design/TRENDS_OVER_TIME.md section
@@ -37,15 +37,17 @@ export default function TrendsPage() {
     [signedIn],
   );
 
+  // v0.12 PR2 (docs/design/FOCUS_IN_TRENDS.md section 5): focus sessions now
+  // resolve their backend through the same policy, so a signed-in person's
+  // sessions come from Firestore here just as their check-ins do. Same
+  // memoization and the same rule as the check-in store above: never a direct
+  // focus-session.ts call from a page.
+  const focusStore: FocusSessionStoreAdapter = useMemo(
+    () => createFocusSessionStore(undefined, { signedIn }),
+    [signedIn],
+  );
+
   const [checkins, setCheckins] = useState<BrowserCheckin[]>([]);
-  // v0.12 (docs/design/FOCUS_IN_TRENDS.md section 3.1): NF-6 focus sessions
-  // are local-first, so PR1 reads them straight from the store the way /now
-  // does. The Firestore-backed adapter (so a signed-in person's sessions sync)
-  // is PR2 and lands behind the same resolveCheckinBackend policy the check-in
-  // store already uses - which is why this read is loaded alongside the
-  // check-ins rather than during render: listFocusSessions returns [] on the
-  // server, so a render-time read would make the static export's markup
-  // disagree with the hydrated client, and PR2's read is async anyway.
   const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -53,18 +55,20 @@ export default function TrendsPage() {
     let active = true;
 
     async function loadHistory() {
-      const inRange = await checkinStore.getCheckinsInRange(
-        TREND_WINDOW_DAYS,
-        undefined,
-        storageScope,
-      );
+      // Both reads are backend-resolved and independent, so they run
+      // together: a signed-in Firestore round trip for each would otherwise
+      // be serialized for no reason.
+      const [inRange, sessions] = await Promise.all([
+        checkinStore.getCheckinsInRange(TREND_WINDOW_DAYS, undefined, storageScope),
+        focusStore.listFocusSessions(storageScope),
+      ]);
 
       if (!active) {
         return;
       }
 
       setCheckins(inRange);
-      setFocusSessions(listFocusSessions(storageScope));
+      setFocusSessions(sessions);
       setLoaded(true);
     }
 
@@ -73,7 +77,7 @@ export default function TrendsPage() {
     return () => {
       active = false;
     };
-  }, [storageScope, checkinStore]);
+  }, [storageScope, checkinStore, focusStore]);
 
   const focusSummary = useMemo(() => summarizeFocusSessions(focusSessions), [focusSessions]);
 

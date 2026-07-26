@@ -5,11 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { REDUCED_MOTION_QUERY, prefersReducedMotion } from "@/lib/reduced-motion";
 import {
-  addFocusSession,
-  listFocusSessions,
   summarizeFocusSessions,
+  type FocusSession,
   type FocusSessionOutcome,
 } from "@/lib/focus-session";
+import {
+  createFocusSessionStore,
+  type FocusSessionStoreAdapter,
+} from "@/lib/focus-session-store";
 import {
   FOCUS_SESSION_COPY as C,
   FOCUS_SESSION_NOTIFICATION_BODY,
@@ -54,13 +57,42 @@ export default function NowPage() {
   const [lastOutcome, setLastOutcome] = useState<FocusSessionOutcome | null>(null);
   const notifiedRef = useRef(false);
 
-  // Today's tally, refreshed when a session is recorded.
-  const [summaryTick, setSummaryTick] = useState(0);
-  const summary = useMemo(
-    () => summarizeFocusSessions(listFocusSessions(scope)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-read on tally change and scope change
-    [scope, summaryTick],
+  // v0.12 PR2: sessions resolve their backend through the shared policy
+  // (docs/design/FOCUS_IN_TRENDS.md section 5), so a signed-in person's
+  // sessions are written to and read from Firestore instead of only this
+  // browser. Memoized on signed-in state, mirroring /trends and
+  // use-coach-planner.ts's v0.4 pattern.
+  const signedIn = scope !== "guest";
+  const focusStore: FocusSessionStoreAdapter = useMemo(
+    () => createFocusSessionStore(undefined, { signedIn }),
+    [signedIn],
   );
+
+  // Today's tally. The read is async now (the Firestore backend returns a
+  // promise, and the local one returns [] during a server render either way),
+  // so the sessions live in state and the summary is derived from them. A
+  // recorded session is appended to that state from the write's own result
+  // rather than triggering a re-read, which keeps the tally correct on both
+  // backends without a second round trip per session.
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
+  const summary = useMemo(() => summarizeFocusSessions(sessions), [sessions]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSessions() {
+      const stored = await focusStore.listFocusSessions(scope);
+      if (active) {
+        setSessions(stored);
+      }
+    }
+
+    void loadSessions();
+
+    return () => {
+      active = false;
+    };
+  }, [focusStore, scope]);
 
   const plannedSeconds = minutes * 60;
 
@@ -95,12 +127,20 @@ export default function NowPage() {
 
   const finish = useCallback(
     (outcome: FocusSessionOutcome) => {
-      addFocusSession({ task: task.trim(), plannedMinutes: minutes, focusedSeconds: elapsed, outcome }, scope);
+      // The close-out is never gated on the write: the person sees their
+      // "done" screen immediately, and the tally refreshes once the session
+      // is persisted (the adapter falls back to local storage on a Firestore
+      // error, so the session is recorded either way).
       setLastOutcome(outcome);
-      setSummaryTick((t) => t + 1);
       setPhase("done");
+      void focusStore
+        .addFocusSession(
+          { task: task.trim(), plannedMinutes: minutes, focusedSeconds: elapsed, outcome },
+          scope,
+        )
+        .then((stored) => setSessions((previous) => [...previous, stored]));
     },
-    [task, minutes, elapsed, scope],
+    [task, minutes, elapsed, scope, focusStore],
   );
 
   const reset = useCallback(() => {
