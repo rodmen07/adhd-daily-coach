@@ -41,10 +41,10 @@ is written next to.
   `NEXT_PUBLIC_CHECKIN_BACKEND` resolves to Firestore for signed-in users on
   Firebase-configured deployments and to localStorage otherwise; explicit
   `local|firestore` values still force their mode. Automatic local fallback is
-  unchanged. Idempotent guest-to-account migration exists **for check-ins only**
-  (`migrateGuestCheckins` in `src/lib/checkin-store.ts`); journal entries (v0.9)
-  and focus sessions (v0.12) both scoped it out in writing, which is the gap
-  v0.13 below closes. Signed-out and
+  unchanged. Idempotent guest-to-account migration now covers **all three
+  collections**: check-ins since v0.4 (`migrateGuestCheckins`), journal entries
+  and focus sessions since v0.13 (PR #113 and PR #115), all three on the shared
+  `src/lib/guest-migration.ts` primitive. Signed-out and
   Firebase-less usage stays localStorage-only. Gratitude journal entries (v0.7)
   gained the same adapter in v0.9 (PR #89, hardened in PR #90): the code path
   for signed-in, Firebase-configured sync exists and is tested, reusing this
@@ -78,7 +78,16 @@ is written next to.
   calm focus-session timer (NF-6, PR #104) backed by a local-first
   `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
   #110): `/trends` now carries a "Focus sessions this week" card and sessions
-  optionally sync to `users/{uid}/focusSessions`. package.json reads 0.12.0.
+  optionally sync to `users/{uid}/focusSessions`. v0.13 shipped the same day too
+  (PR #113 + PR #115): guest-to-account migration for journal entries and focus
+  sessions on a shared primitive. package.json reads 0.13.0.
+- Access: **every route is behind a Google sign-in wall on the deployed build**
+  (`src/app/components/subscription-guard.tsx:85-86` via `layout.tsx:79`;
+  verified 2026-07-25 against the live bundle, which carries a real Firebase
+  config, so this is the production front door and not a misconfiguration).
+  That contradicts the local-first stores, the `GUEST (LOCAL)` header badge, and
+  v0.13's whole purpose, and it means an expired-trial account cannot reach
+  `/pricing` either. v0.14 below is the milestone that decides and fixes this.
 - The repo also hosts a Python dev-agent pipeline in agents/dev-agent/ (backlog ids
   cdc-001 through cdc-016). Roadmap items may reference cdc ids, but files under
   agents/dev-agent/ must never be edited by roadmap work.
@@ -434,7 +443,37 @@ that document is an explicitly flagged, overridable default.
   delete denied). 376 tests (was 360). Publishing that ruleset in the console
   remains USER-ONLY and blocks nothing that shipped.
 
-### v0.13 - Bring your data with you: guest-to-account migration (agent-doable now)
+### v0.13 - Bring your data with you: guest-to-account migration (DONE)
+
+**DONE 2026-07-25**, both PRs merged and deployed:
+
+- PR1 [#113](https://github.com/rodmen07/calm-daily-coach/pull/113): the copy
+  loop extracted out of `checkin-store.ts` into a collection-agnostic
+  `src/lib/guest-migration.ts` (the check-in migration tests passed unchanged,
+  which is what makes the refactor behavior-preserving rather than merely
+  claimed), plus `migrateGuestJournalEntries` wired into `/journal`.
+  package.json bumped to 0.13.0.
+- PR2 [#115](https://github.com/rodmen07/calm-daily-coach/pull/115):
+  `migrateGuestFocusSessions` wired into `/now` and `/trends`, plus the one
+  calm result line. New by-id writers (`putFocusSession`,
+  `putFirestoreFocusSession`) copy an already-stamped session verbatim instead
+  of restamping it, so a session run last week is not refiled under today.
+- The conflict rule shipped as an OPT-IN guard per collection (journal in,
+  check-ins and focus sessions out) rather than retro-applied to every
+  collection as the design doc's D3 text says, because both of those
+  collections are append-only and a date-identity rule there would delete guest
+  records rather than protect account ones. That divergence is deliberate,
+  tested, and awaiting user confirmation before
+  [docs/design/GUEST_DATA_MIGRATION.md](design/GUEST_DATA_MIGRATION.md) is
+  edited to match.
+- **Caveat recorded 2026-07-25, not a defect in this milestone:** on the
+  deployed build a person cannot create data while signed out at all, because
+  the subscription gate requires a Google account for every route. So the
+  user-visible value of this milestone is unreachable in production until v0.14
+  below decides what a signed-out person gets.
+
+Original definition follows.
+
 
 Defined 2026-07-25 (product-role increment), the milestone after v0.12. Verified
 by reading the code rather than the changelog: `src/lib/checkin-store.ts` has
@@ -481,11 +520,65 @@ choice in that document is an explicitly flagged, overridable default.
   quality-gate check. package.json bumps to 0.13.0 in the first implementation
   PR, not in this definition.
 
+### v0.14 - Let people in: guest access and a reachable checkout (agent-doable now)
+
+Defined 2026-07-25 (product-role increment), the milestone after v0.13.
+
+`src/app/components/subscription-guard.tsx:85-86` renders a full-screen "Sign in
+required" wall whenever `authUser` is null, and `layout.tsx:79` wraps every one
+of the app's thirteen pages in it, so the deployed site shows a signed-out
+visitor no product at all. Everything else is built as if guests existed: the
+stores resolve to localStorage when signed out, the header badge (which sits
+OUTSIDE the gate) advertises `GUEST (LOCAL)`, three in-page "Continue with
+Google" buttons already exist on `/`, `/focus`, and `/pricing` that no
+signed-out visitor has ever been able to reach - and v0.13, shipped the same
+day this was written, migrates data a person creates *while signed out*.
+
+Separately and independently of that question, the trial-ended screen's only
+call to action links to `/pricing`, which the same gate blocks, so an
+expired-trial account can never reach checkout. That half is wrong under every
+reading and ships first.
+
+Chosen over reminder reach via FCM (still USER-ONLY console gates), a
+performance pass (still no web-vitals baseline to make "faster" checkable),
+Playwright E2E (QA-stream work, and a suite written now would encode the
+behavior this milestone changes), the `mailer.ts` dead-code removal (hygiene),
+and extending guest migration to planner state and slicer history (cheap now,
+but it deepens a feature the front door makes unreachable - ordering matters).
+Frontend-only: no new env var, no new Firestore collection, no new security
+rule, no new console gate. Full audit, plan, and every overridable default:
+[docs/design/GUEST_ACCESS_AND_PAYWALL.md](design/GUEST_ACCESS_AND_PAYWALL.md).
+
+- PR1 (ships first, independent of the product decision): make the gate
+  route-aware and exempt `/pricing` unconditionally, using the same
+  `usePathname` mechanism `site-nav.tsx` already uses. package.json bumps to
+  0.14.0 here.
+- PR2 (carries decision D1, default = restore guest access): remove the
+  `!authUser` wall so every route renders for a guest; treat
+  `subscriptionStatus === "expired"` as blocking (D5); correct
+  `getTrialDaysRemaining`'s documented contract without changing its return
+  value (D6); flip the four tests in
+  `src/app/components/__tests__/subscription-guard.test.tsx` that currently
+  document defects into assertions of the new behavior.
+- Closes four filed bugs: two HIGH (no guest mode; the paywall's only CTA is
+  behind the paywall), one MED (dead `"expired"` status), one LOW
+  (`getTrialDaysRemaining` returns NaN for a malformed date).
+- Product rules apply: this milestone only removes blocking surfaces. No new
+  banner, modal, countdown, or nag replaces the wall - the sign-in invitation
+  stays where it already is, phrased as an upgrade.
+- Done when: the done-when checklist in
+  [docs/design/GUEST_ACCESS_AND_PAYWALL.md section 5](design/GUEST_ACCESS_AND_PAYWALL.md#5-done-when-checkable)
+  is met, no test in `subscription-guard.test.tsx` still describes a shipped
+  defect as expected behavior, and `npm run lint`, `npm run typecheck`,
+  `npm run build`, `npm audit --audit-level=high`, and `npm run test:coverage`
+  are green on the quality-gate check. package.json bumps to 0.14.0 in PR1, not
+  in this definition.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
-monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through v0.12
-have all landed, and v0.13 above is the next milestone.
+monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through
+v0.13 have all landed, and v0.14 above is the next milestone.
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a
@@ -647,3 +740,30 @@ User-only (paid-account and console actions an agent must not perform):
   hazard in the obvious implementation (`saveJournalEntry` upserts by date, so
   copying the check-in migration verbatim would let a guest entry overwrite an
   account entry silently).
+- 2026-07-25 roadmap truth pass + milestone definition (product-role increment,
+  third product pass this day, after PRs #108 and #112). Verified PR #113 and
+  PR #115 MERGED via `gh pr view --json state,mergedAt` before writing, then
+  corrected v0.13's header from "(agent-doable now)" to "(DONE)" - **the third
+  consecutive milestone to ship that exact defect** (PR #108 fixed it for v0.11,
+  PR #112 for v0.12, this pass for v0.13). Because a defect that recurs three
+  times is a missing check rather than a missing reminder, this pass also added
+  `src/__tests__/roadmap-milestone-status.test.ts`, which reads THIS file and
+  `package.json` together and fails when a milestone at or below the shipped
+  version is not marked DONE or DEPRIORITIZED (and when a milestone above it
+  claims DONE). The prose fix and the guard shipped in the same PR.
+  Two Current-state bullets were also corrected: the persistence bullet still
+  said guest migration existed "for check-ins only" although v0.13 extended it
+  to journal entries and focus sessions the same day, and the version line still
+  read 0.12.0. A new Access bullet records something no previous audit had
+  written down: **the deployed build gates every route behind Google sign-in**,
+  verified against the live bundle rather than assumed, which makes v0.13's
+  user-visible value unreachable in production.
+  **v0.14 defined** (guest access and a reachable checkout, see
+  [docs/design/GUEST_ACCESS_AND_PAYWALL.md](design/GUEST_ACCESS_AND_PAYWALL.md)),
+  chosen over FCM push, a performance pass, Playwright E2E, the `mailer.ts`
+  removal, and extending guest migration to planner state. The audit that
+  produced it found that three "Continue with Google" buttons already exist
+  inside the app (`page.tsx:618,667`, `focus/page.tsx:60`, `pricing/page.tsx:85`)
+  that no signed-out visitor has ever been able to reach, because the wall
+  preempts every one of them - so the invitation-shaped alternative to the wall
+  is already built.
