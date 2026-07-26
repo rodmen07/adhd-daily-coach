@@ -95,7 +95,11 @@ is written next to.
   (PR #113 + PR #115): guest-to-account migration for journal entries and focus
   sessions on a shared primitive. v0.14 followed on 2026-07-26 (PR #117 + PR
   #118 + PR #121) and opened the app to signed-out visitors, which is what makes
-  v0.13's migration reachable at all. package.json reads 0.14.0.
+  v0.13's migration reachable at all. v0.15 closed the same day (PR #123 + PR
+  #124) and added no surface at all: it made the first-run path a stranger now
+  reaches behave - one shared sign-in alert on all three sign-in surfaces, and
+  an onboarding gate whose first client render matches the prerender.
+  package.json reads 0.15.0.
 - Access (corrected 2026-07-26 by v0.14): **the app is open to a signed-out
   person on every route.** Until v0.14 it was not - `subscription-guard.tsx`
   answered `!authUser` with a full-screen "Sign in required" wall via
@@ -638,7 +642,23 @@ rule, no new console gate. Full audit, plan, and every overridable default:
   what this file's own versioning convention says ("one bump per shipped feature
   milestone").
 
-### v0.15 - First run: the front door a stranger actually meets (agent-doable now)
+### v0.15 - First run: the front door a stranger actually meets (DONE)
+
+**DONE 2026-07-26**, two PRs merged and deployed:
+
+- PR1 [#123](https://github.com/rodmen07/calm-daily-coach/pull/123): the three
+  sign-in surfaces agree (D2). `/`'s alert paragraph became the shared
+  `src/app/components/auth-message.tsx`, `/focus` and `/pricing` render it for
+  the first time, `src/__tests__/auth-message-contract.test.ts` fails when a
+  `.tsx` under `src/app` calls `signInWithGoogle` without it (D3), and `/focus`
+  got its first page test (D4), so no route is untested any more. Closed the MED
+  bug.
+- PR2 [#124](https://github.com/rodmen07/calm-daily-coach/pull/124): the
+  onboarding gate is hydration-safe (D5). `showOnboarding` starts `false` and is
+  settled in an effect, the shape `AnimatedCounter` already uses in the same
+  file, so the first client render agrees with the prerendered HTML for a
+  first-time visitor too; the now-redundant `typeof window` guard in the JSX is
+  gone. Closed the LOW bug and carried the bump to 0.15.0 plus this heading.
 
 Defined 2026-07-26 (product-role increment), the milestone after v0.14.
 
@@ -706,9 +726,15 @@ every overridable default:
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through
-v0.14 have all landed, and v0.15 above is the next milestone. (Corrected
-2026-07-26: this paragraph still read "v0.2 through v0.13 ... v0.14 above is the
-next milestone" after v0.14 shipped.)
+v0.15 have all landed, and **no milestone is defined above them** - the next
+product-role increment defines v0.16, with Playwright E2E the standing
+recommendation (see v0.15's ordering argument, which declined it only until the
+first-run path was fixed). (Corrected twice, on 2026-07-26 and again the same
+day by v0.15 PR2: this paragraph read "v0.2 through v0.13 ... v0.14 above is the
+next milestone" after v0.14 shipped, and "v0.2 through v0.14 ... v0.15 above is
+the next milestone" after v0.15 shipped. `roadmap-milestone-status.test.ts`
+guards the milestone HEADINGS mechanically but cannot read this sentence, which
+is why it is the half that keeps going stale.)
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a

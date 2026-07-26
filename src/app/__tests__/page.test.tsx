@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "@/app/page";
 import { getWeeklySummary } from "@/lib/browser-checkins";
@@ -84,7 +85,7 @@ describe("Dashboard page", () => {
     });
   });
 
-  it("keeps onboarding closed once a real preference record exists", () => {
+  it("keeps onboarding closed once a real preference record exists", async () => {
     window.localStorage.setItem(
       "calm-daily-coach:onboarding",
       JSON.stringify({ defaultFocus: "Deep Work", defaultDose: "light", defaultTheme: "dark" }),
@@ -92,6 +93,11 @@ describe("Dashboard page", () => {
 
     render(<Home />);
 
+    // Let the deferred settle run before asserting absence; asserting straight
+    // after render would pass trivially against the pre-settle default.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     expect(screen.queryByTestId("onboarding-container")).toBeNull();
   });
 
@@ -100,20 +106,53 @@ describe("Dashboard page", () => {
   // reopens onboarding, and the planner silently falls back to its own
   // defaults for a record it cannot parse, so a corrupt value left a person
   // permanently onboarded-with-nothing.
-  it("reopens onboarding for a record it cannot read, instead of counting it as done", () => {
+  it("reopens onboarding for a record it cannot read, instead of counting it as done", async () => {
     window.localStorage.setItem("calm-daily-coach:onboarding", "not json at all");
 
     render(<Home />);
 
-    expect(screen.getByTestId("onboarding-container")).toBeTruthy();
+    expect(await screen.findByTestId("onboarding-container")).toBeTruthy();
   });
 
-  it("reopens onboarding for a record that is missing preferences", () => {
+  it("reopens onboarding for a record that is missing preferences", async () => {
     window.localStorage.setItem("calm-daily-coach:onboarding", JSON.stringify({ defaultDose: "light" }));
 
     render(<Home />);
 
-    expect(screen.getByTestId("onboarding-container")).toBeTruthy();
+    expect(await screen.findByTestId("onboarding-container")).toBeTruthy();
+  });
+
+  // v0.15 PR2 (docs/design/FIRST_RUN.md D5). `showOnboarding` used to be seeded
+  // by a `useState` initializer that read localStorage. Under `output: "export"`
+  // the prerender has no `window`, so the static HTML never carries the overlay,
+  // while a FIRST-TIME visitor's first client render computed `true` and did -
+  // a hydration mismatch that only someone arriving without a record could hit,
+  // which is why it could not matter before v0.14 opened the front door.
+  //
+  // `renderToStaticMarkup` is the instrument because it runs the render phase
+  // and never runs effects, which is exactly what "the first render" means here.
+  // jsdom hands it a real `window` and a readable (empty) localStorage, so this
+  // assertion is strictly HARDER than production: the overlay must be absent
+  // even when the answer IS readable during the render pass. A `typeof window`
+  // guard in the JSX therefore cannot satisfy it - only moving the read out of
+  // the initializer can.
+  it("keeps the onboarding overlay out of the first render pass, so it matches the prerender", () => {
+    window.localStorage.clear();
+
+    const markup = renderToStaticMarkup(<Home />);
+
+    // Blindness control: an empty or thrown-away render would satisfy the
+    // absence assertion below for entirely the wrong reason.
+    expect(markup).toContain("Today-first coaching");
+    expect(markup).not.toContain("onboarding-container");
+  });
+
+  it("opens onboarding for a first-time visitor once the client settles", async () => {
+    window.localStorage.clear();
+
+    render(<Home />);
+
+    expect(await screen.findByTestId("onboarding-container")).toBeTruthy();
   });
 
   it("records a complete preference record when onboarding is skipped", async () => {
@@ -121,7 +160,7 @@ describe("Dashboard page", () => {
 
     render(<Home />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
 
     await waitFor(() => {
       expect(screen.queryByTestId("onboarding-container")).toBeNull();
