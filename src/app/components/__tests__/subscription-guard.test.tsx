@@ -13,16 +13,17 @@ import type { UserAccount } from "@/lib/firestore-user";
  * directly, so no test in the suite had ever rendered the real gate.
  *
  * These tests pin the gate's REAL current behavior rather than the behavior
- * the surrounding product assumes. Three of them document defects that are
+ * the surrounding product assumes. Three of them documented defects that were
  * filed in the backlog's `## Bugs` section rather than fixed here, because
  * changing who may reach the app is a product decision, not a QA call. Each
  * such test says so on its own line.
  *
- * v0.14 PR1 closed the first of those defects - the paywall's only call to
- * action pointed at `/pricing`, which this same gate blocked - so the test that
- * documented the dead end now asserts the fix, and the group below it pins the
- * exemption's edges. The remaining documenting tests are still accurate and are
- * PR2's to flip, once decision D1 has an answer.
+ * v0.14 PR1 closed the first - the paywall's only call to action pointed at
+ * `/pricing`, which this same gate blocked - so that test now asserts the fix
+ * and the group below it pins the exemption's edges. v0.14 PR2a closed the
+ * second: an account marked `"expired"` is blocked on its own terms (D5), read
+ * through the shared `@/lib/entitlement`. Exactly ONE documenting test is left,
+ * the sign-in wall, and it waits on decision D1 rather than on more code.
  */
 
 const mockUseCoachAuth = vi.fn();
@@ -339,12 +340,12 @@ describe("SubscriptionGuard", () => {
     });
   });
 
-  it('ignores the "expired" account status while the trial window is open', async () => {
-    // DOCUMENTS A DEFECT (backlog `## Bugs`, MED, filed not fixed): `UserAccount`
-    // declares three statuses, and the gate reads only `=== "active"`, so an
-    // account explicitly marked expired is indistinguishable from a trialling
-    // one until the 30 days elapse. Whether that status should gate access is a
-    // product call; today it does nothing.
+  it('blocks an account marked "expired" even inside the trial window', async () => {
+    // Was a documenting test for the MED bug: `UserAccount` declared three
+    // statuses and the gate read only `=== "active"`, so an account explicitly
+    // marked expired was indistinguishable from a trialling one until 30 days
+    // elapsed. Decision D5 made the status mean what it says; the gate now
+    // reads it through `resolveEntitlement`.
     mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
     mockUpsertUserAccount.mockResolvedValue(accountCreatedDaysAgo(5, "expired"));
 
@@ -354,7 +355,24 @@ describe("SubscriptionGuard", () => {
       </SubscriptionGuard>,
     );
 
+    expect(await screen.findByText("Your Trial Has Ended")).toBeTruthy();
+    expect(screen.queryByTestId("app-content")).toBeNull();
+  });
+
+  it("still lets an active subscriber in long after the trial window", async () => {
+    // The other half of D5's ordering: an explicit status decides, and the one
+    // that grants must keep winning over the trial clock.
+    mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
+    mockUpsertUserAccount.mockResolvedValue(accountCreatedDaysAgo(400, "active"));
+
+    render(
+      <SubscriptionGuard>
+        <AppContent />
+      </SubscriptionGuard>,
+    );
+
     expect(await screen.findByTestId("app-content")).toBeTruthy();
+    expect(screen.queryByText("Your Trial Has Ended")).toBeNull();
   });
 
   it("fails open when the account read rejects, rather than showing a paywall", async () => {
@@ -389,10 +407,12 @@ describe("SubscriptionGuard", () => {
 
   it("fails open on a malformed createdAt instead of locking the person out", async () => {
     // `getTrialDaysRemaining("")` returns NaN (see firestore-user.test.ts), and
-    // `NaN <= 0` is false, so a corrupt record reads as "trial not finished".
-    // That direction is the safe one and matches the gate's stated fail-open
-    // intent, but it is arrived at by accident, so it is pinned here: any change
-    // that makes the trial math return 0 for a bad date would silently start
+    // `NaN <= 0` is false, so a corrupt record used to read as "trial not
+    // finished" - the safe direction, but reached by accident, which is why it
+    // was pinned here. As of v0.14 PR2a it is deliberate: `resolveEntitlement`
+    // maps a non-finite day count to an `unknown` entitlement, and only a
+    // definite `expired` blocks. Any change that makes the trial math return 0
+    // for a bad date, or that makes `unknown` block, would silently start
     // locking those accounts out.
     mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
     mockUpsertUserAccount.mockResolvedValue({
