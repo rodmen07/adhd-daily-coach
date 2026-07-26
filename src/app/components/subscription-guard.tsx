@@ -1,17 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { getFirebaseFirestore } from "@/lib/firebase";
 import { upsertUserAccount, getTrialDaysRemaining, type UserAccount } from "@/lib/firestore-user";
+import { isRoute } from "@/lib/route-path";
 import Link from "next/link";
 
 interface SubscriptionGuardProps {
   children: React.ReactNode;
 }
 
+/**
+ * Routes this gate never blocks, whoever is asking.
+ *
+ * `/pricing` is here because the trial-ended screen below offers exactly one
+ * action - "Subscribe for $5/month", linking to `/pricing` - and this
+ * component wraps every route via `layout.tsx`, so before this exemption the
+ * paywall's only way out led straight back to the paywall. A checkout page
+ * behind its own paywall is wrong under every reading of who else the app
+ * should let in, so the exemption is unconditional and does not wait on that
+ * separate question (decision D2 in docs/design/GUEST_ACCESS_AND_PAYWALL.md).
+ *
+ * Keep this list to routes that are wrong to block rather than merely nice to
+ * open: it is an allowlist punched through the app's authorization boundary.
+ */
+const GATE_EXEMPT_ROUTES = ["/pricing"] as const;
+
 export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const { authUser, authConfigured, authMessage, signInWithGoogle } = useCoachAuth();
+  const pathname = usePathname();
   const [account, setAccount] = useState<UserAccount | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -70,6 +89,14 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
       active = false;
     };
   }, [authUser, authConfigured]);
+
+  // Ahead of the loading state on purpose: an exempt route must not depend on
+  // an account read that a signed-out visitor never triggers and a blocked one
+  // has already paid for once. Hooks above run either way, so a signed-in
+  // person still gets their account record created on a first visit here.
+  if (GATE_EXEMPT_ROUTES.some((route) => isRoute(pathname, route))) {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (

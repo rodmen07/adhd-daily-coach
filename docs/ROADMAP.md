@@ -551,8 +551,8 @@ rule, no new console gate. Full audit, plan, and every overridable default:
 
 - PR1 (ships first, independent of the product decision): make the gate
   route-aware and exempt `/pricing` unconditionally, using the same
-  `usePathname` mechanism `site-nav.tsx` already uses. package.json bumps to
-  0.14.0 here.
+  `usePathname` mechanism `site-nav.tsx` already uses. **The package.json bump
+  moves to PR2** (see the note below).
 - PR2 (carries decision D1, default = restore guest access): remove the
   `!authUser` wall so every route renders for a guest; treat
   `subscriptionStatus === "expired"` as blocking (D5); correct
@@ -571,8 +571,19 @@ rule, no new console gate. Full audit, plan, and every overridable default:
   is met, no test in `subscription-guard.test.tsx` still describes a shipped
   defect as expected behavior, and `npm run lint`, `npm run typecheck`,
   `npm run build`, `npm audit --audit-level=high`, and `npm run test:coverage`
-  are green on the quality-gate check. package.json bumps to 0.14.0 in PR1, not
-  in this definition.
+  are green on the quality-gate check.
+- Version bump, corrected in PR1 (2026-07-25): package.json moves to 0.14.0 in
+  **PR2**, the PR that completes the milestone, not in PR1. Bumping in the
+  first slice of a two-PR milestone is what earlier milestones did (v0.9, v0.11,
+  v0.12, v0.13 all bumped in their PR1), but it is unsatisfiable now that
+  `src/__tests__/roadmap-milestone-status.test.ts` exists: with package.json at
+  0.14.0 and this section not yet terminal, its "marks every milestone at or
+  below the shipped version DONE or DEPRIORITIZED" assertion fails, naming this
+  exact heading (verified by running it, 1 failed / 3 passed). The only ways to
+  bump in PR1 are to write a DONE header that is not true or to widen the guard
+  one increment after it was built, so the bump moves instead - which is also
+  what this file's own versioning convention says ("one bump per shipped feature
+  milestone").
 
 ## Later / candidates (unscheduled)
 

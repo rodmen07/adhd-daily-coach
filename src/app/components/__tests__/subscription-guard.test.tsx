@@ -17,6 +17,12 @@ import type { UserAccount } from "@/lib/firestore-user";
  * filed in the backlog's `## Bugs` section rather than fixed here, because
  * changing who may reach the app is a product decision, not a QA call. Each
  * such test says so on its own line.
+ *
+ * v0.14 PR1 closed the first of those defects - the paywall's only call to
+ * action pointed at `/pricing`, which this same gate blocked - so the test that
+ * documented the dead end now asserts the fix, and the group below it pins the
+ * exemption's edges. The remaining documenting tests are still accurate and are
+ * PR2's to flip, once decision D1 has an answer.
  */
 
 const mockUseCoachAuth = vi.fn();
@@ -27,6 +33,13 @@ vi.mock("@/app/hooks/use-coach-auth", () => ({
 const mockGetFirebaseFirestore = vi.fn();
 vi.mock("@/lib/firebase", () => ({
   getFirebaseFirestore: () => mockGetFirebaseFirestore(),
+}));
+
+// The gate is route-aware as of v0.14 PR1. Mocked the same way `site-nav.test.tsx`
+// mocks it, since both read the current route from `usePathname`.
+const mockUsePathname = vi.fn<() => string>();
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockUsePathname(),
 }));
 
 // Partial mock: `upsertUserAccount` is the network call and is stubbed, but
@@ -80,17 +93,25 @@ function AppContent() {
   return <p data-testid="app-content">Today&apos;s loop</p>;
 }
 
+/** Stands in for what `/pricing` renders, so "did the route get through" is observable. */
+function PricingRoute() {
+  return <p data-testid="pricing-page">Subscribe for $5/month</p>;
+}
+
 describe("SubscriptionGuard", () => {
   beforeEach(() => {
     mockUseCoachAuth.mockReturnValue(authState());
     mockGetFirebaseFirestore.mockReturnValue({});
     mockUpsertUserAccount.mockResolvedValue(accountCreatedDaysAgo(1));
+    // Every test that is not about the exemption runs on an ordinary route.
+    mockUsePathname.mockReturnValue("/");
   });
 
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
     vi.restoreAllMocks();
+    mockUsePathname.mockReset();
   });
 
   it("holds the app behind a loading state until the account resolves", () => {
@@ -107,13 +128,14 @@ describe("SubscriptionGuard", () => {
     expect(screen.queryByTestId("app-content")).toBeNull();
   });
 
-  it("shows a signed-out visitor the sign-in wall instead of the page, on every route", async () => {
+  it("shows a signed-out visitor the sign-in wall instead of the page, on every gated route", async () => {
     // DOCUMENTS A DEFECT (backlog `## Bugs`, HIGH, filed not fixed): there is no
     // guest mode. The rest of the product is local-first by design - the stores
     // resolve to localStorage when signed out, and v0.13 exists to migrate data
     // a person created "signed out" into their account - but this gate renders
     // nothing at all until a Google account exists, so that data can never be
-    // created on the deployed site.
+    // created on the deployed site. (v0.14 PR1 exempted `/pricing` only; every
+    // other route is still walled, which is what this test holds.)
     mockUseCoachAuth.mockReturnValue(authState({ authUser: null }));
 
     render(
@@ -218,28 +240,103 @@ describe("SubscriptionGuard", () => {
     expect(screen.queryByText("Your Trial Has Ended")).toBeNull();
   });
 
-  it("sends a blocked person to a subscribe link that this same gate also blocks", async () => {
-    // DOCUMENTS A DEFECT (backlog `## Bugs`, HIGH, filed not fixed): the gate has
-    // no route awareness, and `/pricing` is `children` like every other route
-    // (layout.tsx:79). The paywall's only call to action therefore leads back to
-    // the paywall. `PricingRoute` below stands in for what /pricing would render;
-    // it is absent for exactly the person the button is aimed at.
-    function PricingRoute() {
-      return <p data-testid="pricing-page">Subscribe for $5/month</p>;
-    }
-
+  it("still points a blocked person at /pricing as the one way out", async () => {
     mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
     mockUpsertUserAccount.mockResolvedValue(accountCreatedDaysAgo(45));
 
     render(
       <SubscriptionGuard>
-        <PricingRoute />
+        <AppContent />
       </SubscriptionGuard>,
     );
 
     const cta = await screen.findByRole("link", { name: /subscribe for \$5\/month/i });
     expect(cta.getAttribute("href")).toContain("/pricing");
-    expect(screen.queryByTestId("pricing-page")).toBeNull();
+  });
+
+  describe("the /pricing exemption (v0.14 PR1, decision D2)", () => {
+    it("lets a blocked account reach /pricing, so the Subscribe link leads somewhere", async () => {
+      // CLOSES A FILED BUG (backlog `## Bugs`, HIGH): before the exemption this
+      // rendered the trial-ended screen again, i.e. the paywall's only call to
+      // action led back to the paywall.
+      mockUsePathname.mockReturnValue("/pricing/");
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
+      mockUpsertUserAccount.mockResolvedValue(accountCreatedDaysAgo(45));
+
+      render(
+        <SubscriptionGuard>
+          <PricingRoute />
+        </SubscriptionGuard>,
+      );
+
+      expect(await screen.findByTestId("pricing-page")).toBeTruthy();
+      expect(screen.queryByText("Your Trial Has Ended")).toBeNull();
+    });
+
+    it("matches the trailing-slash pathname the static export actually serves", async () => {
+      // `trailingSlash: true` means the live value is "/pricing/", never the
+      // "/pricing" the exemption list is written with. An exact-string check
+      // would pass every test written with the bare form and fail in production.
+      mockUsePathname.mockReturnValue("/pricing/");
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: null }));
+
+      render(
+        <SubscriptionGuard>
+          <PricingRoute />
+        </SubscriptionGuard>,
+      );
+
+      expect(await screen.findByTestId("pricing-page")).toBeTruthy();
+      expect(screen.queryByText("Sign in required")).toBeNull();
+    });
+
+    it("renders /pricing immediately instead of holding it behind the account read", async () => {
+      // The account promise never settles here. A blocked person clicking
+      // Subscribe must not land on an indefinite spinner.
+      mockUsePathname.mockReturnValue("/pricing/");
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
+      mockUpsertUserAccount.mockReturnValue(new Promise(() => {}));
+
+      render(
+        <SubscriptionGuard>
+          <PricingRoute />
+        </SubscriptionGuard>,
+      );
+
+      expect(await screen.findByTestId("pricing-page")).toBeTruthy();
+      expect(screen.queryByText("Loading account details...")).toBeNull();
+    });
+
+    it("exempts that one route only: a blocked account is still blocked everywhere else", async () => {
+      // The exemption is a hole punched through the authorization boundary, so
+      // the test that matters most is the one proving it is the size it claims.
+      mockUsePathname.mockReturnValue("/journal/");
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
+      mockUpsertUserAccount.mockResolvedValue(accountCreatedDaysAgo(45));
+
+      render(
+        <SubscriptionGuard>
+          <AppContent />
+        </SubscriptionGuard>,
+      );
+
+      expect(await screen.findByText("Your Trial Has Ended")).toBeTruthy();
+      expect(screen.queryByTestId("app-content")).toBeNull();
+    });
+
+    it("does not exempt a route that merely starts with the same characters", async () => {
+      mockUsePathname.mockReturnValue("/pricing-internal/");
+      mockUseCoachAuth.mockReturnValue(authState({ authUser: signedInUser }));
+      mockUpsertUserAccount.mockResolvedValue(accountCreatedDaysAgo(45));
+
+      render(
+        <SubscriptionGuard>
+          <AppContent />
+        </SubscriptionGuard>,
+      );
+
+      expect(await screen.findByText("Your Trial Has Ended")).toBeTruthy();
+    });
   });
 
   it('ignores the "expired" account status while the trial window is open', async () => {

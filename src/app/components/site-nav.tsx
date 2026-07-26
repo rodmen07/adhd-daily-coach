@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { normalizeRoutePath } from "@/lib/route-path";
 
 type NavLink = {
   href: string;
@@ -23,19 +24,12 @@ const NAV_LINKS: NavLink[] = [
   { href: "/monetization", label: "Monetization" },
 ];
 
-// The export is configured with trailingSlash, so the live pathname is
-// "/journal/" while the hrefs are written "/journal". Compare them stripped.
-function normalizePath(pathname: string | null): string {
-  if (!pathname) {
-    return "/";
-  }
-
-  const withoutTrailingSlash = pathname.replace(/\/+$/, "");
-  return withoutTrailingSlash === "" ? "/" : withoutTrailingSlash;
-}
-
 export function SiteNav() {
-  const activePath = normalizePath(usePathname());
+  // The export is configured with trailingSlash, so the live pathname is
+  // "/journal/" while the hrefs are written "/journal". `normalizeRoutePath`
+  // is the one place that reconciles the two; the subscription gate's route
+  // exemption uses the same helper rather than a second copy of the rule.
+  const activePath = normalizeRoutePath(usePathname());
 
   return (
     <nav className="site-nav-links" aria-label="Primary">
