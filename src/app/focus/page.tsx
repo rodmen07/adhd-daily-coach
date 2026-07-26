@@ -5,6 +5,7 @@ import { DOSE_OPTIONS, FOCUS_AREAS, type DailyDose, type FocusArea } from "@/lib
 import { FOCUS_METADATA } from "@/lib/focus-metadata";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
+import { AuthMessage } from "@/app/components/auth-message";
 import { SwipeStepCard } from "@/app/components/swipe-step-card";
 
 const doseLabels: Record<DailyDose, string> = {
@@ -14,7 +15,7 @@ const doseLabels: Record<DailyDose, string> = {
 };
 
 export default function FocusPage() {
-  const { authUser, signInWithGoogle, signOutUser } = useCoachAuth();
+  const { authUser, authMessage, signInWithGoogle, signOutUser } = useCoachAuth();
   const storageScope = authUser?.uid ?? "guest";
   const {
     focus,
@@ -62,6 +63,7 @@ export default function FocusPage() {
               </button>
             )}
           </div>
+          <AuthMessage message={authMessage} />
           <form className="space-y-4" onSubmit={generatePlan}>
             {isPlanningLocked ? (
               <div className="flow-lock-note rounded-lg border border-(--line) bg-(--field) px-3 py-2 flex sm:items-center justify-between flex-col sm:flex-row gap-2" aria-live="polite">

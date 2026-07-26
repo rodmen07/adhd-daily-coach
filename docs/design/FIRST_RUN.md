@@ -1,7 +1,9 @@
 # v0.15 - First run: the front door a stranger actually meets
 
-Status: **PROPOSED 2026-07-26** (product-role increment, written after v0.14
-shipped: PR #117 + PR #118 + PR #121). Implementation not started.
+Status: **IN PROGRESS 2026-07-26** (product-role increment, written after v0.14
+shipped: PR #117 + PR #118 + PR #121). **PR1 shipped as PR #123**; PR2 (the hydration
+gate, D5) is what remains before this milestone is DONE and `package.json` moves
+to 0.15.0. Section 5 records which boxes PR1 ticked.
 
 Every decision in section 3 is an **overridable default**. The user is the
 product owner; this document brings the decision rather than making it. Saying
@@ -197,20 +199,22 @@ first because it closes the higher-severity bug.
 
 ## 5. Done when (checkable)
 
-- [ ] A test asserts `/focus` renders the sign-in failure message in a
+- [x] **PR1.** A test asserts `/focus` renders the sign-in failure message in a
       `role="alert"` region when `useCoachAuth` reports one (new
       `src/app/__tests__/focus-page.test.tsx`).
-- [ ] The same assertion exists for `/pricing` (in the existing
+- [x] **PR1.** The same assertion exists for `/pricing` (in the existing
       `src/app/__tests__/pricing-page.test.tsx`) and still passes for `/`
-      (existing `src/app/__tests__/page.test.tsx` coverage, unchanged).
-- [ ] A guard test fails when a `.tsx` under `src/app` calls
+      (existing `src/app/__tests__/page.test.tsx` coverage, unchanged - and it
+      is now the proof that `/` really consumes the shared component, since it
+      fails when that component regresses).
+- [x] **PR1.** A guard test fails when a `.tsx` under `src/app` calls
       `signInWithGoogle` without rendering the shared alert, proven by
       sabotage (delete one page's alert; exactly that assertion fails and the
-      others stay green).
+      others stay green) - `src/__tests__/auth-message-contract.test.ts`.
 - [ ] A test asserts the first client render for a first-time visitor contains
       no onboarding overlay, and that the overlay appears after effects flush,
       proven by reverting the fix.
-- [ ] `/focus` is no longer the only route without a page test:
+- [x] **PR1.** `/focus` is no longer the only route without a page test:
       `find src/app -name page.tsx` and `ls src/app/__tests__` agree.
 - [ ] `package.json` reads 0.15.0 and this milestone's `### v0.15` heading in
       `docs/ROADMAP.md` reads DONE, in the same commit (see section 4).

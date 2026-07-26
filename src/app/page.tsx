@@ -12,6 +12,7 @@ import { getOnboardingPreferences, saveOnboardingPreferences } from "@/lib/onboa
 import { deriveTodayLoopPercent } from "@/lib/planner-derivations";
 import { prefersReducedMotion } from "@/lib/reduced-motion";
 import { Onboarding } from "@/app/components/onboarding";
+import { AuthMessage } from "@/app/components/auth-message";
 import { AffirmationCard } from "@/app/components/AffirmationCard";
 import ProgressRing from "@/app/components/ProgressRing";
 import { ReminderSettingsPanel } from "@/app/components/reminder-settings";
@@ -681,11 +682,7 @@ export default function Home() {
               Google login is not configured yet. Add Firebase environment variables to enable it.
             </p>
           ) : null}
-          {authMessage ? (
-            <p className="mt-3 text-sm text-rose-700" role="alert" aria-live="assertive">
-              {authMessage}
-            </p>
-          ) : null}
+          <AuthMessage message={authMessage} />
           {migrationStatus.type === "ok" ? (
             <p className="mt-3 text-sm text-emerald-700" aria-live="polite">
               {migrationStatus.message}

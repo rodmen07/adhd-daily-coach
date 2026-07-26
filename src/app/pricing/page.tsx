@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
+import { AuthMessage } from "@/app/components/auth-message";
 import { buildMembershipCheckoutUrl, getStripePaymentLink } from "@/lib/billing";
 import { trackMonetizationEvent } from "@/lib/monetization";
 
 export default function PricingPage() {
-  const { authUser, signInWithGoogle } = useCoachAuth();
+  const { authUser, authMessage, signInWithGoogle } = useCoachAuth();
   const paymentLink = getStripePaymentLink();
 
   return (
@@ -88,6 +89,7 @@ export default function PricingPage() {
                 Sign in to start 30-day Free Trial
               </button>
             )}
+            <AuthMessage message={authMessage} />
           </div>
 
           <div className="mt-5 border-t border-slate-200 dark:border-slate-800 pt-4 text-sm text-slate-600">
