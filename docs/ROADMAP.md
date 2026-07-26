@@ -610,9 +610,15 @@ v0.13 have all landed, and v0.14 above is the next milestone.
   secret scanning, dependency review (AUTONOMOUS plan Phase 5).
 - Playwright E2E smoke test for the daily loop plus a PR template (AUTONOMOUS plan
   Phase 6).
-- Remove the dead reminder-email helper src/lib/mailer.ts plus its nodemailer
-  dependency once the reminder design settles: no other module imports it, and the
-  static export has no server routes to run it.
+- ~~Remove the dead reminder-email helper src/lib/mailer.ts plus its nodemailer
+  dependency once the reminder design settles~~: DONE 2026-07-26 (PR #119,
+  DevSecOps stream). The condition it was waiting on had been satisfied since
+  v0.3: `docs/design/REMINDER_SCHEDULING.md` rejected the email-cron path, so
+  nothing was left to resurrect the helper for. The same pass removed
+  `src/lib/checkins.ts`, a second pre-static-export leftover that wrote
+  `.data/checkins.json` through `node:fs`, and added
+  `src/__tests__/static-export-surface.test.ts` so an unimported production
+  dependency or a new Node built-in import fails CI instead of aging quietly.
 - Paid value expansion (advanced weekly narratives, cloud restore): deferred until
   entitlement automation ships.
 - ~~checkinStatus dashboard persistence (LOW bug)~~: FIXED via PR #90
