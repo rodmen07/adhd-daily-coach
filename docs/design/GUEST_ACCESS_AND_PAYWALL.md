@@ -151,7 +151,19 @@ blocked account reaches `/pricing`; an `"expired"` account is blocked).
 **PR1 - the unambiguous half.** Exempt `/pricing` from the gate (route-aware
 via `usePathname`, the mechanism `site-nav.tsx` already uses), so the trial
 -ended screen's only CTA leads somewhere. Closes the HIGH checkout dead-end
-independent of D1. Bumps package.json to 0.14.0.
+independent of D1.
+
+> **Corrected while implementing PR1 (2026-07-25).** This section originally
+> said PR1 bumps package.json to 0.14.0. It cannot: the drift guard added in the
+> same PR that wrote this plan (`src/__tests__/roadmap-milestone-status.test.ts`,
+> PR #116) fails when a milestone at or below the shipped version has no
+> terminal status, so `0.14.0` plus a v0.14 section reading "(agent-doable now)"
+> is a red gate - confirmed by running it (1 failed / 3 passed, the failure
+> naming the v0.14 heading). The bump therefore lands in **PR2**, the PR that
+> completes the milestone, matching the roadmap's own "one bump per shipped
+> feature milestone" convention. Neither alternative was acceptable: a DONE
+> header while PR2 is unwritten is false, and widening the guard would weaken a
+> gate one increment after it was built to catch this exact class.
 
 **PR2 - the D1 half.** Remove the `!authUser` wall so every route renders for a
 guest; apply D5 and D6; flip the four documenting tests to assertions and add
@@ -167,8 +179,10 @@ and anything in `agents/dev-agent/`.
 
 ## 5. Done when (checkable)
 
-- [ ] `/pricing` renders for a signed-in account whose trial has finished, and a
+- [x] `/pricing` renders for a signed-in account whose trial has finished, and a
       test asserts the Subscribe CTA reaches a page that actually renders.
+      (PR1: "lets a blocked account reach /pricing, so the Subscribe link leads
+      somewhere" in `src/app/components/__tests__/subscription-guard.test.tsx`.)
 - [ ] Per D1 default: a test renders a route with `authUser = null` and asserts
       page content is present and the "Sign in required" wall is absent.
 - [ ] A test asserts an account with `subscriptionStatus === "expired"` is
@@ -178,7 +192,7 @@ and anything in `agents/dev-agent/`.
       by the existing malformed-date test (D6).
 - [ ] No test in `subscription-guard.test.tsx` still describes a shipped defect
       as expected behavior.
-- [ ] `package.json` reads 0.14.0.
+- [ ] `package.json` reads 0.14.0 (bumped in PR2, see the note in section 4).
 - [ ] The five CI-pinned gate commands from `.github/workflows/ci.yml`
       (lines 39/42/45/48/54) are green: `npm run lint`, `npm run typecheck`,
       `npm run build`, `npm audit --audit-level=high`, `npm run test:coverage`.
