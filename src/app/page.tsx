@@ -8,6 +8,7 @@ import { getFirebaseFirestore } from "@/lib/firebase";
 import { getUserAccount } from "@/lib/firestore-user";
 import { resolveEntitlement } from "@/lib/entitlement";
 import { getMonetizationEvents, summarizeMonetizationEvents, trackMonetizationEvent } from "@/lib/monetization";
+import { getOnboardingPreferences, saveOnboardingPreferences } from "@/lib/onboarding";
 import { deriveTodayLoopPercent } from "@/lib/planner-derivations";
 import { prefersReducedMotion } from "@/lib/reduced-motion";
 import { Onboarding } from "@/app/components/onboarding";
@@ -129,13 +130,12 @@ export default function Home() {
     fallbackTrial: boolean;
   } | null>(null);
 
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-    const storedPrefs = window.localStorage.getItem("calm-daily-coach:onboarding");
-    return !storedPrefs;
-  });
+  // "Have they been through onboarding?" is asked of the validated reader, not
+  // of the raw string. A bare truthiness check counted any leftover value as a
+  // finished onboarding, so a corrupt record hid the flow forever while the
+  // planner silently fell back to its own defaults, and nothing in the app can
+  // reopen onboarding once it is skipped.
+  const [showOnboarding, setShowOnboarding] = useState(() => getOnboardingPreferences() === null);
 
   const handleOnboardingComplete = (prefs: {
     defaultFocus: import("@/lib/plan").FocusArea;
@@ -153,14 +153,14 @@ export default function Home() {
 
   const handleOnboardingSkip = () => {
     setShowOnboarding(false);
-    localStorage.setItem(
-      "calm-daily-coach:onboarding",
-      JSON.stringify({
-        defaultFocus: "Deep Work",
-        defaultDose: "light",
-        defaultTheme: "dark",
-      }),
-    );
+    // Skipping still records a complete preference record, through the same
+    // writer the finished flow uses, so the two can never store different
+    // shapes under the same key.
+    saveOnboardingPreferences({
+      defaultFocus: "Deep Work",
+      defaultDose: "light",
+      defaultTheme: "dark",
+    });
   };
 
   useEffect(() => {

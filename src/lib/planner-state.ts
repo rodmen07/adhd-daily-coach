@@ -1,7 +1,7 @@
+import { readOnboardingDefaults } from "@/lib/onboarding";
 import { DOSE_OPTIONS, FOCUS_AREAS, type DailyDose, type DailyPlan, type FocusArea } from "@/lib/plan";
 
 const STORAGE_KEY = "calm-daily-coach";
-const ONBOARDING_STORAGE_KEY = "calm-daily-coach:onboarding";
 
 export type SavedPlannerState = {
   focus: FocusArea;
@@ -43,36 +43,20 @@ function plannerFallbackState(): SavedPlannerState {
   };
 }
 
+/**
+ * Seeds the starting focus and dose from onboarding, field by field: a record
+ * that only names a focus still sets the focus. The read itself lives in
+ * `@/lib/onboarding` next to the storage key, so this module no longer keeps a
+ * second copy of the key or a second parse of the same record.
+ */
 function applyOnboardingDefaults(state: SavedPlannerState): SavedPlannerState {
-  if (typeof window === "undefined") {
-    return state;
-  }
+  const defaults = readOnboardingDefaults();
 
-  const onboardingRaw = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
-  if (!onboardingRaw) {
-    return state;
-  }
-
-  try {
-    const parsedPrefs = JSON.parse(onboardingRaw) as {
-      defaultFocus?: FocusArea;
-      defaultDose?: DailyDose;
-    };
-
-    return {
-      ...state,
-      focus:
-        parsedPrefs.defaultFocus && FOCUS_AREAS.includes(parsedPrefs.defaultFocus)
-          ? parsedPrefs.defaultFocus
-          : state.focus,
-      dose:
-        parsedPrefs.defaultDose && DOSE_OPTIONS.includes(parsedPrefs.defaultDose)
-          ? parsedPrefs.defaultDose
-          : state.dose,
-    };
-  } catch {
-    return state;
-  }
+  return {
+    ...state,
+    focus: defaults.defaultFocus ?? state.focus,
+    dose: defaults.defaultDose ?? state.dose,
+  };
 }
 
 export function getInitialPlannerState(scopeKey: string): SavedPlannerState {

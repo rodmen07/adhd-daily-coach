@@ -84,6 +84,55 @@ describe("Dashboard page", () => {
     });
   });
 
+  it("keeps onboarding closed once a real preference record exists", () => {
+    window.localStorage.setItem(
+      "calm-daily-coach:onboarding",
+      JSON.stringify({ defaultFocus: "Deep Work", defaultDose: "light", defaultTheme: "dark" }),
+    );
+
+    render(<Home />);
+
+    expect(screen.queryByTestId("onboarding-container")).toBeNull();
+  });
+
+  // The gate used to be a bare truthiness check on the raw stored string, so
+  // any leftover value counted as a finished onboarding. Nothing in the app
+  // reopens onboarding, and the planner silently falls back to its own
+  // defaults for a record it cannot parse, so a corrupt value left a person
+  // permanently onboarded-with-nothing.
+  it("reopens onboarding for a record it cannot read, instead of counting it as done", () => {
+    window.localStorage.setItem("calm-daily-coach:onboarding", "not json at all");
+
+    render(<Home />);
+
+    expect(screen.getByTestId("onboarding-container")).toBeTruthy();
+  });
+
+  it("reopens onboarding for a record that is missing preferences", () => {
+    window.localStorage.setItem("calm-daily-coach:onboarding", JSON.stringify({ defaultDose: "light" }));
+
+    render(<Home />);
+
+    expect(screen.getByTestId("onboarding-container")).toBeTruthy();
+  });
+
+  it("records a complete preference record when onboarding is skipped", async () => {
+    window.localStorage.setItem("calm-daily-coach:onboarding", "not json at all");
+
+    render(<Home />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("onboarding-container")).toBeNull();
+    });
+    expect(JSON.parse(window.localStorage.getItem("calm-daily-coach:onboarding") ?? "null")).toEqual({
+      defaultFocus: "Deep Work",
+      defaultDose: "light",
+      defaultTheme: "dark",
+    });
+  });
+
   it("shows onboarding health conversion status from local funnel events", async () => {
     window.localStorage.setItem(
       "calm-daily-coach:onboarding",
