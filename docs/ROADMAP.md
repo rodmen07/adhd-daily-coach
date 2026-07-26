@@ -68,10 +68,14 @@ is written next to.
   command queries the live advisory database, so it had flipped an unchanged main
   red four times (#99, #101, #102, #107), each time discovered reactively by the
   next PR. PR #119 (2026-07-26) added `src/__tests__/static-export-surface.test.ts`
-  after removing the last pre-static-export server code. Five guard tests now run
-  inside the gate and compare two sources of truth rather than restating either:
-  `theme-token-guard`, `static-export-surface`, `workflow-audit-parity`,
-  `roadmap-milestone-status`, and `onboarding-storage-contract`.
+  after removing the last pre-static-export server code. **Six** guard tests now
+  run inside the gate and compare two sources of truth rather than restating
+  either: `theme-token-guard`, `static-export-surface`, `workflow-audit-parity`,
+  `roadmap-milestone-status`, `onboarding-storage-contract`, and
+  `auth-message-contract` (PR #123). (Corrected 2026-07-26 by the v0.16
+  definition pass: this sentence was written as "five" by the v0.15 definition
+  that morning and PR #123 made it six by that evening - same-day staleness in
+  exactly the prose the milestone-status guard cannot read.)
 - Accessibility: PR #87 (2026-07-20, v0.8) added a global focus-visible ring, a
   skip-to-content link, a reduced-motion reset that covers every animated surface (it
   had previously only covered some), a single layout `<main>` landmark, aria-current
@@ -722,19 +726,62 @@ every overridable default:
   `npm audit --audit-level=high`, and `npm run test:coverage` are green on the
   quality-gate check.
 
+### v0.16 - E2E smoke: the product walked by a real browser (agent-doable now)
+
+Defined 2026-07-26 (product-role increment), the milestone after v0.15.
+
+Every test this repo has ever run lives in jsdom (533 as of PR #124), and the
+defect classes that slipped through a green 500+ suite in the last four days
+are exactly the ones only a real browser sees: the deployed site serving
+spinner-only HTML on every route (found by hand-`curl` in PR #114, not by any
+test), the onboarding hydration mismatch (fixed in PR #124, pinned today by
+`renderToStaticMarkup`, which is a render-phase proxy rather than real
+hydration), and the check-in ring resetting on reload (fixed in PR #90; jsdom
+remounts components but nothing reloads a page). Playwright E2E has been the
+standing recommendation since the v0.15 definition; it was declined there on
+ordering only, and both defects it would have pinned are now fixed, so a suite
+written today pins the correct first-run behavior.
+
+Three smoke journeys plus a console-error tripwire, run against the real
+static export served under the production `/calm-daily-coach` basePath, never
+`next dev`. Chromium only, `@playwright/test` in `devDependencies` only. The
+new `e2e` CI job runs on every PR and main push but is **not** a required
+context: requiredness is earned by observed stability (the
+`security-audit.yml` precedent), and branch protection stays exactly
+`["lint-and-build"]`. Full audit, plan, and every overridable default:
+[docs/design/E2E_SMOKE.md](design/E2E_SMOKE.md).
+
+- PR1: harness (`playwright.config.ts`, `e2e/` testDir, vitest `exclude` for
+  `e2e/**` with separation proven both ways), journey J1 (first-run: prerender
+  visible, onboarding appears only after hydration, reload keeps it closed),
+  the console-error tripwire with an empty reason-carrying allowlist, and the
+  `e2e` job observed both red and green on its own PR.
+- PR2: journeys J2 (check-in ring survives a real reload) and J3 (journal
+  entry survives a real reload, edits in place), **carries the package.json
+  bump to 0.16.0** and flips this heading to DONE in the same commit, per the
+  `roadmap-milestone-status.test.ts` contract.
+- Explicitly NOT in scope: signed-in journeys (D7: OAuth cannot be walked
+  headlessly without credentials, and secrets never enter tests), extra
+  browsers, extra routes (`/now` is timer-driven and a flake source), and the
+  PR-template half of the old candidate below (D6: repo hygiene, not E2E).
+- Done when: the checklist in
+  [docs/design/E2E_SMOKE.md section 5](design/E2E_SMOKE.md#5-done-when-checkable)
+  is met, and the five pinned gate commands are green on the quality-gate
+  check.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through
-v0.15 have all landed, and **no milestone is defined above them** - the next
-product-role increment defines v0.16, with Playwright E2E the standing
-recommendation (see v0.15's ordering argument, which declined it only until the
-first-run path was fixed). (Corrected twice, on 2026-07-26 and again the same
-day by v0.15 PR2: this paragraph read "v0.2 through v0.13 ... v0.14 above is the
-next milestone" after v0.14 shipped, and "v0.2 through v0.14 ... v0.15 above is
-the next milestone" after v0.15 shipped. `roadmap-milestone-status.test.ts`
-guards the milestone HEADINGS mechanically but cannot read this sentence, which
-is why it is the half that keeps going stale.)
+v0.15 have all landed, and **v0.16 above is defined but not shipped** - when it
+ships, this sentence is the one that goes stale, so the audit that closes v0.16
+reads it first. (Corrected three times, twice on 2026-07-26: this paragraph read
+"v0.2 through v0.13 ... v0.14 above is the next milestone" after v0.14 shipped,
+"v0.2 through v0.14 ... v0.15 above is the next milestone" after v0.15 shipped,
+and "no milestone is defined above them" after v0.16 was defined.
+`roadmap-milestone-status.test.ts` guards the milestone HEADINGS mechanically
+but cannot read this sentence, which is why it is the half that keeps going
+stale.)
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a
@@ -747,12 +794,13 @@ is why it is the half that keeps going stale.)
   optimization (AUTONOMOUS plan Phase 4).
 - Security hardening: replace the untouched template SECURITY.md with a real policy,
   secret scanning, dependency review (AUTONOMOUS plan Phase 5).
-- Playwright E2E smoke test for the daily loop plus a PR template (AUTONOMOUS plan
-  Phase 6). **Newly eligible as of 2026-07-26**: the objection recorded against
-  it while scoping v0.14 ("a suite written now would encode the behavior v0.14
-  changes") expired when v0.14 shipped. It was weighed for v0.15 and is the
-  recommended milestone after it, once the first-run path it would pin is
-  correct. See v0.15 above for the ordering argument.
+- ~~Playwright E2E smoke test for the daily loop~~ (AUTONOMOUS plan Phase 6):
+  **promoted into v0.16 above (2026-07-26)**; no longer just a candidate. The
+  PR-template half of this entry's original wording was deliberately NOT
+  promoted with it (v0.16 decision D6: repo hygiene, not E2E) and stays here on
+  its own line below.
+- A PR template (the other half of the old Phase 6 candidate). Repo hygiene,
+  small, unscheduled.
 - ~~Remove the dead reminder-email helper src/lib/mailer.ts plus its nodemailer
   dependency once the reminder design settles~~: DONE 2026-07-26 (PR #119,
   DevSecOps stream). The condition it was waiting on had been satisfied since
