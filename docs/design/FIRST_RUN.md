@@ -1,9 +1,9 @@
 # v0.15 - First run: the front door a stranger actually meets
 
-Status: **IN PROGRESS 2026-07-26** (product-role increment, written after v0.14
-shipped: PR #117 + PR #118 + PR #121). **PR1 shipped as PR #123**; PR2 (the hydration
-gate, D5) is what remains before this milestone is DONE and `package.json` moves
-to 0.15.0. Section 5 records which boxes PR1 ticked.
+Status: **SHIPPED 2026-07-26** (defined by a product-role increment written after
+v0.14 shipped: PR #117 + PR #118 + PR #121). **PR1 shipped as PR #123** and
+**PR2 as PR #124**, which carried the bump to 0.15.0 and flipped the roadmap
+heading to DONE. Section 5 records which PR ticked each box; every box is ticked.
 
 Every decision in section 3 is an **overridable default**. The user is the
 product owner; this document brings the decision rather than making it. Saying
@@ -211,14 +211,29 @@ first because it closes the higher-severity bug.
       `signInWithGoogle` without rendering the shared alert, proven by
       sabotage (delete one page's alert; exactly that assertion fails and the
       others stay green) - `src/__tests__/auth-message-contract.test.ts`.
-- [ ] A test asserts the first client render for a first-time visitor contains
-      no onboarding overlay, and that the overlay appears after effects flush,
-      proven by reverting the fix.
+- [x] **PR2.** A test asserts the first client render for a first-time visitor
+      contains no onboarding overlay, and that the overlay appears once the
+      client settles, proven by reverting the fix - `keeps the onboarding
+      overlay out of the first render pass, so it matches the prerender` and
+      `opens onboarding for a first-time visitor once the client settles`, both
+      in `src/app/__tests__/page.test.tsx`. The first uses
+      `renderToStaticMarkup`, which runs the render phase and never runs
+      effects; under jsdom it has a real `window` and a readable localStorage,
+      so it is strictly harder to satisfy than the production prerender and a
+      `typeof window` guard in the JSX cannot fake it. (The settle is a
+      deferred callback inside the effect, not a synchronous `setState` - the
+      same shape `AnimatedCounter`'s reduced-motion branch uses, and the form
+      the `react-hooks/set-state-in-effect` lint rule requires.) Restoring
+      `page.tsx` from `origin/main` fails exactly that first assertion; the
+      run's real failed/passed counts are recorded in the PR body.
 - [x] **PR1.** `/focus` is no longer the only route without a page test:
       `find src/app -name page.tsx` and `ls src/app/__tests__` agree.
-- [ ] `package.json` reads 0.15.0 and this milestone's `### v0.15` heading in
-      `docs/ROADMAP.md` reads DONE, in the same commit (see section 4).
-- [ ] The five CI-pinned gate commands from `.github/workflows/ci.yml`
+- [x] **PR2.** `package.json` reads 0.15.0 and this milestone's `### v0.15`
+      heading in `docs/ROADMAP.md` reads DONE, in the same commit (see section
+      4). `package-lock.json`'s two `version` fields moved with it, via
+      `npm install --package-lock-only`, so the drift filed as a LOW after v0.12
+      and v0.13 bumped without it does not recur.
+- [x] **PR2.** The five CI-pinned gate commands from `.github/workflows/ci.yml`
       (lines 39/42/45/48/54) are green: `npm run lint`, `npm run typecheck`,
       `npm run build`, `npm audit --audit-level=high`,
       `npm run test:coverage`.
