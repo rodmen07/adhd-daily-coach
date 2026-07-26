@@ -46,11 +46,11 @@ The settings surface is already built; only the delivery mechanism is open.
   presses send themselves.
 - The panel copy promises: "Focus never sends anything automatically." Whatever
   v0.3 ships, the copy must remain exactly true.
-- Dead code note: [src/lib/mailer.ts](../../src/lib/mailer.ts) is a leftover
-  nodemailer SMTP helper from before the static-export decision. Nothing
-  imports it and the static site cannot run it; ROADMAP already lists removing
-  it plus its nodemailer dependency under "Later / candidates" once this design
-  settles.
+- Dead code note (RESOLVED 2026-07-26, PR #119): `src/lib/mailer.ts` was a
+  leftover nodemailer SMTP helper from before the static-export decision.
+  Nothing imported it and the static site could not run it, so it and the
+  nodemailer dependency were deleted once this design settled the question it
+  was waiting on (see the PR 3 rider in section 6).
 
 ## 3. Delivery options
 
@@ -132,9 +132,9 @@ any work starts.
 
 How it works: a scheduled workflow (`on: schedule`) runs daily, reads a list
 of opted-in recipients and their preferred times, and sends email through a
-third-party provider using repo secrets. Echoes the dead
-[src/lib/mailer.ts](../../src/lib/mailer.ts) nodemailer path, resurrected
-inside CI instead of a server.
+third-party provider using repo secrets. Echoes the dead `src/lib/mailer.ts`
+nodemailer path (deleted 2026-07-26 in PR #119 once this option was rejected),
+resurrected inside CI instead of a server.
 
 Strengths:
 
@@ -289,11 +289,12 @@ Matches the one-or-two-PR milestone sizing in
 - Update copy and reminder tests so shipped behavior and words match exactly
   (the v0.3 "done when" condition).
 
-**PR 3 (optional rider): dead-code removal.**
+**PR 3 (optional rider): dead-code removal. SHIPPED 2026-07-26 as PR #119**
+(DevSecOps stream, not as a rider on v0.3).
 
-- Delete [src/lib/mailer.ts](../../src/lib/mailer.ts) and the nodemailer
-  dependency, per the existing "Later / candidates" item. This design settles
-  the question it was waiting on: the email-cron path is rejected.
+- Delete `src/lib/mailer.ts` and the nodemailer dependency, per the existing
+  "Later / candidates" item. This design settles the question it was waiting
+  on: the email-cron path is rejected.
 
 ## 7. User decisions needed
 
@@ -341,6 +342,5 @@ Matches the one-or-two-PR milestone sizing in
   reminder logic.
 - [src/lib/checkin-store.ts](../../src/lib/checkin-store.ts): the
   local/Firestore backend pattern any future FCM work would follow.
-- [src/lib/mailer.ts](../../src/lib/mailer.ts): dead nodemailer path slated
-  for removal.
+- `src/lib/mailer.ts`: dead nodemailer path, removed 2026-07-26 in PR #119.
 - [README.md](../../README.md): product rules and current reminder copy.
