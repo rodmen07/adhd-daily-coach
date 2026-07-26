@@ -1,7 +1,7 @@
 # v0.15 - First run: the front door a stranger actually meets
 
 Status: **IN PROGRESS 2026-07-26** (product-role increment, written after v0.14
-shipped: PR #117 + PR #118 + PR #121). **PR1 has shipped**; PR2 (the hydration
+shipped: PR #117 + PR #118 + PR #121). **PR1 shipped as PR #123**; PR2 (the hydration
 gate, D5) is what remains before this milestone is DONE and `package.json` moves
 to 0.15.0. Section 5 records which boxes PR1 ticked.
 
