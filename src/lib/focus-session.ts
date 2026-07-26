@@ -12,8 +12,10 @@
  * - Summaries report what happened (sessions, minutes) and never a streak,
  *   a target, or a completion rate.
  *
- * Local-first, mirroring `browser-checkins.ts`. Firestore sync is a possible
- * follow-up; sessions stay in localStorage for now.
+ * Local-first, mirroring `browser-checkins.ts`. Firestore sync (v0.12 PR2)
+ * layers on top through `focus-session-store.ts` rather than replacing this
+ * module: the local functions below stay the fallback path, exactly as
+ * `browser-checkins.ts` does for check-ins and `journal.ts` for the journal.
  */
 
 export type FocusSessionOutcome = "wrapped-up" | "stopped-early";
@@ -77,16 +79,29 @@ export function listFocusSessions(scopeKey = "guest"): FocusSession[] {
 }
 
 /**
- * Record a closed-out session. Returns the stored record. No-op-safe on the
- * server (returns the record without persisting).
+ * Stamp a closed-out session with its id, local date, and creation time.
+ *
+ * Extracted so the local writer below and the Firestore writer
+ * (`firestore-focus-sessions.ts`, v0.12 PR2) produce byte-identical record
+ * shapes from one place: a person who signs in mid-week must not end up with
+ * two subtly different session schemas depending on which backend recorded
+ * the session.
  */
-export function addFocusSession(input: FocusSessionInput, scopeKey = "guest"): FocusSession {
-  const session: FocusSession = {
+export function buildFocusSession(input: FocusSessionInput): FocusSession {
+  return {
     ...input,
     id: makeId(),
     date: todayDate(),
     createdAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Record a closed-out session. Returns the stored record. No-op-safe on the
+ * server (returns the record without persisting).
+ */
+export function addFocusSession(input: FocusSessionInput, scopeKey = "guest"): FocusSession {
+  const session = buildFocusSession(input);
   if (typeof window === "undefined") return session;
   const existing = listFocusSessions(scopeKey);
   window.localStorage.setItem(storageKey(scopeKey), JSON.stringify([...existing, session]));

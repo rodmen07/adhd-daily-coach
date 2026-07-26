@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import TrendsPage from "@/app/trends/page";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { addCheckin, listCheckins, listCheckinsInRange } from "@/lib/browser-checkins";
-import { addFocusSession } from "@/lib/focus-session";
+import { addFocusSession, type FocusSession } from "@/lib/focus-session";
 import { getFirestoreCheckinsInRange } from "@/lib/firestore-checkins";
+import { listFirestoreFocusSessions } from "@/lib/firestore-focus-sessions";
 import { getFirebaseFirestore } from "@/lib/firebase";
 import { bucketCheckinsByWeek } from "@/lib/trend-insights";
 import type { Firestore } from "firebase/firestore";
@@ -37,6 +38,14 @@ vi.mock("@/lib/firestore-checkins", () => ({
   addFirestoreCheckin: vi.fn(),
   getFirestoreWeeklySummary: vi.fn(),
   getFirestoreCheckinsInRange: vi.fn(),
+}));
+
+// v0.12 PR2: focus sessions resolve a backend the same way check-ins do, so a
+// signed-in person's sessions come from Firestore. Mocked here so the
+// signed-in tests below can prove WHICH source the page read from.
+vi.mock("@/lib/firestore-focus-sessions", () => ({
+  addFirestoreFocusSession: vi.fn(),
+  listFirestoreFocusSessions: vi.fn(() => Promise.resolve([])),
 }));
 
 const guestAuthMock = {
@@ -73,6 +82,18 @@ function firestoreCheckin(partial: Partial<BrowserCheckin>): BrowserCheckin {
     minutes: partial.minutes ?? 15,
     status: partial.status ?? "done",
     skipReason: partial.skipReason,
+    createdAt: partial.createdAt ?? new Date().toISOString(),
+  };
+}
+
+function firestoreFocusSession(partial: Partial<FocusSession>): FocusSession {
+  return {
+    id: partial.id ?? "s1",
+    task: partial.task ?? "their synced work",
+    plannedMinutes: partial.plannedMinutes ?? 15,
+    focusedSeconds: partial.focusedSeconds ?? 900,
+    outcome: partial.outcome ?? "wrapped-up",
+    date: partial.date ?? utcDateKey(1),
     createdAt: partial.createdAt ?? new Date().toISOString(),
   };
 }
@@ -346,29 +367,33 @@ describe("Trends page", () => {
     expect(screen.queryByTestId("focus-week-card")).toBeNull();
   });
 
-  it("reads focus sessions under the signed-in user's scope, not the guest scope", async () => {
-    // Same defect class as the review-page adapter bypass fixed in PR #106:
-    // reading the wrong scope shows a signed-in person somebody else's (here,
-    // the guest bucket's) history. Both buckets are seeded with DIFFERENT
-    // counts so a scope mix-up cannot pass by coincidence.
+  // v0.12 PR2 (docs/design/FOCUS_IN_TRENDS.md section 5): a signed-in person's
+  // sessions live in Firestore, so this page must read them through the
+  // focus-session store adapter, never through focus-session.ts directly.
+  // That is the same defect class as the review-page adapter bypass fixed in
+  // PR #106, where a signed-in person's real history rendered as if it were
+  // empty because the page read local storage.
+  it("reads a signed-in person's focus sessions from Firestore, not local storage", async () => {
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
     vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
     vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([
       firestoreCheckin({ id: "f1", date: utcDateKey(2), focus: "Deep Work", status: "done" }),
     ]);
-
+    // Local storage holds a DIFFERENT count under both the guest bucket and
+    // this user's own bucket, so rendering "2" cannot happen by coincidence
+    // from either local source: only the Firestore read produces it.
     addFocusSession(
       { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
       "guest",
     );
     addFocusSession(
-      { task: "their work", plannedMinutes: 15, focusedSeconds: 900, outcome: "wrapped-up" },
+      { task: "stale local copy", plannedMinutes: 5, focusedSeconds: 300, outcome: "wrapped-up" },
       "user-123",
     );
-    addFocusSession(
-      { task: "their other work", plannedMinutes: 15, focusedSeconds: 900, outcome: "wrapped-up" },
-      "user-123",
-    );
+    vi.mocked(listFirestoreFocusSessions).mockResolvedValueOnce([
+      firestoreFocusSession({ id: "s1", focusedSeconds: 900 }),
+      firestoreFocusSession({ id: "s2", focusedSeconds: 900 }),
+    ]);
 
     render(<TrendsPage />);
 
@@ -377,6 +402,42 @@ describe("Trends page", () => {
       expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("2");
     });
     expect(within(card).getByTestId("focus-week-minutes").textContent).toBe("30");
+    // Scope isolation: reading the wrong uid would show another person's work.
+    expect(vi.mocked(listFirestoreFocusSessions)).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-123",
+    );
+  });
+
+  it("falls back to that person's local sessions when the Firestore read fails", async () => {
+    // The safety property the store promises, asserted at the page level: a
+    // permission-denied or offline read must degrade to what this browser
+    // has, never to a blank card that reads as "you did nothing this week".
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([]);
+    vi.mocked(listFirestoreFocusSessions).mockRejectedValueOnce(
+      new Error("permission-denied"),
+    );
+
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    addFocusSession(
+      { task: "their local work", plannedMinutes: 15, focusedSeconds: 900, outcome: "wrapped-up" },
+      "user-123",
+    );
+
+    render(<TrendsPage />);
+
+    const card = await screen.findByTestId("focus-week-card");
+    await waitFor(() => {
+      expect(within(card).getByTestId("focus-week-sessions").textContent).toBe("1");
+    });
+    // 900s under user-123, not the guest bucket's 1500s: the fallback keeps
+    // the scope.
+    expect(within(card).getByTestId("focus-week-minutes").textContent).toBe("15");
   });
 });
 
