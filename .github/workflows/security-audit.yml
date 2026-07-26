@@ -1,0 +1,80 @@
+name: Scheduled Security Audit
+
+# Early warning for the repo's most frequent CI incident: a NEW npm advisory
+# is published against an already-committed lockfile, so `npm audit
+# --audit-level=high` (a required step of the blocking Quality Gate, ci.yml)
+# flips red on `main` with no code change and wedges every subsequent PR.
+# That has happened four times (fixes: PRs #99, #101, #102, #107) and each
+# time it was discovered only when somebody happened to open or verify a PR.
+#
+# `npm audit` queries the live registry advisory database, so the Quality
+# Gate is deliberately non-hermetic and this class of red cannot be designed
+# away. Dependabot's automated security fixes are enabled but do not always
+# produce a PR (GHSA-mh99-v99m-4gvg needed a major bump of a transitive dep
+# with no direct upgrade path, so it never got one), so "dependabot will
+# open a PR" is not a detector either.
+#
+# This workflow runs the SAME audit command as the gate on a daily schedule,
+# so the red shows up in the Actions run history (and in the scheduled-run
+# failure notification) within 24 hours instead of whenever the next PR is
+# opened. It gates nothing and is deliberately NOT a required check: it is a
+# detector, and the blocking audit stays in ci.yml exactly as it is.
+#
+# The audit command here must stay identical to ci.yml's. That parity is
+# enforced by src/__tests__/workflow-audit-parity.test.ts, which reads both
+# workflow files.
+
+on:
+  schedule:
+    # Daily, 06:17 UTC. Off the hour so the run is not queued behind the
+    # top-of-hour scheduled-workflow spike.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+  # Runs on pull requests that touch this workflow itself, so a change to
+  # the detector is exercised on its own PR instead of merging untested and
+  # first executing on a schedule nobody is watching.
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/security-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Identical to ci.yml's "Dependency audit (high severity)" step, with
+      # the output additionally written to the run summary so a failure is
+      # readable from the run page without opening the job log.
+      - name: Dependency audit (high severity)
+        run: |
+          status=0
+          npm audit --audit-level=high > audit.txt 2>&1 || status=$?
+          {
+            echo "### \`npm audit --audit-level=high\`"
+            echo
+            echo '```'
+            cat audit.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat audit.txt
+          exit "$status"
