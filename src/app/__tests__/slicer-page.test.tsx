@@ -139,6 +139,29 @@ describe("ADHD Task Slicer Page", () => {
       expect(loadSlicedTasks("guest").map((t) => t.id)).toEqual(["task-guest-1"]);
     });
 
+    it("keeps the workspace when sign-in resolves on an already-open page", async () => {
+      saveSlicedTasks([buildTask("task-guest-1", "Sort the garage paperwork")], "guest");
+
+      const { rerender } = render(<SlicerPage />);
+
+      // Mounted as a guest: the task is visible from the guest scope.
+      const before = await screen.findAllByText("Sort the garage paperwork");
+      expect(before.length).toBeGreaterThan(0);
+
+      // Sign-in resolves underneath the open page. This is the exact seam
+      // the milestone exists for: the next render re-keys storage to the
+      // account scope (scope !== loadedScope), which without migration is
+      // the moment a guest's entire list visibly vanishes.
+      signIn();
+      rerender(<SlicerPage />);
+
+      const kept = await screen.findAllByText("Sort the garage paperwork");
+      expect(kept.length).toBeGreaterThan(0);
+      expect(loadSlicedTasks("user-123").map((t) => t.id)).toEqual(["task-guest-1"]);
+      // D3: migration copies, it never moves.
+      expect(loadSlicedTasks("guest").map((t) => t.id)).toEqual(["task-guest-1"]);
+    });
+
     it("does not migrate anything for a signed-out visitor", async () => {
       saveSlicedTasks([buildTask("task-guest-1", "Sort the garage paperwork")], "guest");
 

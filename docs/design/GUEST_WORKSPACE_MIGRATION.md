@@ -100,6 +100,20 @@ one device, which is exactly where a guest's workspace lives.
   `migrationStatus`; no new banner, no new component. *Alternative: a single
   app-level migration orchestrator - a refactor with no user-visible value,
   rejected.*
+  **Shipped form for the slicer half (2026-07-27, v0.17 PR1) - a deliberate,
+  narrow divergence from the letter of this default.** `/slicer` reads
+  synchronously in the render phase (its documented "adjust state when a
+  prop changes" pattern), and the shared primitive is async, so the
+  migration cannot literally precede that first read without deferring every
+  load of this page behind an async gate it otherwise does not need. What
+  ships: the migration runs on the same scope change, and when it actually
+  moved tasks the list is re-read in the same load. The guarantee D5 exists
+  for - a guest's tasks are visible in the load where sign-in resolves, not
+  after a manual refresh (the exact bug PR #115's sabotage (3) proved for
+  `/trends`) - holds and is pinned by the page-level tests. A side effect of
+  this order is strictly better than the literal sequencing for the common
+  case: an account's own tasks render immediately instead of waiting behind
+  the migration. The planner half of this default is untouched and PR2's.
 - **D6 - No new surface area.** No new env var, no new Firestore collection
   or rule, no new dependency, no new console gate, no change to
   `docs/FIRESTORE_RULES.md`. Both stores stay localStorage-only. (Verified
@@ -127,11 +141,17 @@ one device, which is exactly where a guest's workspace lives.
 
 ## 5. Done when (checkable)
 
-- [ ] PR1: `migrateGuestSlicedTasks` exists on the guest-migration primitive
-      with id-identity dedupe; `/slicer` runs it before the account scope's
-      first read; a test walks guest-slices-then-signs-in in one render and
-      proves the list survives; a test pins the marker key's exact bytes; a
-      dedupe test proves an id the account already holds is skipped.
+- [x] PR1 (2026-07-27, v0.17 PR1): `migrateGuestSlicedTasks` exists on the
+      guest-migration primitive with id-identity dedupe (`src/lib/slicer.ts`);
+      `/slicer` runs it in the same scope-change load, with same-load
+      visibility of the migrated list pinned by test (see the D5 shipped-form
+      note for the read-ordering divergence and why); a test walks
+      guest-slices-then-signs-in against one mounted page and proves the list
+      survives (`keeps the workspace when sign-in resolves on an already-open
+      page`); a test pins the marker key's exact bytes
+      (`calm-daily-coach-migrated-guest:<scope>:local:slicer`); a dedupe test
+      proves an id the account already holds is skipped and the account's
+      record wins.
 - [ ] PR2: `migrateGuestSingleRecord` exists with the four-state contract;
       `hydratePlannerSession` copies live same-day guest planner state when
       the account scope has none; a test proves the ring reads 100 percent
