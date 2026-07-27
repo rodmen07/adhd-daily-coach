@@ -85,7 +85,7 @@ export default function ExecutePage() {
                 </div>
                 <div className="flex flex-col">
                   <span className="plan-pill-label text-[10px] font-bold uppercase tracking-wider text-slate-500">Focus</span>
-                  <span className="plan-pill-value text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">{plan.focus}</span>
+                  <span className="plan-pill-value text-sm font-semibold text-slate-800 mt-0.5">{plan.focus}</span>
                 </div>
               </div>
 
@@ -97,7 +97,7 @@ export default function ExecutePage() {
                 </div>
                 <div className="flex flex-col">
                   <span className="plan-pill-label text-[10px] font-bold uppercase tracking-wider text-slate-500">Dose</span>
-                  <span className="plan-pill-value text-sm font-semibold capitalize text-slate-800 dark:text-slate-200 mt-0.5">{plan.dose}</span>
+                  <span className="plan-pill-value text-sm font-semibold capitalize text-slate-800 mt-0.5">{plan.dose}</span>
                 </div>
               </div>
 
@@ -110,7 +110,7 @@ export default function ExecutePage() {
                 </div>
                 <div className="flex flex-col">
                   <span className="plan-pill-label text-[10px] font-bold uppercase tracking-wider text-slate-500">Time Limit</span>
-                  <span className="plan-pill-value text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">{plan.minutes} min</span>
+                  <span className="plan-pill-value text-sm font-semibold text-slate-800 mt-0.5">{plan.minutes} min</span>
                 </div>
               </div>
             </div>

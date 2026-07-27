@@ -168,7 +168,7 @@ export default function ReviewPage() {
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center text-center">
-                  <span className="text-xl font-bold font-mono tracking-tight text-slate-800 dark:text-slate-100">
+                  <span className="text-xl font-bold font-mono tracking-tight text-slate-800">
                     {completionPercent}%
                   </span>
                   <span className="text-[9px] uppercase tracking-wider font-semibold text-slate-400">
@@ -226,21 +226,21 @@ export default function ReviewPage() {
                 <div className="text-lg shrink-0 mt-0.5">🎯</div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-0.5">Top focus area</p>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">{topFocus ? (topFocus as FocusArea) : "N/A"}</p>
+                  <p className="font-semibold text-slate-800">{topFocus ? (topFocus as FocusArea) : "N/A"}</p>
                 </div>
               </div>
               <div className="rounded-xl border border-(--line) bg-(--field) p-3 text-sm flex items-start gap-2.5">
                 <span className="text-lg shrink-0 mt-0.5" aria-hidden="true">🔋</span>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-0.5">Most-used dose</p>
-                  <p className="font-semibold capitalize text-slate-800 dark:text-slate-200">{mostUsedDose}</p>
+                  <p className="font-semibold capitalize text-slate-800">{mostUsedDose}</p>
                 </div>
               </div>
               <div className="rounded-xl border border-(--line) bg-(--field) p-3 text-sm flex items-start gap-2.5">
                 <span className="text-lg shrink-0 mt-0.5" aria-hidden="true">📈</span>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-0.5">Peak momentum window</p>
-                  <p className="font-semibold text-slate-800 dark:text-slate-200">{completionWindow}</p>
+                  <p className="font-semibold text-slate-800">{completionWindow}</p>
                 </div>
               </div>
             </div>

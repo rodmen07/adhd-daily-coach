@@ -664,19 +664,19 @@ export default function Home() {
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                 <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] p-2">
                   <p className="text-slate-500">Starts</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{onboardingFunnelSummary.starts}</p>
+                  <p className="text-sm font-semibold text-slate-800">{onboardingFunnelSummary.starts}</p>
                 </div>
                 <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] p-2">
                   <p className="text-slate-500">Completions</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{onboardingFunnelSummary.completions}</p>
+                  <p className="text-sm font-semibold text-slate-800">{onboardingFunnelSummary.completions}</p>
                 </div>
                 <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] p-2">
                   <p className="text-slate-500">Skips</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{onboardingFunnelSummary.skips}</p>
+                  <p className="text-sm font-semibold text-slate-800">{onboardingFunnelSummary.skips}</p>
                 </div>
                 <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] p-2">
                   <p className="text-slate-500">Conversion</p>
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{onboardingFunnelSummary.conversionRate}%</p>
+                  <p className="text-sm font-semibold text-slate-800">{onboardingFunnelSummary.conversionRate}%</p>
                 </div>
               </div>
               <div className="mt-2">

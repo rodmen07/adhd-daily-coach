@@ -28,7 +28,7 @@ export default function PricingPage() {
               30 Days Free
             </div>
             <p className="text-xs uppercase tracking-widest font-bold text-[--accent] font-mono">Full Membership</p>
-            <p className="text-5xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">
+            <p className="text-5xl font-extrabold text-slate-800 mt-2">
               $5<span className="text-sm font-normal text-slate-400">/mo</span>
             </p>
             <p className="mt-3 text-sm text-slate-600 leading-normal">
