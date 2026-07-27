@@ -6,6 +6,13 @@
  * physical micro-steps (each under 5 minutes) to bridge the activation gap.
  */
 
+import {
+  GUEST_SCOPE_KEY,
+  guestMigrationMarker,
+  migrateGuestRecords,
+  type GuestMigrationResult,
+} from "@/lib/guest-migration";
+
 export type SlicingDomain = "writing" | "coding" | "cleaning" | "admin" | "study" | "general";
 
 export type IntimidationLevel = "low" | "medium" | "high";
@@ -199,4 +206,55 @@ export function saveSlicedTasks(tasks: SlicedTask[], scope: string = "guest"): v
   } catch (e) {
     console.error("Failed to save sliced tasks:", e);
   }
+}
+
+/**
+ * Guest-to-account migration for sliced-task history (v0.17 PR1,
+ * docs/design/GUEST_WORKSPACE_MIGRATION.md).
+ *
+ * Sliced tasks are durable workspace data, not today-scoped working state:
+ * `SlicedTask` carries `createdAt`/`completedAt` and `loadSlicedTasks`
+ * applies no staleness drop, so a half-completed task sliced weeks ago loads
+ * exactly as written. Without this copy, the moment sign-in resolves the
+ * page re-keys storage to the account scope and a guest's entire list
+ * visibly vanishes.
+ *
+ * Rides the shared primitive (`migrateGuestRecords`) with the id-identity
+ * conflict guard (D3): a guest task whose locally minted `id` the account
+ * scope already holds is skipped, everything else is appended after the
+ * account's own tasks. Account data wins; the guest copy is never deleted.
+ *
+ * The write goes through `window.localStorage.setItem` directly rather than
+ * `saveSlicedTasks`, ON PURPOSE: `saveSlicedTasks` swallows storage errors
+ * for interactive saves, but a swallowed throw here would let the primitive
+ * report `migrated` and set the idempotency marker over a copy that never
+ * landed. Bare, a quota throw surfaces as `error`, the marker stays unset,
+ * and the next load retries - the same deliberately-unguarded-write rule the
+ * journal and focus-session migrations follow (PR #113/#115).
+ *
+ * The marker backend segment is a literal "local" (D4): this store has no
+ * backend resolution and no Firestore surface (D6), so there is nothing to
+ * resolve.
+ */
+export function migrateGuestSlicedTasks(
+  targetScopeKey: string,
+): Promise<GuestMigrationResult> {
+  return migrateGuestRecords<SlicedTask>(
+    {
+      markerKey: guestMigrationMarker(targetScopeKey, "local", "slicer"),
+      listGuestRecords: () => loadSlicedTasks(GUEST_SCOPE_KEY),
+      conflictGuard: {
+        listAccountRecords: async () => loadSlicedTasks(targetScopeKey),
+        identityKey: (task) => task.id,
+      },
+      write: async (task) => {
+        const merged = [...loadSlicedTasks(targetScopeKey), task];
+        window.localStorage.setItem(
+          getScopedSlicerKey(targetScopeKey),
+          JSON.stringify(merged),
+        );
+      },
+    },
+    targetScopeKey,
+  );
 }
