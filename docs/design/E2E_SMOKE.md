@@ -185,23 +185,30 @@ first's harness, nothing else):
 
 ## 5. Done when (checkable)
 
-- [ ] PR1: `@playwright/test` appears in `devDependencies` and nowhere in
-      `dependencies`; `static-export-surface.test.ts` still green unmodified.
-- [ ] PR1: J1 passes against the production-shaped export (URL carries
-      `/calm-daily-coach/`, trailing slash), asserting the overlay is absent
-      from the served HTML and appears only after hydration, with the
-      console-error tripwire active.
-- [ ] PR1: the `e2e` CI job ran on its own PR and was observed BOTH failing
-      (real sabotage, run id recorded) and passing (run id recorded); branch
-      protection still requires exactly `["lint-and-build"]` (gh api receipt
-      in the PR body).
-- [ ] PR1: vitest suite count unchanged by the new spec files, and
-      `npx playwright test --list` names only `e2e/` files.
-- [ ] PR2: J2 (check-in ring survives a real reload) and J3 (journal entry
-      survives a real reload, edits in place) pass.
-- [ ] PR2: `package.json` reads 0.16.0 and the roadmap heading reads DONE in
+- [x] PR1 (#126, re-verified during PR2): `@playwright/test` appears in
+      `devDependencies` and nowhere in `dependencies`;
+      `static-export-surface.test.ts` still green unmodified.
+- [x] PR1 (#126, re-run green during PR2): J1 passes against the
+      production-shaped export (URL carries `/calm-daily-coach/`, trailing
+      slash), asserting the overlay is absent from the served HTML and appears
+      only after hydration, with the console-error tripwire active.
+- [x] PR1 (#126): the `e2e` CI job ran on its own PR and was observed BOTH
+      failing (real sabotage, run 30230736206) and passing (run 30230805703);
+      branch protection still requires exactly `["lint-and-build"]` (gh api
+      receipt in the PR #126 body). Note: these four PR1 boxes were satisfied
+      by PR #126 but the tick never landed in this file; PR2 ticked them after
+      re-verifying each condition with a fresh command.
+- [x] PR1 (#126, re-verified during PR2): vitest suite count unchanged by the
+      new spec files, and `npx playwright test --list` names only `e2e/`
+      files.
+- [x] PR2: J2 (check-in ring survives a real reload) and J3 (journal entry
+      survives a real reload, edits in place) pass, and each was proven able
+      to fail by a real sabotage (J2 against the pre-PR #90 rehydration, J3
+      against a forked instead of upserted edit), both restored
+      byte-identically.
+- [x] PR2: `package.json` reads 0.16.0 and the roadmap heading reads DONE in
       the same commit; `roadmap-milestone-status.test.ts` green.
-- [ ] Both PRs: the five pinned gate commands from `.github/workflows/ci.yml`
+- [x] Both PRs: the five pinned gate commands from `.github/workflows/ci.yml`
       (lint, typecheck, build, `npm audit --audit-level=high`,
       `npm run test:coverage`) green.
 
