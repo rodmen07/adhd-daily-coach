@@ -1,8 +1,8 @@
 # v0.17 - Sign-in keeps your workspace: slicer history and today's plan cross over
 
-Status: PROPOSED (defined 2026-07-26, product-role increment). Every decision
-below is an overridable default: the user can accept the lot with one word or
-flip any D-number individually.
+Status: SHIPPED 2026-07-27 (PR1: slicer, PR #131; PR2: planner state, defined
+2026-07-26 as a product-role increment). Every decision below shipped on its
+default unless a shipped-form note says otherwise.
 
 ## 1. Premise, verified at source
 
@@ -152,13 +152,23 @@ one device, which is exactly where a guest's workspace lives.
       (`calm-daily-coach-migrated-guest:<scope>:local:slicer`); a dedupe test
       proves an id the account already holds is skipped and the account's
       record wins.
-- [ ] PR2: `migrateGuestSingleRecord` exists with the four-state contract;
-      `hydratePlannerSession` copies live same-day guest planner state when
-      the account scope has none; a test proves the ring reads 100 percent
-      after guest-checks-in-then-signs-in; a test proves a live account blob
-      is never overwritten; PR2 bumps package.json to 0.17.0 and flips the
-      roadmap heading to DONE in the same commit.
-- [ ] `src/lib/__tests__/checkin-store.test.ts` and the three shipped
+- [x] PR2 (2026-07-27, v0.17 PR2): `migrateGuestSingleRecord` exists with the
+      four-state contract (`src/lib/guest-migration.ts`, seven dedicated
+      tests); `hydratePlannerSession` copies live same-day guest planner
+      state when the account scope has none and re-reads the scope in the
+      same hydrate so the ring sees it; the ring-reads-100-percent proof
+      walks both seams at page level
+      (`src/app/__tests__/page-signin-migration.test.tsx`: sign-in resolving
+      on an already-open page, and the first signed-in load after a guest
+      check-in); `never overwrites a live account blob` is pinned in
+      `planner-state.test.ts` along with the stale-account-counts-as-absent
+      rule and the `:planner` marker's exact bytes; PR2 bumps package.json to
+      0.17.0 and flips the roadmap heading to DONE in the same commit.
+- [x] `src/lib/__tests__/checkin-store.test.ts` and the three shipped
       migrations' tests pass UNCHANGED in both PRs (the behavior-preserving
-      receipt, the PR #113 precedent).
-- [ ] The five pinned gate commands are green on both PRs.
+      receipt, the PR #113 precedent): in PR2 neither `checkin-store.test.ts`
+      nor `journal-store.test.ts` nor `focus-session-store.test.ts` nor
+      `slicer.test.ts` appears in the diff.
+- [x] The five pinned gate commands are green on both PRs (PR2: lint,
+      typecheck, build, audit at high, full coverage suite, all local with
+      the ci.yml-pinned commands, then the quality-gate check on the PR).

@@ -151,3 +151,71 @@ export async function migrateGuestRecords<T>(
     return { status: "error", migratedCount };
   }
 }
+
+export type GuestSingleRecordMigrationPlan<T> = {
+  /** Full local-storage key from `guestMigrationMarker`. */
+  markerKey: string;
+  /**
+   * The guest-scoped record to copy, or `null` when the guest scope holds
+   * none worth carrying. Always a local read.
+   */
+  readGuestRecord: () => T | null;
+  /**
+   * True when the account scope already holds a live record of its own, in
+   * which case the account's record wins (D3) and nothing is written. This is
+   * the single-record form of the conflict guard: with only one record there
+   * is no identity key to compare, just presence.
+   */
+  hasAccountRecord: () => Promise<boolean>;
+  /** Write the record into the account scope. May throw; see `error` above. */
+  write: (record: T) => Promise<void>;
+};
+
+/**
+ * Single-record sibling of `migrateGuestRecords` (v0.17, D2 of
+ * docs/design/GUEST_WORKSPACE_MIGRATION.md), for stores that keep ONE blob
+ * per scope (planner state) rather than a listable collection. Forcing a
+ * blob through the list shape would mean wrapping it in a one-element array
+ * purely to satisfy the plan type, so the two paths share the contract and
+ * the vocabulary instead: same four `GuestMigrationResult` states, same
+ * marker rule, same marker-unset-on-error retry, same never-delete-the-guest
+ * -copy safety property. `migratedCount` is 0 or 1; like the list form's
+ * guard-skipped-everything case, a run where the account's own record won
+ * still returns `migrated` with a count of 0, because the migration is done
+ * for this (scope, backend, collection) triple and must not re-run.
+ */
+export async function migrateGuestSingleRecord<T>(
+  plan: GuestSingleRecordMigrationPlan<T>,
+  targetScopeKey: string,
+): Promise<GuestMigrationResult> {
+  if (typeof window === "undefined") {
+    return { status: "skipped", migratedCount: 0 };
+  }
+
+  if (!targetScopeKey || targetScopeKey === GUEST_SCOPE_KEY) {
+    return { status: "skipped", migratedCount: 0 };
+  }
+
+  if (window.localStorage.getItem(plan.markerKey) === "1") {
+    return { status: "already-migrated", migratedCount: 0 };
+  }
+
+  const guestRecord = plan.readGuestRecord();
+  if (guestRecord === null) {
+    window.localStorage.setItem(plan.markerKey, "1");
+    return { status: "skipped", migratedCount: 0 };
+  }
+
+  try {
+    if (await plan.hasAccountRecord()) {
+      window.localStorage.setItem(plan.markerKey, "1");
+      return { status: "migrated", migratedCount: 0 };
+    }
+
+    await plan.write(guestRecord);
+    window.localStorage.setItem(plan.markerKey, "1");
+    return { status: "migrated", migratedCount: 1 };
+  } catch {
+    return { status: "error", migratedCount: 0 };
+  }
+}

@@ -1,3 +1,9 @@
+import {
+  GUEST_SCOPE_KEY,
+  guestMigrationMarker,
+  migrateGuestSingleRecord,
+  type GuestMigrationResult,
+} from "@/lib/guest-migration";
 import { readOnboardingDefaults } from "@/lib/onboarding";
 import { DOSE_OPTIONS, FOCUS_AREAS, type DailyDose, type DailyPlan, type FocusArea } from "@/lib/plan";
 
@@ -114,4 +120,47 @@ export function persistPlannerState(scopeKey: string, state: SavedPlannerState):
   }
 
   window.localStorage.setItem(scopedPlannerStorageKey(scopeKey), JSON.stringify(state));
+}
+
+/**
+ * A scope's planner state as the app itself would read it, or `null` when
+ * nothing live remains after the staleness read. `getInitialPlannerState`
+ * already drops a `plan` and a `checkedIn` record from a previous day, so a
+ * blob holding neither has nothing the ring or the planner would show: for
+ * migration purposes it does not count as a record at all. This is what makes
+ * "a stale account blob counts as absent" (D3) the same rule as the read
+ * side, rather than a second, drifting definition of staleness.
+ */
+function livePlannerState(scopeKey: string): SavedPlannerState | null {
+  const state = getInitialPlannerState(scopeKey);
+  return state.plan !== null || state.checkedIn !== null ? state : null;
+}
+
+/**
+ * Copies live same-day guest planner state into the account scope on sign-in
+ * (v0.17 PR2, docs/design/GUEST_WORKSPACE_MIGRATION.md). Without this, the
+ * check-in RECORD crosses over via `migrateGuestCheckins` but the dashboard
+ * ring reads `SavedPlannerState.checkedIn` from the scope-keyed blob that
+ * does not, so a guest who checks in and then signs in watches their
+ * completed day drop back to 50 percent (the PR #90 defect class at the
+ * sign-in boundary).
+ *
+ * Account wins, whole-blob, non-destructive: the guest blob is copied ONLY
+ * when the account scope has no live same-day state of its own, and the
+ * guest copy is never deleted. The backend segment of the marker is a
+ * literal "local" because this store has no backend resolution (D6: no
+ * Firestore surface here).
+ */
+export function migrateGuestPlannerState(
+  targetScopeKey: string,
+): Promise<GuestMigrationResult> {
+  return migrateGuestSingleRecord<SavedPlannerState>(
+    {
+      markerKey: guestMigrationMarker(targetScopeKey, "local", "planner"),
+      readGuestRecord: () => livePlannerState(GUEST_SCOPE_KEY),
+      hasAccountRecord: async () => livePlannerState(targetScopeKey) !== null,
+      write: async (state) => persistPlannerState(targetScopeKey, state),
+    },
+    targetScopeKey,
+  );
 }

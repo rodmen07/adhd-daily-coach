@@ -795,9 +795,12 @@ context: requiredness is earned by observed stability (the
   is met, and the five pinned gate commands are green on the quality-gate
   check.
 
-### v0.17 - Sign-in keeps your workspace: slicer history and today's plan cross over
+### v0.17 - Sign-in keeps your workspace: slicer history and today's plan cross over (DONE)
 
 Defined 2026-07-26 (product-role increment), the milestone after v0.16.
+Shipped 2026-07-27: PR1 (PR #131, slicer task history) + PR2 (planner-state
+crossover, `migrateGuestSingleRecord`, this heading's flip and the 0.17.0
+bump in the same commit).
 
 v0.13 promised "bring your data with you" and stopped at three collections;
 its D7 excluded planner state and slicer task history as "ephemeral,
@@ -839,18 +842,18 @@ audit, plan, and every overridable default:
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
-monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through
-v0.16 have all landed, and **v0.17 above is defined but not shipped** - when it
-ships, this sentence is the one that goes stale, so the audit that closes v0.17
-reads it first. (Corrected four times, three on 2026-07-26: after v0.14, after
-v0.15, after v0.16 was defined, and now after v0.16 shipped - note that the
-previous edition of this sentence asked "the audit that closes v0.16" to fix
-it, and the dev increment that closed v0.16 (PR #129) did not: heading flips
-belong to the shipping PR by the drift-guard contract, but this sentence gets
-fixed one increment later by the next product pass. That is the recurring
-shape, not an accident. `roadmap-milestone-status.test.ts` guards the
-milestone HEADINGS mechanically but cannot read this sentence, which is why it
-is the half that keeps going stale.)
+monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
+through v0.17 have all landed, and no next milestone is defined yet** - when
+one is, this sentence is the one that goes stale, so the pass that defines it
+reads it first. (Corrected five times, three on 2026-07-26; the 2026-07-27
+edition broke the recurring shape for once: the previous editions asked "the
+audit that closes v0.N" to fix this sentence and the closing dev increment
+never did, so the fix always arrived one increment late via the next product
+pass - this time the PR that shipped v0.17 PR2 edited it alongside the
+heading flip it already owed under the drift-guard contract.
+`roadmap-milestone-status.test.ts` guards the milestone HEADINGS mechanically
+but cannot read this sentence, which is why it is the half that keeps going
+stale.)
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a
