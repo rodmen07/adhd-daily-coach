@@ -420,19 +420,30 @@ describe("theme-token drift guard", () => {
     // background can never go out of sync there, unlike the 5 fixed sites
     // whose containers are real `--panel`/`--field` theme tokens).
     //
-    // 100 and 200 are deliberately NOT added yet: a fresh sweep while fixing
-    // 400 found 12 more `dark:`-paired occurrences at those two shades
-    // (`text-slate-800 dark:text-slate-200` x10 across execute/page.tsx,
-    // page.tsx, and review/page.tsx; `text-slate-800 dark:text-slate-100` x2
-    // in pricing/page.tsx and review/page.tsx) - double the size of this fix,
-    // and every one needs the same per-site cascade tracing this fix and the
-    // 300 fix before it required (a covered base class does not by itself
-    // prove the `dark:` partner is safe - it must be checked). That is a
-    // large enough, separate enough unit of work to earn its own PR rather
-    // than being folded into this one - filed as a new bug in the backlog's
-    // `## Bugs` section (calm-daily-coach.md) with the full site list.
+    // 100 and 200 added together 2026-07-26 (this fix), closing the range
+    // walk the 300 and 400 fixes started. The MED bug filed alongside the
+    // 400 fix enumerated 12 `dark:`-paired occurrences at these two shades;
+    // a fresh full-family sweep re-verified the count (exactly 12, no
+    // bg/border or gray/zinc/neutral/stone matches anywhere):
+    // `text-slate-800 dark:text-slate-200` x10 (execute/page.tsx x3,
+    // page.tsx x4, review/page.tsx x3) and `text-slate-800
+    // dark:text-slate-100` x2 (pricing/page.tsx, review/page.tsx). Unlike
+    // the 400 pass, per-site container tracing found NO page.tsx:420-style
+    // self-consistent site: every one of the 12 sits inside a real
+    // theme-token container (`bg-[var(--field)]`, `bg-[var(--surface-strong)]`,
+    // `bg-(--field)`), and the shared base class `text-slate-800` IS covered
+    // by globals.css's `html[data-theme="dark"]` override, so all 12 took
+    // the delete-the-redundant-`dark:`-suffix fix. Measured, not asserted:
+    // in the defect combination (app light theme + OS dark) slate-200 on the
+    // light `--field` renders 1.20:1 and slate-100 renders 1.07:1, both far
+    // below WCAG AA 4.5:1; after the fix the same text renders 14.27:1
+    // (light, base class) and 11.46:1 (dark, via the --muted-strong
+    // override). Both shades were added in one pass, not shade-by-shade,
+    // exactly as the bug entry prescribed - they were fully enumerated
+    // together, so splitting them again would have manufactured a second PR
+    // for no verification benefit.
     const DARK_PAIR_PATTERN =
-      /dark:((?:hover:)?(?:bg|text|border)-(?:slate|gray|zinc|neutral|stone)-(?:300|400|500|600|700|800|900|950)(?:\/\d{1,3})?)\b/g;
+      /dark:((?:hover:)?(?:bg|text|border)-(?:slate|gray|zinc|neutral|stone)-(?:100|200|300|400|500|600|700|800|900|950)(?:\/\d{1,3})?)\b/g;
 
     /**
      * Every `dark:`-paired risky-family class in `source` (DARK_PAIR_PATTERN,
@@ -546,6 +557,46 @@ describe("theme-token drift guard", () => {
 
       expect(unaccountedDarkPairsIn(hypotheticalRel, hypotheticalSource)).toContain(
         "text-slate-400",
+      );
+    });
+
+    it("would have caught the shipped text-slate-800 dark:text-slate-200/100 contrast bug (regression, fixed 2026-07-26)", () => {
+      // Reproduces the shape of the real, shipped defect fixed 2026-07-26 at
+      // 12 sites (execute/page.tsx x3, page.tsx x4, review/page.tsx x4,
+      // pricing/page.tsx x1): a `dark:text-slate-200` (or -100) pair with no
+      // `html[data-theme="dark"] .text-slate-200/-100` override anywhere in
+      // globals.css - the identical root cause as the shade-300 and shade-400
+      // bugs above, at the last two shades the guard did not yet track. With
+      // the app in light theme and the OS reporting dark, the near-white
+      // partner won the cascade over the covered text-slate-800 base and
+      // rendered 1.20:1 (slate-200) / 1.07:1 (slate-100) against the light
+      // `--field`. The fixture's base class (text-slate-800) IS covered -
+      // irrelevant to this mechanism, since only the paired class after
+      // `dark:` is checked - but it is the paired classes, text-slate-200 and
+      // text-slate-100, that must fail here.
+      //
+      // Verified concretely: reverted one of execute/page.tsx's three fixes
+      // locally (restored ` dark:text-slate-200` on the Focus pill), ran this
+      // file's suite, watched the real-app test above fail reporting
+      // `text-slate-200` unaccounted for execute/page.tsx, then restored the
+      // fix and re-ran to confirm green.
+      const hypotheticalRel = "src/app/__fixtures__/hypothetical-slate-200-dark-pair.tsx";
+      const slate200Source =
+        '<p className="text-sm font-semibold text-slate-800 dark:text-slate-200">not a real file, mirrors the shipped defect shape</p>';
+      const slate100Source =
+        '<p className="text-5xl font-extrabold text-slate-800 dark:text-slate-100">second variant, mirrors pricing/review</p>';
+
+      // Sanity: prove both paired classes are genuinely unexempted, so a
+      // failure below would be real and not vacuous.
+      expect(COVERED_CLASSES.has("text-slate-200")).toBe(false);
+      expect(COVERED_CLASSES.has("text-slate-100")).toBe(false);
+      expect(BASELINE_DEBT[hypotheticalRel]).toBeUndefined();
+
+      expect(unaccountedDarkPairsIn(hypotheticalRel, slate200Source)).toContain(
+        "text-slate-200",
+      );
+      expect(unaccountedDarkPairsIn(hypotheticalRel, slate100Source)).toContain(
+        "text-slate-100",
       );
     });
   });
