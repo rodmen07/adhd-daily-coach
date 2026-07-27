@@ -726,7 +726,24 @@ every overridable default:
   `npm audit --audit-level=high`, and `npm run test:coverage` are green on the
   quality-gate check.
 
-### v0.16 - E2E smoke: the product walked by a real browser (agent-doable now)
+### v0.16 - E2E smoke: the product walked by a real browser (DONE)
+
+**DONE 2026-07-26**, two PRs merged and deployed:
+
+- PR1 [#126](https://github.com/rodmen07/calm-daily-coach/pull/126): the
+  harness and journey J1. `@playwright/test` (chromium only) in
+  `devDependencies`, `playwright.config.ts` + `e2e/serve.mjs` serving the real
+  static export under the production `/calm-daily-coach` basePath (D3), the
+  vitest `exclude` for `e2e/**` with separation proven both ways (D5), the
+  auto console-error tripwire with an empty reason-carrying allowlist, and
+  `.github/workflows/e2e.yml` observed both red and green on its own PR while
+  branch protection stayed exactly `["lint-and-build"]` (D4).
+- PR2: journeys J2 and J3. J2 walks the whole daily loop (non-default focus
+  and dose picked on `/focus`, plan generated, check-in on `/execute`) and
+  pins PR #90's fix at the lifecycle it lives at: the dashboard ring reads 100
+  percent and a REAL page reload still reads 100 percent. J3 writes a journal
+  entry, reloads, edits it in place, and proves one-entry-per-day through the
+  history panel staying empty. Carried the bump to 0.16.0 plus this heading.
 
 Defined 2026-07-26 (product-role increment), the milestone after v0.15.
 
