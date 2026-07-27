@@ -1,6 +1,20 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SlicerPage from "@/app/slicer/page";
+import { useCoachAuth } from "@/app/hooks/use-coach-auth";
+import { loadSlicedTasks, saveSlicedTasks, type SlicedTask } from "@/lib/slicer";
+
+vi.mock("@/app/hooks/use-coach-auth", () => ({
+  useCoachAuth: vi.fn(),
+}));
+
+const authMock = {
+  authUser: null,
+  authMessage: "",
+  authConfigured: false,
+  signInWithGoogle: vi.fn(),
+  signOutUser: vi.fn(),
+};
 
 // Mock matchMedia or similar browser systems if needed
 if (typeof window !== "undefined") {
@@ -9,6 +23,10 @@ if (typeof window !== "undefined") {
     writable: true,
   });
 }
+
+beforeEach(() => {
+  vi.mocked(useCoachAuth).mockReturnValue(authMock as never);
+});
 
 afterEach(() => {
   cleanup();
@@ -77,5 +95,59 @@ describe("ADHD Task Slicer Page", () => {
 
     // After completing all steps, we should see the finished state card (Task fully processed!)
     expect(screen.getByText("Task fully processed!")).toBeTruthy();
+  });
+
+  // v0.17 PR1 "Sign-in keeps your workspace": these are wiring proofs, not
+  // restatements of slicer.test.ts's migration coverage. Firebase never
+  // enters: the hook is mocked, both scopes live in real localStorage, and
+  // the copy is observable end to end through the rendered page.
+  describe("guest-to-account migration on sign-in (v0.17 PR1)", () => {
+    function buildTask(id: string, title: string): SlicedTask {
+      return {
+        id,
+        title,
+        domain: "general",
+        intimidation: "medium",
+        steps: [
+          { id: "step-1", text: "Set a micro countdown timer.", minutes: 1, completed: false },
+        ],
+        createdAt: "2026-07-01T12:00:00.000Z",
+      };
+    }
+
+    function signIn(uid = "user-123") {
+      vi.mocked(useCoachAuth).mockReturnValue({
+        ...authMock,
+        authUser: { uid },
+      } as never);
+    }
+
+    it("brings tasks sliced signed out along, without deleting the guest copy", async () => {
+      saveSlicedTasks([buildTask("task-guest-1", "Sort the garage paperwork")], "guest");
+      signIn();
+
+      render(<SlicerPage />);
+
+      // The account scope starts empty, so the render-phase load shows
+      // nothing; the migration effect must both copy AND re-read for the
+      // task to appear in this same load (title renders in the active card
+      // and the history list, hence findAll).
+      const shown = await screen.findAllByText("Sort the garage paperwork");
+      expect(shown.length).toBeGreaterThan(0);
+      expect(loadSlicedTasks("user-123").map((t) => t.id)).toEqual(["task-guest-1"]);
+      // D3: migration copies, it never moves.
+      expect(loadSlicedTasks("guest").map((t) => t.id)).toEqual(["task-guest-1"]);
+    });
+
+    it("does not migrate anything for a signed-out visitor", async () => {
+      saveSlicedTasks([buildTask("task-guest-1", "Sort the garage paperwork")], "guest");
+
+      render(<SlicerPage />);
+
+      const shown = await screen.findAllByText("Sort the garage paperwork");
+      expect(shown.length).toBeGreaterThan(0);
+      // Nothing was copied anywhere: the guest scope is the only one used.
+      expect(loadSlicedTasks("user-123")).toHaveLength(0);
+    });
   });
 });

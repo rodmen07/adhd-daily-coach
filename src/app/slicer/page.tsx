@@ -11,6 +11,7 @@ import {
   SLICING_DOMAINS,
   procedurallySliceTask,
   loadSlicedTasks,
+  migrateGuestSlicedTasks,
   saveSlicedTasks,
 } from "@/lib/slicer";
 
@@ -47,6 +48,36 @@ export default function SlicerPage() {
     const incomplete = loaded.find((t) => !t.completedAt);
     setActiveTask(incomplete ?? (loaded.length > 0 ? loaded[0] : null));
   }
+
+  // v0.17 PR1: bring a guest's sliced-task history along when sign-in
+  // resolves (docs/design/GUEST_WORKSPACE_MIGRATION.md). The migration is
+  // async (the shared primitive's contract), so it cannot run inside the
+  // synchronous render-phase load above; it runs here on scope change, and
+  // when the copy actually moved tasks the list is re-read so they appear in
+  // the same load rather than after a manual refresh - the /journal
+  // sequencing (PR #113) in the form this page's load pattern allows. The
+  // quiet outcomes (skipped / already-migrated / error / migrated-nothing)
+  // change no state at all, matching how /journal stays silent.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bringGuestTasksAlong() {
+      const result = await migrateGuestSlicedTasks(scope);
+      if (cancelled || result.status !== "migrated" || result.migratedCount === 0) {
+        return;
+      }
+      const merged = loadSlicedTasks(scope);
+      setTasks(merged);
+      const incomplete = merged.find((t) => !t.completedAt);
+      setActiveTask(incomplete ?? (merged.length > 0 ? merged[0] : null));
+    }
+
+    void bringGuestTasksAlong();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [scope]);
 
   // Sync tasks
   const handleSaveTasks = (newTasks: SlicedTask[]) => {
