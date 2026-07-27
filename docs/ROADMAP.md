@@ -68,14 +68,19 @@ is written next to.
   command queries the live advisory database, so it had flipped an unchanged main
   red four times (#99, #101, #102, #107), each time discovered reactively by the
   next PR. PR #119 (2026-07-26) added `src/__tests__/static-export-surface.test.ts`
-  after removing the last pre-static-export server code. **Six** guard tests now
+  after removing the last pre-static-export server code. **Seven** guard tests now
   run inside the gate and compare two sources of truth rather than restating
-  either: `theme-token-guard`, `static-export-surface`, `workflow-audit-parity`,
-  `roadmap-milestone-status`, `onboarding-storage-contract`, and
-  `auth-message-contract` (PR #123). (Corrected 2026-07-26 by the v0.16
-  definition pass: this sentence was written as "five" by the v0.15 definition
-  that morning and PR #123 made it six by that evening - same-day staleness in
-  exactly the prose the milestone-status guard cannot read.)
+  either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
+  pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
+  `roadmap-milestone-status`, `onboarding-storage-contract`,
+  `auth-message-contract` (PR #123), and `lockfile-version-parity` (PR #127).
+  (This count is the file's most reliable staleness generator: written as "five"
+  by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
+  #123 landed the same evening, corrected to "seven" by the v0.17 definition
+  after PR #127 landed within hours of the v0.16 pass - always in exactly the
+  prose the milestone-status guard cannot read. Verified this time by
+  `ls src/__tests__/` plus the `theme-token-guard` file under
+  `src/app/__tests__/`, not by recall.)
 - Accessibility: PR #87 (2026-07-20, v0.8) added a global focus-visible ring, a
   skip-to-content link, a reduced-motion reset that covers every animated surface (it
   had previously only covered some), a single layout `<main>` landmark, aria-current
@@ -102,8 +107,11 @@ is written next to.
   v0.13's migration reachable at all. v0.15 closed the same day (PR #123 + PR
   #124) and added no surface at all: it made the first-run path a stranger now
   reaches behave - one shared sign-in alert on all three sign-in surfaces, and
-  an onboarding gate whose first client render matches the prerender.
-  package.json reads 0.15.0.
+  an onboarding gate whose first client render matches the prerender. v0.16
+  (PR #126 + PR #129) added no page either but the repo's first surface outside
+  jsdom: a four-journey Playwright smoke suite (`e2e/`) driven by real chromium
+  against the real static export, with its own non-required `e2e` CI job.
+  package.json reads 0.16.0.
 - Access (corrected 2026-07-26 by v0.14): **the app is open to a signed-out
   person on every route.** Until v0.14 it was not - `subscription-guard.tsx`
   answered `!authUser` with a full-screen "Sign in required" wall via
@@ -787,19 +795,62 @@ context: requiredness is earned by observed stability (the
   is met, and the five pinned gate commands are green on the quality-gate
   check.
 
+### v0.17 - Sign-in keeps your workspace: slicer history and today's plan cross over
+
+Defined 2026-07-26 (product-role increment), the milestone after v0.16.
+
+v0.13 promised "bring your data with you" and stopped at three collections;
+its D7 excluded planner state and slicer task history as "ephemeral,
+today-scoped working state rather than a record a person would miss." That
+premise was re-verified at source for this definition and **the slicer half is
+false**: `SlicedTask` carries `createdAt`/`completedAt` and `loadSlicedTasks`
+applies no staleness drop, so a half-completed task sliced weeks ago is
+durable data - exactly a record a person would miss. Meanwhile `/slicer` keys
+storage by `authUser?.uid ?? "guest"` and reloads on scope change, so at the
+moment sign-in resolves, a guest's whole task list visibly vanishes; and the
+dashboard ring resets at sign-in because `SavedPlannerState.checkedIn` lives
+in the scope-keyed planner blob that never crosses, even though the check-in
+record itself migrates (the PR #90 defect class, reappearing at the sign-in
+boundary). None of this could bite before v0.14 opened the front door; now it
+bites at the exact moment of conversion.
+
+Extend guest-to-account migration to both stores on the existing
+`src/lib/guest-migration.ts` primitive. Account wins, non-destructive, marker
+keys extend the exact v0.13 shape (`:local:slicer` / `:local:planner`), no new
+surface area of any kind (both stores are and remain localStorage-only). Full
+audit, plan, and every overridable default:
+[docs/design/GUEST_WORKSPACE_MIGRATION.md](design/GUEST_WORKSPACE_MIGRATION.md).
+
+- PR1: slicer task history migration (id-identity dedupe, before `/slicer`'s
+  first account-scope read), marker-byte pin test, guest-slices-then-signs-in
+  walked in one render.
+- PR2: `migrateGuestSingleRecord` sibling helper + same-day planner-state
+  copy inside `hydratePlannerSession`; closes the ring-reset-at-sign-in seam;
+  **carries the package.json bump to 0.17.0 and flips this heading to DONE in
+  the same commit**, per the `roadmap-milestone-status.test.ts` contract.
+- Explicitly NOT in scope: Firestore sync for either store, any change to the
+  three shipped migrations or their marker keys, and the `defaultTheme`
+  dead-field LOW (its own product call, still a candidate below).
+- Done when: the checklist in
+  [docs/design/GUEST_WORKSPACE_MIGRATION.md section 5](design/GUEST_WORKSPACE_MIGRATION.md#5-done-when-checkable)
+  is met, the pre-existing migration tests pass unchanged, and the five pinned
+  gate commands are green on both PRs.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; v0.2 through
-v0.15 have all landed, and **v0.16 above is defined but not shipped** - when it
-ships, this sentence is the one that goes stale, so the audit that closes v0.16
-reads it first. (Corrected three times, twice on 2026-07-26: this paragraph read
-"v0.2 through v0.13 ... v0.14 above is the next milestone" after v0.14 shipped,
-"v0.2 through v0.14 ... v0.15 above is the next milestone" after v0.15 shipped,
-and "no milestone is defined above them" after v0.16 was defined.
-`roadmap-milestone-status.test.ts` guards the milestone HEADINGS mechanically
-but cannot read this sentence, which is why it is the half that keeps going
-stale.)
+v0.16 have all landed, and **v0.17 above is defined but not shipped** - when it
+ships, this sentence is the one that goes stale, so the audit that closes v0.17
+reads it first. (Corrected four times, three on 2026-07-26: after v0.14, after
+v0.15, after v0.16 was defined, and now after v0.16 shipped - note that the
+previous edition of this sentence asked "the audit that closes v0.16" to fix
+it, and the dev increment that closed v0.16 (PR #129) did not: heading flips
+belong to the shipping PR by the drift-guard contract, but this sentence gets
+fixed one increment later by the next product pass. That is the recurring
+shape, not an accident. `roadmap-milestone-status.test.ts` guards the
+milestone HEADINGS mechanically but cannot read this sentence, which is why it
+is the half that keeps going stale.)
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a
@@ -807,9 +858,15 @@ stale.)
   [docs/design/TRENDS_OVER_TIME.md](design/TRENDS_OVER_TIME.md) section 1).
   Needs a service worker plus console-side FCM/VAPID-key setup, so it carries
   multiple USER-ONLY gates before any code is exercisable - not agent-doable
-  now, unlike the milestones above it.
+  now, unlike the milestones above it. (Re-checked at the v0.17 definition,
+  2026-07-26: unchanged, still console-gated.)
 - Performance pass: bundle analysis, web-vitals instrumentation, Firebase SDK load
-  optimization (AUTONOMOUS plan Phase 4).
+  optimization (AUTONOMOUS plan Phase 4). Passed over at every definition since
+  v0.12 on "no web-vitals baseline exists" - noted at the v0.17 definition that
+  this objection is self-curing (the baseline IS the natural PR1 of the
+  milestone) and cannot keep deferring it forever; it lost to v0.17 on user
+  value (a measured-then-trimmed bundle vs. a guest visibly losing their
+  workspace at sign-in), not on feasibility, and is the standing runner-up.
 - Security hardening: replace the untouched template SECURITY.md with a real policy,
   secret scanning, dependency review (AUTONOMOUS plan Phase 5).
 - ~~Playwright E2E smoke test for the daily loop~~ (AUTONOMOUS plan Phase 6):
