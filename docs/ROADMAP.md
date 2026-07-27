@@ -738,7 +738,8 @@ every overridable default:
   auto console-error tripwire with an empty reason-carrying allowlist, and
   `.github/workflows/e2e.yml` observed both red and green on its own PR while
   branch protection stayed exactly `["lint-and-build"]` (D4).
-- PR2: journeys J2 and J3. J2 walks the whole daily loop (non-default focus
+- PR2 [#129](https://github.com/rodmen07/calm-daily-coach/pull/129): journeys
+  J2 and J3. J2 walks the whole daily loop (non-default focus
   and dose picked on `/focus`, plan generated, check-in on `/execute`) and
   pins PR #90's fix at the lifecycle it lives at: the dashboard ring reads 100
   percent and a REAL page reload still reads 100 percent. J3 writes a journal
