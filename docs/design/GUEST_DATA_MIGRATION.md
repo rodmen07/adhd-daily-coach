@@ -177,3 +177,9 @@ Every line here is a default the user can flip without changing the rest.
   deliberately excluded: both are ephemeral, today-scoped working state rather
   than a record a person would miss. *Alternative: include them, which widens
   the milestone to 3 PRs.*
+  **Status 2026-07-26: the slicer half of this premise was falsified at source
+  by the v0.17 definition** - `SlicedTask` carries `createdAt`/`completedAt`
+  and `loadSlicedTasks` applies no staleness drop, so task history is durable,
+  not today-scoped. The planner half was confirmed (stale state really is
+  dropped on read). v0.17 picks both stores up; see
+  [GUEST_WORKSPACE_MIGRATION.md](GUEST_WORKSPACE_MIGRATION.md).
