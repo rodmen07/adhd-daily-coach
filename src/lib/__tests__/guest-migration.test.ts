@@ -3,7 +3,9 @@ import {
   GUEST_SCOPE_KEY,
   guestMigrationMarker,
   migrateGuestRecords,
+  migrateGuestSingleRecord,
   type GuestMigrationPlan,
+  type GuestSingleRecordMigrationPlan,
 } from "@/lib/guest-migration";
 
 type Note = { date: string; text: string };
@@ -237,5 +239,121 @@ describe("guest-migration", () => {
 
     expect(other.status).toBe("migrated");
     expect(other.migratedCount).toBe(2);
+  });
+
+  describe("migrateGuestSingleRecord (v0.17 D2, single-blob sibling)", () => {
+    type Blob = { day: string; note: string };
+
+    const GUEST_BLOB: Blob = { day: "2026-07-27", note: "Guest's working day." };
+    const SINGLE_MARKER = guestMigrationMarker("user-123", "local", "blob");
+
+    function buildSinglePlan(
+      overrides: Partial<GuestSingleRecordMigrationPlan<Blob>> = {},
+    ) {
+      const written: Blob[] = [];
+      const plan: GuestSingleRecordMigrationPlan<Blob> = {
+        markerKey: SINGLE_MARKER,
+        readGuestRecord: vi.fn(() => GUEST_BLOB),
+        hasAccountRecord: vi.fn(async () => false),
+        write: vi.fn(async (blob: Blob) => {
+          written.push(blob);
+        }),
+        ...overrides,
+      };
+
+      return { plan, written };
+    }
+
+    it("skips the guest scope itself without reading or writing", async () => {
+      const { plan } = buildSinglePlan();
+
+      const result = await migrateGuestSingleRecord(plan, GUEST_SCOPE_KEY);
+
+      expect(result).toEqual({ status: "skipped", migratedCount: 0 });
+      expect(plan.readGuestRecord).not.toHaveBeenCalled();
+      expect(plan.write).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem(SINGLE_MARKER)).toBeNull();
+    });
+
+    it("skips an empty target scope", async () => {
+      const { plan } = buildSinglePlan();
+
+      const result = await migrateGuestSingleRecord(plan, "");
+
+      expect(result).toEqual({ status: "skipped", migratedCount: 0 });
+      expect(plan.write).not.toHaveBeenCalled();
+    });
+
+    it("marks a guest scope with no record done so later loads do no work", async () => {
+      const { plan } = buildSinglePlan({ readGuestRecord: vi.fn(() => null) });
+
+      const first = await migrateGuestSingleRecord(plan, "user-123");
+      const second = await migrateGuestSingleRecord(plan, "user-123");
+
+      expect(first).toEqual({ status: "skipped", migratedCount: 0 });
+      expect(second).toEqual({ status: "already-migrated", migratedCount: 0 });
+      expect(plan.write).not.toHaveBeenCalled();
+      // The marker check comes first: the second call never re-reads.
+      expect(plan.readGuestRecord).toHaveBeenCalledTimes(1);
+    });
+
+    it("copies the guest record and runs once", async () => {
+      const { plan, written } = buildSinglePlan();
+
+      const first = await migrateGuestSingleRecord(plan, "user-123");
+      const second = await migrateGuestSingleRecord(plan, "user-123");
+
+      expect(first).toEqual({ status: "migrated", migratedCount: 1 });
+      expect(second).toEqual({ status: "already-migrated", migratedCount: 0 });
+      expect(written).toEqual([GUEST_BLOB]);
+      expect(window.localStorage.getItem(SINGLE_MARKER)).toBe("1");
+    });
+
+    it("never hands the account's record to the writer when the account wins (D3)", async () => {
+      const { plan, written } = buildSinglePlan({
+        hasAccountRecord: vi.fn(async () => true),
+      });
+
+      const result = await migrateGuestSingleRecord(plan, "user-123");
+
+      // Mirrors the list form's guard-skipped-everything case: the migration
+      // is complete for this triple (marker set, count 0), it just wrote
+      // nothing, so the account's own record is never re-contested.
+      expect(result).toEqual({ status: "migrated", migratedCount: 0 });
+      expect(written).toEqual([]);
+      expect(window.localStorage.getItem(SINGLE_MARKER)).toBe("1");
+    });
+
+    it("reports error and leaves the marker unset so the next load retries", async () => {
+      const { plan } = buildSinglePlan({
+        write: vi
+          .fn<(blob: Blob) => Promise<void>>()
+          .mockRejectedValueOnce(new Error("offline"))
+          .mockResolvedValueOnce(undefined),
+      });
+
+      const failed = await migrateGuestSingleRecord(plan, "user-123");
+      expect(failed).toEqual({ status: "error", migratedCount: 0 });
+      expect(window.localStorage.getItem(SINGLE_MARKER)).toBeNull();
+
+      // The unset marker is what makes the retry real, not aspirational.
+      const retried = await migrateGuestSingleRecord(plan, "user-123");
+      expect(retried).toEqual({ status: "migrated", migratedCount: 1 });
+      expect(window.localStorage.getItem(SINGLE_MARKER)).toBe("1");
+    });
+
+    it("reports error when the account read itself throws", async () => {
+      const { plan } = buildSinglePlan({
+        hasAccountRecord: vi.fn(async () => {
+          throw new Error("permission-denied");
+        }),
+      });
+
+      const result = await migrateGuestSingleRecord(plan, "user-123");
+
+      expect(result).toEqual({ status: "error", migratedCount: 0 });
+      expect(plan.write).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem(SINGLE_MARKER)).toBeNull();
+    });
   });
 });
