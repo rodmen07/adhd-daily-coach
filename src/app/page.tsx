@@ -136,26 +136,7 @@ export default function Home() {
   // finished onboarding, so a corrupt record hid the flow forever while the
   // planner silently fell back to its own defaults, and nothing in the app can
   // reopen onboarding once it is skipped.
-  //
-  // The answer lives in localStorage, which this static export's prerender
-  // cannot read, so it is settled in an effect rather than in a `useState`
-  // initializer - the hydration-safe shape `AnimatedCounter` already uses in
-  // this file. Starting at `false` makes the first client render agree with the
-  // prerendered HTML (neither carries the overlay); a first-time visitor sees
-  // one frame of dashboard before it appears, exactly as the counters start
-  // at 0.
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  useEffect(() => {
-    // Settled in a deferred callback rather than synchronously in the effect
-    // body - the same settle AnimatedCounter's reduced-motion branch uses
-    // above - so hydration completes against the prerendered HTML first and
-    // the lint rule against cascading synchronous renders holds.
-    const settle = window.setTimeout(() => {
-      setShowOnboarding(getOnboardingPreferences() === null);
-    }, 0);
-    return () => window.clearTimeout(settle);
-  }, []);
+  const [showOnboarding, setShowOnboarding] = useState(() => getOnboardingPreferences() === null);
 
   const handleOnboardingComplete = (prefs: {
     defaultFocus: import("@/lib/plan").FocusArea;
@@ -393,13 +374,7 @@ export default function Home() {
   return (
     <div className="page-shell">
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
-        {/* No `typeof window` guard here any more: `showOnboarding` starts
-            false and is only ever raised by the client-only effect above, so a
-            render without a browser cannot reach this branch. That guard used
-            to be what kept the overlay out of the static HTML, and it was also
-            what hid the mismatch, since the initializer had already disagreed
-            with the prerender by the time this line ran. */}
-        {showOnboarding && (
+        {showOnboarding && typeof window !== "undefined" && (
           <div className="mb-6">
             <Onboarding
               onComplete={handleOnboardingComplete}
