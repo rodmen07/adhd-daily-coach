@@ -37,7 +37,13 @@ export const test = base.extend<SmokeFixtures>({
           if (message.type() !== "error") {
             return;
           }
-          const text = message.text();
+          // Chromium's "Failed to load resource" text does not name the
+          // resource; the console message's location does. Carry it, so a
+          // tripwire failure is actionable from the CI log alone.
+          const location = message.location().url;
+          const text = location
+            ? `${message.text()} (${location})`
+            : message.text();
           if (CONSOLE_ERROR_ALLOWLIST.some((entry) => entry.pattern.test(text))) {
             return;
           }

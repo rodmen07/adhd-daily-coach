@@ -89,6 +89,22 @@ const server = createServer((req, res) => {
     filePath = fsPath;
   } else if (existsSync(`${fsPath}.html`)) {
     filePath = `${fsPath}.html`;
+  } else if (rawPath.endsWith(".__PAGE__.txt")) {
+    // Windows-build quirk, verified 2026-07-26: the client runtime prefetches
+    // segment payloads at `<route>/__next.<route>.__PAGE__.txt`, and the
+    // Linux-built artifact GitHub Pages serves carries exactly that dotted
+    // FILE (probed live: HTTP 200, and its bytes match the local nested form
+    // below; the slash form 404s live). `next build` on Windows instead
+    // writes the same payload as a nested `__next.<route>/__PAGE__.txt`
+    // directory entry. Bridge that one spelling so a local Windows run sees
+    // the artifact CI and production both see; on a Linux-built out/ the
+    // dotted file exists and this branch never runs.
+    const nested = path.normalize(
+      fsPath.replace(/\.__PAGE__\.txt$/, `${path.sep}__PAGE__.txt`),
+    );
+    if (nested.startsWith(OUT_DIR + path.sep) && existsSync(nested)) {
+      filePath = nested;
+    }
   }
 
   if (!filePath || !existsSync(filePath)) {
