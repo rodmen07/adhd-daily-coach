@@ -42,7 +42,9 @@ exactly the ones a browser sees.** Three from the last four days:
 **Fact C - the artifact has a specific production shape that `next dev` does
 not have.** `next.config.ts`: `output: "export"`, `trailingSlash: true`,
 `basePath: "/<repo-name>"` in production builds (derived from
-`GITHUB_REPOSITORY`, so it follows a repo rename). The live deploy
+`GITHUB_REPOSITORY` in `site-base-path.mjs`, the one module `next.config.ts`,
+`playwright.config.ts` and `e2e/serve.mjs` all import, so it follows a repo
+rename - and it did, at the 2026-07-29 rename). The live deploy
 (probed today: HTTP 200, 28043 bytes on `/`, zero occurrences of the old
 spinner) serves prerendered HTML that the client then hydrates. A suite that
 walks `next dev` would test none of that shape.

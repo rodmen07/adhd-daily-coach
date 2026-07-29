@@ -1,15 +1,22 @@
 # Repo rename runbook: `calm-daily-coach` -> `adhd-daily-coach`
 
-Status: **the rename has NOT happened.** Verified 2026-07-29:
-`gh api repos/rodmen07/calm-daily-coach --jq .full_name` -> `rodmen07/calm-daily-coach`,
-`gh api repos/rodmen07/adhd-daily-coach` -> 404,
-`https://rodmen07.github.io/calm-daily-coach/` -> 200,
-`https://rodmen07.github.io/adhd-daily-coach/` -> 404.
+Status: **DONE. The rename happened on 2026-07-29 and the rebuild ran.**
+Re-verified 2026-07-29 after the fact:
+`https://github.com/rodmen07/adhd-daily-coach` -> 200,
+`https://rodmen07.github.io/adhd-daily-coach/` -> 200 (assets served from
+`/adhd-daily-coach/_next/static`, `<title>` = "ADHD Daily Coach: Your friendly
+self-improvement coach"),
+`https://rodmen07.github.io/calm-daily-coach/` -> 404 (expected: Pages project
+URLs do not redirect).
 
-Only the DISPLAY name has been rebranded. The repo slug, the Pages URL and the
-`calm-daily-coach` localStorage namespace are all still the old value, and the
-localStorage namespace is frozen forever on purpose (renaming it would orphan
-every existing user's saved plans, journal entries and settings).
+The procedure below is kept as reusable guidance - it is the same for any
+future rename of this repo, and the reasoning about the outage window is what
+made this one short.
+
+The `calm-daily-coach` localStorage namespace did NOT change and never will: it
+is frozen forever on purpose, because renaming it would orphan every existing
+user's saved plans, journal entries and settings. A repo slug and a storage
+namespace are independent, and only the slug moved.
 
 ## The one thing that is easy to get wrong
 
@@ -74,13 +81,15 @@ required *rebuild*. Budget for a short outage and keep it short.
 ## What is NOT derived and must be edited by hand
 
 The build-time derivation covers `basePath`, `assetPrefix` and the `.ics`
-`NEXT_PUBLIC_APP_URL`. Everything below is a literal.
+`NEXT_PUBLIC_APP_URL`. Everything below is a literal. All of these were flipped
+to `adhd-daily-coach` in the post-rename pass; the list stays as the checklist
+for any future rename.
 
 | File | What it is |
 | --- | --- |
 | `site-base-path.mjs` | the ONE local/offline fallback slug (never used in Actions) |
 | `src/lib/reminder-ics.ts` | `APP_URL` fallback, only reachable outside a Next build |
-| `package.json` / `package-lock.json` | `"name": "calm-daily-coach"` |
+| `package.json` / `package-lock.json` | the package `"name"` |
 | `README.md` | the `Live site:` URL |
 | `docs/ROADMAP.md` | the live URL in "Current state" |
 | `docs/design/REMINDER_SCHEDULING.md` | the live URL in section 1 |
@@ -109,3 +118,6 @@ change in the same pass, and it is a **separate repo with a separate deploy**:
 The GitHub link survives a rename on its own (GitHub permanently redirects
 renamed repo URLs). **The Pages project URL does not redirect**, so
 `rodmen07.github.io/<slug>/` has to be flipped there once step 3 above passes.
+
+Status: done for the 2026-07-29 rename - both outbound links point at
+`adhd-daily-coach` and were re-verified HTTP 200.

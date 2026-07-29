@@ -7,9 +7,10 @@
 #
 # The suite walks the REAL static export (out/ from a production build)
 # served under the production basePath - which is the repo name, derived from
-# GITHUB_REPOSITORY in next.config.ts and playwright.config.ts - never
-# `next dev`, because the prerender/hydrate boundary of the exported artifact
-# is half the reason the suite exists (design decision D3).
+# GITHUB_REPOSITORY in site-base-path.mjs, the single source of truth that
+# next.config.ts, playwright.config.ts and e2e/serve.mjs all import rather than
+# re-derive - never `next dev`, because the prerender/hydrate boundary of the
+# exported artifact is half the reason the suite exists (design decision D3).
 
 name: E2E Smoke
 

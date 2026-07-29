@@ -10,7 +10,7 @@
  * silent drift hazard: a gate that stops matching its exempt route would still
  * look correct in review and would only show up as a locked-out person.
  *
- * `basePath` (the repo name in production, derived in `next.config.ts`) is NOT
+ * `basePath` (the repo name in production, derived in `site-base-path.mjs`) is NOT
  * part of the value Next gives `usePathname()`, so it is deliberately not
  * handled here. Verified against the live export rather than assumed: fetching
  * the deployed /journal/ page shows `aria-current="page"` already resolved

@@ -12,7 +12,7 @@ one path, and slices the v0.3 implementation into PR-sized work.
 
 - The app is a Next.js static export on GitHub Pages, served under the repo-name
   subpath (`https://rodmen07.github.io/<repo-slug>/`, today
-  https://rodmen07.github.io/calm-daily-coach/). There are **no server routes**
+  https://rodmen07.github.io/adhd-daily-coach/). There are **no server routes**
   and no place to run resident backend code. Anything "scheduled" must run in
   the user's browser, in someone else's cloud, or in the user's own tools
   (mail app, calendar app).

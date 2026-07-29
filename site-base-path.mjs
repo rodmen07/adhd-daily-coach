@@ -4,11 +4,12 @@
  * A GitHub Pages project site is served from `https://<user>.github.io/<repo>/`,
  * so the repo name is not cosmetic: it is the `basePath` every asset, chunk and
  * route in the static export is prefixed with. It is derived here rather than
- * hardcoded because the repo is being renamed from `calm-daily-coach` to
- * `adhd-daily-coach`, and a literal would 404 the entire site on one side of
- * that rename whichever way it was written. `GITHUB_REPOSITORY` is injected
- * automatically into every GitHub Actions job, so whichever build runs next is
- * correct under whatever the repo is called at that moment.
+ * hardcoded because the repo was renamed from `calm-daily-coach` to
+ * `adhd-daily-coach` (2026-07-29), and a literal would have 404d the entire
+ * site on one side of that rename whichever way it was written.
+ * `GITHUB_REPOSITORY` is injected automatically into every GitHub Actions job,
+ * so whichever build runs next is correct under whatever the repo is called at
+ * that moment - which is why the rename itself needed no code change here.
  *
  * WHY THIS IS ITS OWN MODULE: three separate places need the same answer, and
  * they must agree exactly or nothing works.
@@ -30,7 +31,8 @@
  * WHAT THIS DERIVATION DOES NOT DO - read docs/RENAME_RUNBOOK.md before
  * renaming. It fixes the NEXT build; it does not rebuild the artifact already
  * deployed. A repo rename fires no workflow event, so the rename needs a
- * manually triggered rebuild and has a real outage window.
+ * manually triggered rebuild and has a real outage window. That is exactly how
+ * the 2026-07-29 rename went: no code change, one hand-triggered rebuild.
  */
 
 /** First value that is present and not blank, so `SITE_REPO_NAME=""` cannot
@@ -44,7 +46,7 @@ function firstNonBlank(...values) {
  * to pin a basePath without editing tracked files. The final fallback is only
  * reached OUTSIDE Actions (`GITHUB_REPOSITORY` is never unset there), so it
  * affects local builds and the local e2e run only, never a deployed artifact.
- * It is pinned to the post-rename slug.
+ * It is pinned to the current slug, `adhd-daily-coach`.
  */
 export const SITE_REPO_NAME =
   firstNonBlank(
