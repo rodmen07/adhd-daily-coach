@@ -161,7 +161,7 @@ describe("ReminderSettingsPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Download calendar reminder (.ics)" }));
 
-    expect(downloadName).toBe("focus-daily-reminder.ics");
+    expect(downloadName).toBe("adhd-daily-coach-reminder.ics");
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     const blob = createObjectURL.mock.calls[0][0];
     expect(blob.type).toBe("text/calendar;charset=utf-8");

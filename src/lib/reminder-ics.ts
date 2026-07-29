@@ -19,16 +19,46 @@ import type { ReminderPreferences } from "@/lib/reminder-preferences";
  * - TEXT values escape backslash, semicolon, comma, and newlines.
  */
 
-export const REMINDER_CALENDAR_FILE_NAME = "focus-daily-reminder.ics";
+/**
+ * The download filename only. NOT a dedup key - do not confuse it with
+ * CALENDAR_UID below.
+ *
+ * Nothing keys off this string: calendar apps dedup on the VEVENT `UID`, which
+ * is why CALENDAR_UID is frozen and this is not. It is the name that lands in
+ * the user's Downloads folder, so it is a piece of branding, and it followed
+ * the rebrand off the retired "Focus" name (was `focus-daily-reminder.ics`).
+ * Changing it re-downloads under a new filename and updates the SAME calendar
+ * event, because the UID did not move.
+ */
+export const REMINDER_CALENDAR_FILE_NAME = "adhd-daily-coach-reminder.ics";
 
 /**
- * The live GitHub Pages URL, embedded in every downloaded .ics. It cannot be
- * derived from GITHUB_REPOSITORY (this runs client-side, not at build time),
- * so it is flipped by hand to the post-rename slug. Nothing else in the repo
- * depends on it, and a stale value would silently point every calendar
- * reminder a user already imported at a dead page.
+ * The live GitHub Pages URL, embedded in every downloaded .ics.
+ *
+ * A downloaded .ics is a PERSISTED USER ARTIFACT: once imported into Google,
+ * Apple or Outlook Calendar it keeps the URL it was generated with, and
+ * CALENDAR_UID is (deliberately) frozen, so a wrong value is only repaired for
+ * people who happen to re-download later. Hand-maintaining a literal across
+ * the pending `calm-daily-coach` -> `adhd-daily-coach` repo rename therefore
+ * guarantees a dead link on one side of it whichever way the literal is set.
+ *
+ * So it is not hand-maintained. `next.config.ts` derives it from the same repo
+ * name as the basePath (`site-base-path.mjs`) and inlines it here as
+ * NEXT_PUBLIC_APP_URL through Next's `env` config. This module does run
+ * client-side, but the substitution happens at BUILD time - Next inlines
+ * `NEXT_PUBLIC_*` reads into the client bundle as literals - so a client-side
+ * module is no obstacle to deriving the value.
+ *
+ * The fallback is reached only OUTSIDE a Next build (unit tests, and any
+ * direct import from plain Node); every `next build` and `next dev` defines
+ * the variable, so it is never what a deployed .ics carries. It is pinned to
+ * the URL that is actually live today (verified HTTP 200, 2026-07-29) rather
+ * than to the post-rename URL, so that the one path that can reach it never
+ * yields a dead link. Tests assert against this exported constant rather than
+ * a duplicated literal, so the fallback can never silently disagree with them.
  */
-const APP_URL = "https://rodmen07.github.io/adhd-daily-coach/";
+export const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://rodmen07.github.io/calm-daily-coach/";
 /**
  * Stable RFC 5545 dedup key, NOT a display string. Changing it makes a
  * re-imported file create a DUPLICATE recurring event instead of updating the

@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+import { SITE_BASE_PATH } from "./site-base-path.mjs";
+
 /**
  * E2E smoke harness (v0.16, docs/design/E2E_SMOKE.md).
  *
@@ -18,18 +20,14 @@ import { defineConfig, devices } from "@playwright/test";
  * through `webServer.env` below, so the export and the server can never
  * disagree about the basePath.
  *
- * The basePath is derived exactly the way `next.config.ts` derives it (repo
- * name from `GITHUB_REPOSITORY`, new-slug fallback). If this pinned a literal
- * instead, the pending `calm-daily-coach` -> `adhd-daily-coach` repo rename
- * would build the export at one prefix and mount the server at another, and
- * serve.mjs would 404 every request by design.
+ * The basePath is IMPORTED from `site-base-path.mjs`, the same module
+ * `next.config.ts` builds the export with - not re-derived here. A second copy
+ * of the derivation could be edited alone, and then the export would be built
+ * at one prefix while the server mounted it at another, so serve.mjs would 404
+ * every request by design.
  */
 export const E2E_PORT = Number(process.env.E2E_PORT ?? 4173);
-export const E2E_BASE_PATH = `/${
-  process.env.SITE_REPO_NAME ??
-  process.env.GITHUB_REPOSITORY?.split("/")[1] ??
-  "adhd-daily-coach"
-}`;
+export const E2E_BASE_PATH = SITE_BASE_PATH;
 
 export default defineConfig({
   testDir: "e2e",

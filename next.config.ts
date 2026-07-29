@@ -1,34 +1,50 @@
 import type { NextConfig } from "next";
 
+import { SITE_BASE_PATH, SITE_URL } from "./site-base-path.mjs";
+
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
  * The GitHub Pages project-page basePath is the REPO NAME, so it is derived
- * rather than hardcoded: the repo is being renamed from `calm-daily-coach` to
- * `adhd-daily-coach`, and a hardcoded literal would 404 every asset, chunk and
- * route the instant the rename lands (or the instant this file is changed
- * ahead of it). Deriving from `GITHUB_REPOSITORY` - which every GitHub Actions
- * job injects automatically - makes the deploy correct in EITHER order, with
- * no follow-up PR and no window where the live site is broken.
+ * rather than hardcoded. The derivation - and the reason it is shared with
+ * `playwright.config.ts` and `e2e/serve.mjs` instead of copied into each -
+ * lives in `site-base-path.mjs`.
  *
- * `SITE_REPO_NAME` is a manual override for preview builds and forks that want
- * to pin a basePath without editing tracked files. The final fallback is only
- * reached locally (`GITHUB_REPOSITORY` is never unset in Actions), so it is
- * pinned to the NEW slug.
+ * WHAT THAT DERIVATION DOES NOT DO - read docs/RENAME_RUNBOOK.md before
+ * renaming the repo. It makes the NEXT BUILD correct under whatever the repo
+ * is called at that moment; it does not rebuild the artifact already deployed.
+ * A repo rename fires no workflow event, and
+ * `.github/workflows/deploy-pages.yml` triggers only on `push` to `main` and
+ * `workflow_dispatch`, so at the moment of the rename GitHub Pages keeps
+ * serving the SAME un-rebuilt artifact at the new URL with every asset still
+ * prefixed by the old slug. The live site is broken - unstyled, unhydrated, on
+ * all 13 routes - until a rebuild is triggered by hand. Renaming is therefore
+ * a two-step operation to be done back to back: rename, then immediately run
+ * `Deploy to GitHub Pages` via workflow_dispatch.
  */
-const repoName =
-  process.env.SITE_REPO_NAME ??
-  process.env.GITHUB_REPOSITORY?.split("/")[1] ??
-  "adhd-daily-coach";
-
 const nextConfig: NextConfig = {
   output: "export",
   trailingSlash: true,
   images: {
     unoptimized: true,
   },
-  basePath: isProduction ? `/${repoName}` : "",
-  assetPrefix: isProduction ? `/${repoName}/` : undefined,
+  basePath: isProduction ? SITE_BASE_PATH : "",
+  assetPrefix: isProduction ? `${SITE_BASE_PATH}/` : undefined,
+  env: {
+    /**
+     * The deployed site's own URL, derived from the same repo name as the
+     * basePath and inlined into the client bundle at build time.
+     *
+     * `src/lib/reminder-ics.ts` embeds it in every downloaded .ics file, which
+     * is a PERSISTED USER ARTIFACT: once imported into Google/Apple/Outlook it
+     * keeps whatever URL it was built with, and the .ics UID is frozen, so a
+     * wrong value is not repaired on re-import for events that already exist.
+     * A hand-maintained literal there would be wrong on one side of the rename
+     * no matter which way it was set, so it is derived here instead and there
+     * is nothing to flip.
+     */
+    NEXT_PUBLIC_APP_URL: SITE_URL,
+  },
 };
 
 export default nextConfig;

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  APP_URL,
   buildReminderCalendarIcs,
   downloadReminderCalendar,
   escapeIcsText,
@@ -64,10 +65,24 @@ describe("buildReminderCalendarIcs", () => {
 
     expect(ics).toContain("\r\n ");
 
+    // Asserted against the exported APP_URL, not a duplicated literal: the URL
+    // is derived from the repo name at build time (next.config.ts), so pinning
+    // a slug here would have to be hand-flipped at the repo rename and would
+    // fail the suite for a value the module never chose.
     const unfolded = ics.replace(/\r\n /g, "");
     expect(unfolded).toContain(
-      "DESCRIPTION:A gentle nudge from ADHD Daily Coach. Open today's plan whenever you are ready.\\nhttps://rodmen07.github.io/adhd-daily-coach/",
+      `DESCRIPTION:A gentle nudge from ADHD Daily Coach. Open today's plan whenever you are ready.\\n${APP_URL}`,
     );
+  });
+
+  it("embeds an absolute https URL for the app, not a relative or empty value", () => {
+    // The shape contract the derivation must keep: APP_URL lands bare in the
+    // DESCRIPTION text and in the URL: property, where a relative or empty
+    // string is unusable to a calendar client.
+    expect(APP_URL).toMatch(/^https:\/\/[^\s]+\/$/);
+
+    const ics = buildReminderCalendarIcs(prefs(), BEFORE_NINE)!;
+    expect(ics.replace(/\r\n /g, "")).toContain(`URL:${APP_URL}`);
   });
 
   it("is deterministic: identical preferences and clock produce identical output", () => {

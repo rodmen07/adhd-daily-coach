@@ -10,8 +10,9 @@ one path, and slices the v0.3 implementation into PR-sized work.
 
 ## 1. Context and hard constraints
 
-- The app is a Next.js static export on GitHub Pages
-  (https://rodmen07.github.io/adhd-daily-coach/). There are **no server routes**
+- The app is a Next.js static export on GitHub Pages, served under the repo-name
+  subpath (`https://rodmen07.github.io/<repo-slug>/`, today
+  https://rodmen07.github.io/calm-daily-coach/). There are **no server routes**
   and no place to run resident backend code. Anything "scheduled" must run in
   the user's browser, in someone else's cloud, or in the user's own tools
   (mail app, calendar app).
@@ -80,7 +81,7 @@ Honest limits:
   timer should re-check on `visibilitychange` to fire promptly when the user
   returns.
 - Service worker scope: a project Pages site lives under the repo-name
-  subpath (`/adhd-daily-coach/`), so any service worker must be served from
+  subpath (whatever the repo is called), so any service worker must be served from
   inside the exported subpath and can only control that scope. Fine for this
   app, but worth knowing before anyone reaches for SW-based tricks.
 - iOS Safari: the Notification API is unavailable in ordinary Safari tabs.
@@ -173,7 +174,7 @@ PII-in-CI, and approve the copy change. Not recommended (see scoring).
 How it works: when the user picks the calendar channel, the client generates
 an iCalendar file entirely in the browser from the existing preferences: one
 `VEVENT` with `RRULE:FREQ=DAILY` at the chosen time and a `VALARM` display
-alarm, offered as a download (`focus-daily-reminder.ics`). The user imports it
+alarm, offered as a download (`adhd-daily-coach-reminder.ics`). The user imports it
 once into Google Calendar, Apple Calendar, Outlook, or anything else, and
 **their own calendar app does the reminding**, forever, on every device they
 own, with the browser and site closed.

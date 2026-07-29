@@ -18,18 +18,15 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { SITE_BASE_PATH } from "../site-base-path.mjs";
+
 const OUT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "out");
 // Playwright passes E2E_BASE_PATH through webServer.env so this server and the
-// static export always agree. The fallbacks keep `node e2e/serve.mjs` usable
-// standalone, and mirror next.config.ts's repo-name derivation so the pending
-// repo rename cannot desync the two.
-const BASE_PATH =
-  process.env.E2E_BASE_PATH ??
-  `/${
-    process.env.SITE_REPO_NAME ??
-    process.env.GITHUB_REPOSITORY?.split("/")[1] ??
-    "adhd-daily-coach"
-  }`;
+// static export always agree. The fallback keeps `node e2e/serve.mjs` usable
+// standalone, and comes from the same site-base-path.mjs that next.config.ts
+// builds the export with - never a second copy of the derivation, which could
+// be edited alone and desync the server from the artifact it serves.
+const BASE_PATH = process.env.E2E_BASE_PATH ?? SITE_BASE_PATH;
 const PORT = Number(process.env.E2E_PORT ?? 4173);
 
 const MIME = {

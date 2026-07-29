@@ -36,10 +36,21 @@ is written next to.
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
-  static export on GitHub Pages at https://rodmen07.github.io/adhd-daily-coach/.
-  No server routes. The `basePath` is the repo name, derived from
-  `GITHUB_REPOSITORY` rather than hardcoded, so the rename cannot break the
-  deploy. The `calm-daily-coach` localStorage namespace stays frozen.
+  static export on GitHub Pages at https://rodmen07.github.io/calm-daily-coach/.
+  No server routes. **Display name only: the repo slug is still
+  `calm-daily-coach`** (verified 2026-07-29: `adhd-daily-coach` is a 404 both as
+  a repo and as a Pages site), as is the frozen localStorage namespace. The
+  `basePath`, `assetPrefix` and the `.ics` app URL are all derived from
+  `GITHUB_REPOSITORY` rather than hardcoded, in one shared `site-base-path.mjs`
+  that `next.config.ts`, `playwright.config.ts` and `e2e/serve.mjs` all import,
+  so no code change is needed to build correctly under either slug and the
+  export and the e2e server cannot drift apart. But that fixes the NEXT build
+  only, and the post-rename URL above goes live only after the rebuild below. A
+  rename fires no workflow event and `deploy-pages.yml` triggers only on `push`
+  to `main` and `workflow_dispatch`, so Pages keeps serving the un-rebuilt
+  artifact at the new URL with every asset still on the old prefix. The rename
+  requires one manually triggered rebuild and has an unavoidable outage window:
+  see [RENAME_RUNBOOK.md](RENAME_RUNBOOK.md).
 - Persistence: since the v0.4 flip (2026-07-19), an unset
   `NEXT_PUBLIC_CHECKIN_BACKEND` resolves to Firestore for signed-in users on
   Firebase-configured deployments and to localStorage otherwise; explicit

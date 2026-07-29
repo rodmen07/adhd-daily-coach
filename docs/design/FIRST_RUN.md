@@ -22,11 +22,16 @@ earlier today, `subscription-guard.tsx` answered `!authUser` with a full-screen
 signed-out visitor has ever seen any page of this app*. Confirmed live:
 
 ```
-curl -sL https://rodmen07.github.io/adhd-daily-coach/ -> HTTP 200
+curl -sL https://rodmen07.github.io/calm-daily-coach/ -> HTTP 200
 grep -c "Sign in required"      -> 0   (the wall is gone from the deploy)
 grep -c "Personalize your coach" -> 0   (the onboarding overlay is NOT prerendered)
 grep -c "GUEST (LOCAL)"          -> 0   (the guest badge is NOT prerendered)
 ```
+
+> Recorded evidence, not a live pointer: this is the command that was actually
+> run, at the URL that was live on 2026-07-26. Do not "update" the slug here
+> when the repo is renamed - rewriting a quoted result turns a measurement into
+> a claim that was never measured. See [../RENAME_RUNBOOK.md](../RENAME_RUNBOOK.md).
 
 That is the point of this milestone: the first-run path is now reachable for
 the first time, and it has never been exercised as a real product path. Three
