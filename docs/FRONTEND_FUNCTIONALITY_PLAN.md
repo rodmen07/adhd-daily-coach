@@ -1,4 +1,4 @@
-# Calm Daily Coach - Frontend Functionality Plan
+# ADHD Daily Coach - Frontend Functionality Plan
 
 > STATUS (2026-07-18): SUPERSEDED. All six priority items are complete (weekly insights, browser reminders,
 > and offline/sync status shipped 2026-07-18). This doc is kept as a historical completion log; forward work

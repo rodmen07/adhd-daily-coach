@@ -1,16 +1,16 @@
 /**
  * Static server that mimics GitHub Pages' shape for the exported site
  * (docs/design/E2E_SMOKE.md D3): `out/` is mounted under the production
- * `/calm-daily-coach` basePath, directory URLs serve their `index.html`,
- * the bare basePath 301-redirects to its trailing-slash form (Pages does
- * this), and unknown paths serve the exported `404.html` with a real 404.
+ * basePath, directory URLs serve their `index.html`, the bare basePath
+ * 301-redirects to its trailing-slash form (Pages does this), and unknown
+ * paths serve the exported `404.html` with a real 404.
  *
  * Deliberately dependency-free: Node's stdlib only, so `dependencies` and
  * `devDependencies` gain nothing for serving (product rule: everything new
  * in v0.16 is dev tooling, and even the tooling stays lean).
  *
  * Requests OUTSIDE the basePath 404 on purpose. Pages serves this site only
- * under /calm-daily-coach/, so an asset request that escapes the prefix is a
+ * under the repo-name prefix, so an asset request that escapes it is a
  * basePath regression the suite must see, not silently absorb.
  */
 import { createServer } from "node:http";
@@ -19,7 +19,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const OUT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "out");
-const BASE_PATH = "/calm-daily-coach";
+// Playwright passes E2E_BASE_PATH through webServer.env so this server and the
+// static export always agree. The fallbacks keep `node e2e/serve.mjs` usable
+// standalone, and mirror next.config.ts's repo-name derivation so the pending
+// repo rename cannot desync the two.
+const BASE_PATH =
+  process.env.E2E_BASE_PATH ??
+  `/${
+    process.env.SITE_REPO_NAME ??
+    process.env.GITHUB_REPOSITORY?.split("/")[1] ??
+    "adhd-daily-coach"
+  }`;
 const PORT = Number(process.env.E2E_PORT ?? 4173);
 
 const MIME = {

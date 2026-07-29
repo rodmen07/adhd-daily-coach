@@ -19,7 +19,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Focus: Your ADHD friendly self-improvement coach",
+  title: "ADHD Daily Coach: Your friendly self-improvement coach",
   description:
     "Your ADHD friendly self-improvement coach. Small, deliberate daily steps that fit how your brain works.",
 };
@@ -42,6 +42,9 @@ export default function RootLayout({
             __html: `
               (function () {
                 try {
+                  // "calm-daily-coach:" is the FROZEN legacy key namespace -
+                  // see the note in src/lib/planner-state.ts. Renaming it here
+                  // would silently drop every existing user's saved theme.
                   var savedTheme = localStorage.getItem("calm-daily-coach:theme");
                   var nextTheme = savedTheme === "light" ? "light" : "dark";
                   document.documentElement.dataset.theme = nextTheme;
@@ -60,7 +63,7 @@ export default function RootLayout({
         </a>
         <header className="site-nav-shell">
           <div className="site-nav-inner">
-            <p className="site-nav-title">Focus</p>
+            <p className="site-nav-title">ADHD Daily Coach</p>
             <div className="site-nav-actions">
               <SiteNav />
               <div className="flex items-center gap-3">

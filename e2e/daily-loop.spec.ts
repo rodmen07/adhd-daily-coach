@@ -1,4 +1,4 @@
-import { test, expect, APP_ROOT } from "./fixtures";
+import { test, expect, APP_ROOT, routeUrl } from "./fixtures";
 
 /**
  * Journey J2 - the daily loop (docs/design/E2E_SMOKE.md D1).
@@ -39,7 +39,7 @@ test.describe("J2: daily loop", () => {
     // Step 1: Focus. Pick a focus area and a dose, neither of them the boot
     // default, then generate the plan.
     await page.getByRole("link", { name: "Start today's session" }).click();
-    await expect(page).toHaveURL(/\/calm-daily-coach\/focus\/?$/);
+    await expect(page).toHaveURL(routeUrl("focus"));
 
     await page.getByRole("button", { name: "Sleep", exact: true }).click();
     await page.getByRole("radio", { name: "Deep (30 min)" }).click();
@@ -52,7 +52,7 @@ test.describe("J2: daily loop", () => {
     // focus, dose, and the dose's minute budget - proving the choices
     // travelled from /focus rather than falling back to defaults.
     await page.getByRole("link", { name: "Continue to Execute" }).click();
-    await expect(page).toHaveURL(/\/calm-daily-coach\/execute\/?$/);
+    await expect(page).toHaveURL(routeUrl("execute"));
     await expect(page.getByText("Sleep", { exact: true })).toBeVisible();
     await expect(page.getByText("deep", { exact: true })).toBeVisible();
     await expect(page.getByText("30 min", { exact: true })).toBeVisible();

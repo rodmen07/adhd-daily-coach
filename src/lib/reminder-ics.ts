@@ -21,10 +21,22 @@ import type { ReminderPreferences } from "@/lib/reminder-preferences";
 
 export const REMINDER_CALENDAR_FILE_NAME = "focus-daily-reminder.ics";
 
-const APP_URL = "https://rodmen07.github.io/calm-daily-coach/";
+/**
+ * The live GitHub Pages URL, embedded in every downloaded .ics. It cannot be
+ * derived from GITHUB_REPOSITORY (this runs client-side, not at build time),
+ * so it is flipped by hand to the post-rename slug. Nothing else in the repo
+ * depends on it, and a stale value would silently point every calendar
+ * reminder a user already imported at a dead page.
+ */
+const APP_URL = "https://rodmen07.github.io/adhd-daily-coach/";
+/**
+ * Stable RFC 5545 dedup key, NOT a display string. Changing it makes a
+ * re-imported file create a DUPLICATE recurring event instead of updating the
+ * existing one, so it survives the rebrand unchanged.
+ */
 const CALENDAR_UID = "focus-daily-reminder@rodmen07.github.io";
-const EVENT_SUMMARY = "Focus: time for today's plan";
-const EVENT_DESCRIPTION = `A gentle nudge from Focus. Open today's plan whenever you are ready.\n${APP_URL}`;
+const EVENT_SUMMARY = "ADHD Daily Coach: time for today's plan";
+const EVENT_DESCRIPTION = `A gentle nudge from ADHD Daily Coach. Open today's plan whenever you are ready.\n${APP_URL}`;
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 const MAX_LINE_OCTETS = 75;
@@ -126,7 +138,7 @@ export function buildReminderCalendarIcs(
   const logicalLines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Focus//Calm Daily Coach//EN",
+    "PRODID:-//ADHD Daily Coach//ADHD Daily Coach//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

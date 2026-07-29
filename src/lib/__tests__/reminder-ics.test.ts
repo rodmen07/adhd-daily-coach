@@ -26,7 +26,7 @@ describe("buildReminderCalendarIcs", () => {
     expect(ics!.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
     expect(ics!.endsWith("END:VCALENDAR\r\n")).toBe(true);
     expect(ics).toContain("VERSION:2.0\r\n");
-    expect(ics).toContain("PRODID:-//Focus//Calm Daily Coach//EN\r\n");
+    expect(ics).toContain("PRODID:-//ADHD Daily Coach//ADHD Daily Coach//EN\r\n");
     expect(ics).toContain("BEGIN:VEVENT\r\n");
     expect(ics).toContain("END:VEVENT\r\n");
     expect(ics).toContain("RRULE:FREQ=DAILY\r\n");
@@ -66,7 +66,7 @@ describe("buildReminderCalendarIcs", () => {
 
     const unfolded = ics.replace(/\r\n /g, "");
     expect(unfolded).toContain(
-      "DESCRIPTION:A gentle nudge from Focus. Open today's plan whenever you are ready.\\nhttps://rodmen07.github.io/calm-daily-coach/",
+      "DESCRIPTION:A gentle nudge from ADHD Daily Coach. Open today's plan whenever you are ready.\\nhttps://rodmen07.github.io/adhd-daily-coach/",
     );
   });
 

@@ -41,7 +41,8 @@ exactly the ones a browser sees.** Three from the last four days:
 
 **Fact C - the artifact has a specific production shape that `next dev` does
 not have.** `next.config.ts`: `output: "export"`, `trailingSlash: true`,
-`basePath: "/calm-daily-coach"` in production builds. The live deploy
+`basePath: "/<repo-name>"` in production builds (derived from
+`GITHUB_REPOSITORY`, so it follows a repo rename). The live deploy
 (probed today: HTTP 200, 28043 bytes on `/`, zero occurrences of the old
 spinner) serves prerendered HTML that the client then hydrates. A suite that
 walks `next dev` would test none of that shape.
@@ -119,11 +120,13 @@ whose bugs so far have all been logic-and-lifecycle, not engine-specific.
 
 **D3 - target: the real static export, served the way Pages serves it.** The
 suite runs against the `out/` directory of a production `npm run build`,
-mounted under `/calm-daily-coach` with trailing slashes - the exact shape of
+mounted under the production basePath with trailing slashes - the exact shape of
 Fact C - never against `next dev`. Serving mechanics (a tiny static file
 server, or `out/` copied into a parent directory so the basePath resolves) are
 PR1's to pick; the *contract* is that the browser URL bar reads
-`.../calm-daily-coach/` like production. Alternative: test `next dev` for
+`.../<repo-name>/` like production. Specs must express this through
+`routeUrl()` in `e2e/fixtures.ts` rather than hardcoding the slug, so a repo
+rename cannot break the suite. Alternative: test `next dev` for
 speed. Declined: it un-tests the prerender/hydrate boundary, which is half the
 reason this milestone exists (Fact B).
 
@@ -189,7 +192,7 @@ first's harness, nothing else):
       `devDependencies` and nowhere in `dependencies`;
       `static-export-surface.test.ts` still green unmodified.
 - [x] PR1 (#126, re-run green during PR2): J1 passes against the
-      production-shaped export (URL carries `/calm-daily-coach/`, trailing
+      production-shaped export (URL carries the basePath, trailing
       slash), asserting the overlay is absent from the served HTML and appears
       only after hydration, with the console-error tripwire active.
 - [x] PR1 (#126): the `e2e` CI job ran on its own PR and was observed BOTH
@@ -238,8 +241,8 @@ first's harness, nothing else):
 - **Tripwire noise.** An unconfigured-Firebase build may log to the console at
   load; if it does, the allowlist gains one documented entry rather than the
   tripwire being disabled. Discovering this is part of PR1, not a surprise.
-- **basePath serving.** The `/calm-daily-coach` mount is unusual for local
+- **basePath serving.** The repo-name mount is unusual for local
   static servers; if PR1 fights it, the fallback is copying `out/` into a
-  `calm-daily-coach/` subdirectory of a temp dir and serving the parent -
+  matching subdirectory of a temp dir and serving the parent -
   boring and reliable. What is not acceptable is dropping the basePath to make
   serving easy (that un-tests Fact C).

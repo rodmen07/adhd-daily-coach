@@ -120,7 +120,7 @@ describe("reminder notifications", () => {
 
       expect(showReminderNotification()).toBe(true);
       expect(constructed).toHaveLength(1);
-      expect(constructed[0].title).toBe("Focus");
+      expect(constructed[0].title).toBe("ADHD Daily Coach");
       expect(constructed[0].options?.body).toBe("Time for today's plan, whenever you are ready.");
       expect(constructed[0].options?.tag).toBe(REMINDER_NOTIFICATION_TAG);
     });

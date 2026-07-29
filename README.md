@@ -1,8 +1,12 @@
-# Focus: Your ADHD friendly self-improvement coach
+# ADHD Daily Coach: Your friendly self-improvement coach
+
+> Formerly "Focus", and originally "Calm Daily Coach". Only the display name
+> changed: the `calm-daily-coach` localStorage key namespace is deliberately
+> frozen so no existing user loses saved plans, journal entries or settings.
 
 A deliberate, ADHD friendly self-improvement app where users choose a daily content dose and receive exactly that amount.
 
-Live site: https://rodmen07.github.io/calm-daily-coach/
+Live site: https://rodmen07.github.io/adhd-daily-coach/
 
 Core principles:
 
@@ -53,7 +57,7 @@ Core principles:
 - This app is configured as a fully static Next.js export for GitHub Pages.
 - Plan generation, check-ins, and weekly summaries run in-browser and persist via local storage.
 - Reminders are user-driven: an in-session browser nudge, a pre-filled `mailto:` email draft, or a downloadable `.ics` calendar file the user imports themselves.
-- The browser nudge can optionally use OS notifications: permission is requested only when the user presses "Allow notifications" (never on load), notifications fire only while a Focus tab is open (there is no push service, so nothing arrives once the app is closed), and the in-page banner remains the fallback when permission is undecided, denied, or unsupported (for example iOS Safari tabs).
+- The browser nudge can optionally use OS notifications: permission is requested only when the user presses "Allow notifications" (never on load), notifications fire only while an ADHD Daily Coach tab is open (there is no push service, so nothing arrives once the app is closed), and the in-page banner remains the fallback when permission is undecided, denied, or unsupported (for example iOS Safari tabs).
 
 ## Run locally
 
@@ -141,7 +145,7 @@ The monetization strategy is tracked in [docs/MONETIZATION_PLAN.md](docs/MONETIZ
 
 - Configure `NEXT_PUBLIC_RUST_COACH_BRIDGE_URL` to enable optional Rust-powered coaching hints.
 - When configured, planner flows call the bridge with JSON payloads compatible with `new-crate-project` stdin bridge semantics.
-- If the bridge is unavailable or returns an error, calm-daily-coach automatically falls back to its local planner/check-in logic.
+- If the bridge is unavailable or returns an error, ADHD Daily Coach automatically falls back to its local planner/check-in logic.
 - GitHub Pages static deploy remains functional without this variable.
 
 ## Branch protection quality gate
@@ -177,7 +181,7 @@ Reminder preferences (opt-in, daily time, and channel) are configured from the d
 
 - Browser channel: an in-session nudge at the chosen time while the app is open (scheduling math in [src/lib/reminder-schedule.ts](src/lib/reminder-schedule.ts)).
 - Email channel: opens a prefilled `mailto:` draft that the user sends themselves ([src/lib/reminder-draft.ts](src/lib/reminder-draft.ts)).
-- Calendar channel: generates a `focus-daily-reminder.ics` file entirely in the browser ([src/lib/reminder-ics.ts](src/lib/reminder-ics.ts)) with a daily recurring event, a display alarm, and a stable UID so re-importing an updated file replaces the event in most calendar apps. The user imports the file into Google Calendar, Apple Calendar, or Outlook, and their calendar app does the reminding, even while Focus is closed. Event times are floating local times (no timezone id), so they ring at the chosen wall-clock time in most clients; Google Calendar pins floating times to the calendar's home timezone. After changing the reminder time, download and import a fresh file to replace the old event.
+- Calendar channel: generates a `focus-daily-reminder.ics` file entirely in the browser ([src/lib/reminder-ics.ts](src/lib/reminder-ics.ts)) with a daily recurring event, a display alarm, and a stable UID so re-importing an updated file replaces the event in most calendar apps. The user imports the file into Google Calendar, Apple Calendar, or Outlook, and their calendar app does the reminding, even while ADHD Daily Coach is closed. Event times are floating local times (no timezone id), so they ring at the chosen wall-clock time in most clients; Google Calendar pins floating times to the calendar's home timezone. After changing the reminder time, download and import a fresh file to replace the old event.
 
 ## API contracts
 

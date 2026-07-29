@@ -22,7 +22,7 @@ earlier today, `subscription-guard.tsx` answered `!authUser` with a full-screen
 signed-out visitor has ever seen any page of this app*. Confirmed live:
 
 ```
-curl -sL https://rodmen07.github.io/calm-daily-coach/ -> HTTP 200
+curl -sL https://rodmen07.github.io/adhd-daily-coach/ -> HTTP 200
 grep -c "Sign in required"      -> 0   (the wall is gone from the deploy)
 grep -c "Personalize your coach" -> 0   (the onboarding overlay is NOT prerendered)
 grep -c "GUEST (LOCAL)"          -> 0   (the guest badge is NOT prerendered)

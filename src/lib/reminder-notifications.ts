@@ -3,8 +3,8 @@
  * (v0.3 PR 2).
  *
  * Honest limits, stated wherever the user sees this feature:
- * - Notifications fire only while a Focus tab is open. There is no push
- *   service and no server; a static GitHub Pages site cannot deliver
+ * - Notifications fire only while an ADHD Daily Coach tab is open. There is
+ *   no push service and no server; a static GitHub Pages site cannot deliver
  *   anything once the browser or tab is closed.
  * - iOS Safari tabs do not expose the Notification API, so iPhone users
  *   keep the in-page nudge.
@@ -15,8 +15,10 @@
 
 export type NotificationPermissionState = "default" | "granted" | "denied" | "unsupported";
 
-export const REMINDER_NOTIFICATION_TITLE = "Focus";
+export const REMINDER_NOTIFICATION_TITLE = "ADHD Daily Coach";
 export const REMINDER_NOTIFICATION_BODY = "Time for today's plan, whenever you are ready.";
+// Stable collapse tag, NOT a display string: it dedups the OS notification, so
+// it keeps its original value across the rebrand.
 export const REMINDER_NOTIFICATION_TAG = "focus-daily-reminder";
 
 /**

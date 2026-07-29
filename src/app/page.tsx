@@ -616,7 +616,7 @@ export default function Home() {
               </div>
               <h2 className="text-lg font-semibold tracking-tight">Your coach plan</h2>
               <p className="mt-2 text-sm leading-6 text-slate-700">
-                Focus includes every feature in one membership after a 30-day free trial at $5/month.
+                ADHD Daily Coach includes every feature in one membership after a 30-day free trial at $5/month.
               </p>
               <p className="monetization-status mt-2 text-xs font-semibold uppercase tracking-wide">
                 {membershipView.status === "signed_out" && "Sign in to start your 30-day trial"}

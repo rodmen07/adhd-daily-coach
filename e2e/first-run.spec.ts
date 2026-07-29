@@ -1,4 +1,4 @@
-import { test, expect, APP_ROOT } from "./fixtures";
+import { test, expect, APP_ROOT, routeUrl } from "./fixtures";
 
 /**
  * Journey J1 - first run (docs/design/E2E_SMOKE.md D1).
@@ -40,7 +40,7 @@ test.describe("J1: first run", () => {
     await page.goto(APP_ROOT);
 
     // The URL bar reads the production shape (D3): basePath, trailing slash.
-    await expect(page).toHaveURL(/\/calm-daily-coach\/$/);
+    await expect(page).toHaveURL(routeUrl());
 
     // The prerendered dashboard is visible immediately.
     await expect(
