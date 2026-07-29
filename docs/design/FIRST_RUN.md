@@ -28,6 +28,11 @@ grep -c "Personalize your coach" -> 0   (the onboarding overlay is NOT prerender
 grep -c "GUEST (LOCAL)"          -> 0   (the guest badge is NOT prerendered)
 ```
 
+> Recorded evidence, not a live pointer: this is the command that was actually
+> run, at the URL that was live on 2026-07-26. Do not "update" the slug here
+> when the repo is renamed - rewriting a quoted result turns a measurement into
+> a claim that was never measured. See [../RENAME_RUNBOOK.md](../RENAME_RUNBOOK.md).
+
 That is the point of this milestone: the first-run path is now reachable for
 the first time, and it has never been exercised as a real product path. Three
 defects filed in the last two days all sit on exactly it, each found while

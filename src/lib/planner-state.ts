@@ -7,6 +7,27 @@ import {
 import { readOnboardingDefaults } from "@/lib/onboarding";
 import { DOSE_OPTIONS, FOCUS_AREAS, type DailyDose, type DailyPlan, type FocusArea } from "@/lib/plan";
 
+/**
+ * FROZEN LEGACY KEY NAMESPACE - do not "tidy" this to match the product name.
+ *
+ * The app was renamed (Calm Daily Coach -> Focus -> ADHD Daily Coach), but the
+ * `calm-daily-coach` localStorage prefix was deliberately KEPT. These keys are
+ * persisted user data: planner state, journal entries, challenges, focus
+ * sessions, reminder preferences, theme, onboarding and guest-migration
+ * markers. Renaming any of them does not migrate anything, it silently
+ * orphans it, so every existing user loses their plans and history with no
+ * error and no failing test (a repo-wide find-and-replace would rewrite the
+ * assertions too).
+ *
+ * The same frozen prefix appears in browser-checkins.ts, challenges.ts,
+ * focus-session.ts, guest-migration.ts, journal.ts, monetization.ts,
+ * onboarding.ts, reminder-preferences.ts, components/theme-toggle.tsx and the
+ * pre-hydration theme script in app/layout.tsx. If the namespace is ever
+ * really to change, it needs a read-old/write-new migration, not a rename.
+ *
+ * Note this literal is BARE and identical to the old repo slug, which is
+ * exactly what makes a blanket slug replace so dangerous here.
+ */
 const STORAGE_KEY = "calm-daily-coach";
 
 export type SavedPlannerState = {

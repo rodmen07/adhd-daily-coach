@@ -10,8 +10,9 @@ one path, and slices the v0.3 implementation into PR-sized work.
 
 ## 1. Context and hard constraints
 
-- The app is a Next.js static export on GitHub Pages
-  (https://rodmen07.github.io/calm-daily-coach/). There are **no server routes**
+- The app is a Next.js static export on GitHub Pages, served under the repo-name
+  subpath (`https://rodmen07.github.io/<repo-slug>/`, today
+  https://rodmen07.github.io/calm-daily-coach/). There are **no server routes**
   and no place to run resident backend code. Anything "scheduled" must run in
   the user's browser, in someone else's cloud, or in the user's own tools
   (mail app, calendar app).
@@ -44,8 +45,8 @@ The settings surface is already built; only the delivery mechanism is open.
 - Email channel: opens a prefilled `mailto:` draft
   ([src/lib/reminder-draft.ts](../../src/lib/reminder-draft.ts)). The user
   presses send themselves.
-- The panel copy promises: "Focus never sends anything automatically." Whatever
-  v0.3 ships, the copy must remain exactly true.
+- The panel copy promises: "ADHD Daily Coach never sends anything
+  automatically." Whatever v0.3 ships, the copy must remain exactly true.
 - Dead code note (RESOLVED 2026-07-26, PR #119): `src/lib/mailer.ts` was a
   leftover nodemailer SMTP helper from before the static-export decision.
   Nothing imported it and the static site could not run it, so it and the
@@ -79,8 +80,8 @@ Honest limits:
   aggressively after long inactivity), so the nudge can land minutes late; the
   timer should re-check on `visibilitychange` to fire promptly when the user
   returns.
-- Service worker scope: a project Pages site lives under the
-  `/calm-daily-coach/` subpath, so any service worker must be served from
+- Service worker scope: a project Pages site lives under the repo-name
+  subpath (whatever the repo is called), so any service worker must be served from
   inside the exported subpath and can only control that scope. Fine for this
   app, but worth knowing before anyone reaches for SW-based tricks.
 - iOS Safari: the Notification API is unavailable in ordinary Safari tabs.
@@ -161,8 +162,8 @@ Honest limits:
   auto-disabled after 60 days without repo activity. Per-user local times need
   timezone bookkeeping the current preferences do not store.
 - Product-rules tension: an unattended system emailing users is the exact
-  opposite of "Focus never sends anything automatically." The copy would need
-  a rewrite, and unsubscribe handling becomes a compliance obligation
+  opposite of "ADHD Daily Coach never sends anything automatically." The copy
+  would need a rewrite, and unsubscribe handling becomes a compliance obligation
   (CAN-SPAM/GDPR style), all for the least calm channel.
 
 Cost and decisions: user must pick and provision an email provider, accept
@@ -173,7 +174,7 @@ PII-in-CI, and approve the copy change. Not recommended (see scoring).
 How it works: when the user picks the calendar channel, the client generates
 an iCalendar file entirely in the browser from the existing preferences: one
 `VEVENT` with `RRULE:FREQ=DAILY` at the chosen time and a `VALARM` display
-alarm, offered as a download (`focus-daily-reminder.ics`). The user imports it
+alarm, offered as a download (`adhd-daily-coach-reminder.ics`). The user imports it
 once into Google Calendar, Apple Calendar, Outlook, or anything else, and
 **their own calendar app does the reminding**, forever, on every device they
 own, with the browser and site closed.
@@ -246,7 +247,8 @@ out-of-app delivery mechanism, plus upgrading the existing browser channel to
 the OS Notification API while a tab is open (Option 1).** It is the only path
 that gives every user, including iPhone users, a reliable daily nudge with
 zero infrastructure, zero recurring cost, zero new privacy surface, and no
-change to the "Focus never sends anything automatically" promise. Option 2
+change to the "ADHD Daily Coach never sends anything automatically" promise.
+Option 2
 (FCM push) is explicitly deferred, not rejected: it stays on the table as a
 future milestone if the user later approves Blaze billing. Option 3 (cron
 email) is rejected outright: it stores PII in CI, fights spam filters, and

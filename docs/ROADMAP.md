@@ -1,4 +1,4 @@
-# Focus (Calm Daily Coach) - Product Roadmap
+# ADHD Daily Coach - Product Roadmap
 
 Canonical forward roadmap, last audited against real git/gh state 2026-07-26. This
 document supersedes the forward-looking sections of docs/FRONTEND_FUNCTIONALITY_PLAN.md,
@@ -34,9 +34,23 @@ is written next to.
 
 ## Current state (2026-07-26)
 
-- App: "Focus: Your ADHD friendly self-improvement coach" (rebranded from Calm Daily
-  Coach in PR #59). Next.js 16 / React 19 TypeScript static export on GitHub Pages at
-  https://rodmen07.github.io/calm-daily-coach/. No server routes.
+- App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
+  "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
+  static export on GitHub Pages at https://rodmen07.github.io/calm-daily-coach/.
+  No server routes. **Display name only: the repo slug is still
+  `calm-daily-coach`** (verified 2026-07-29: `adhd-daily-coach` is a 404 both as
+  a repo and as a Pages site), as is the frozen localStorage namespace. The
+  `basePath`, `assetPrefix` and the `.ics` app URL are all derived from
+  `GITHUB_REPOSITORY` rather than hardcoded, in one shared `site-base-path.mjs`
+  that `next.config.ts`, `playwright.config.ts` and `e2e/serve.mjs` all import,
+  so no code change is needed to build correctly under either slug and the
+  export and the e2e server cannot drift apart. But that fixes the NEXT build
+  only, and the post-rename URL above goes live only after the rebuild below. A
+  rename fires no workflow event and `deploy-pages.yml` triggers only on `push`
+  to `main` and `workflow_dispatch`, so Pages keeps serving the un-rebuilt
+  artifact at the new URL with every asset still on the old prefix. The rename
+  requires one manually triggered rebuild and has an unavoidable outage window:
+  see [RENAME_RUNBOOK.md](RENAME_RUNBOOK.md).
 - Persistence: since the v0.4 flip (2026-07-19), an unset
   `NEXT_PUBLIC_CHECKIN_BACKEND` resolves to Firestore for signed-in users on
   Firebase-configured deployments and to localStorage otherwise; explicit
@@ -741,7 +755,7 @@ every overridable default:
 - PR1 [#126](https://github.com/rodmen07/calm-daily-coach/pull/126): the
   harness and journey J1. `@playwright/test` (chromium only) in
   `devDependencies`, `playwright.config.ts` + `e2e/serve.mjs` serving the real
-  static export under the production `/calm-daily-coach` basePath (D3), the
+  static export under the production repo-name basePath (D3), the
   vitest `exclude` for `e2e/**` with separation proven both ways (D5), the
   auto console-error tripwire with an empty reason-carrying allowlist, and
   `.github/workflows/e2e.yml` observed both red and green on its own PR while
@@ -769,7 +783,7 @@ ordering only, and both defects it would have pinned are now fixed, so a suite
 written today pins the correct first-run behavior.
 
 Three smoke journeys plus a console-error tripwire, run against the real
-static export served under the production `/calm-daily-coach` basePath, never
+static export served under the production repo-name basePath, never
 `next dev`. Chromium only, `@playwright/test` in `devDependencies` only. The
 new `e2e` CI job runs on every PR and main push but is **not** a required
 context: requiredness is earned by observed stability (the

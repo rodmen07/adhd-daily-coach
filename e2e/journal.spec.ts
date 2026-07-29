@@ -1,4 +1,4 @@
-import { test, expect, APP_ROOT } from "./fixtures";
+import { test, expect, APP_ROOT, routeUrl } from "./fixtures";
 
 /**
  * Journey J3 - the journal (docs/design/E2E_SMOKE.md D1).
@@ -23,7 +23,7 @@ test.describe("J3: journal", () => {
     // /journal has no onboarding overlay; a fresh context lands straight on
     // an empty journal.
     await page.goto(JOURNAL_PATH);
-    await expect(page).toHaveURL(/\/calm-daily-coach\/journal\/$/);
+    await expect(page).toHaveURL(routeUrl("journal"));
 
     // Write today's entry.
     const editor = page.getByPlaceholder("A few words are plenty.");

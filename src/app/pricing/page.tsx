@@ -19,7 +19,7 @@ export default function PricingPage() {
             Simplicity first, no tiers.
           </h1>
           <p className="mb-6 text-sm leading-6 text-slate-700 sm:text-base">
-            Every feature of Focus is included in one single direct membership model. 
+            Every feature of ADHD Daily Coach is included in one single direct membership model.
             Enjoy a completely free, unrestricted 30-day trial. Continue afterward for only $5/month.
           </p>
 

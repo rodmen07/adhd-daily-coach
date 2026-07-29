@@ -137,7 +137,7 @@ export function ReminderSettingsPanel({
       </label>
 
       <p className="field-hint mt-2">
-        Focus never sends anything automatically. Browser nudges appear only while the app is
+        ADHD Daily Coach never sends anything automatically. Browser nudges appear only while the app is
         open, email reminders open a prefilled draft in your mail app, and the calendar option
         downloads a file for you to import yourself.
       </p>
@@ -181,7 +181,7 @@ export function ReminderSettingsPanel({
               {notificationPermission === "default" ? (
                 <>
                   <p className="field-hint">
-                    Optional: allow system notifications so the nudge can reach you while Focus
+                    Optional: allow system notifications so the nudge can reach you while ADHD Daily Coach
                     is open in a tab, even when the tab is in the background. There is no push
                     service; nothing arrives once the app is closed.
                   </p>
@@ -198,7 +198,7 @@ export function ReminderSettingsPanel({
               ) : null}
               {notificationPermission === "granted" ? (
                 <p className="field-hint" aria-live="polite">
-                  System notifications are on. At your reminder time, Focus shows one quiet
+                  System notifications are on. At your reminder time, ADHD Daily Coach shows one quiet
                   notification while the app is open in a tab; nothing arrives once the app is
                   closed.
                 </p>
@@ -207,7 +207,7 @@ export function ReminderSettingsPanel({
                 <p className="field-hint" aria-live="polite">
                   Notifications are blocked for this site, so the nudge appears right here
                   instead while the app is open. If you change your mind, allow notifications in
-                  your browser&apos;s site settings; Focus will not ask again.
+                  your browser&apos;s site settings; ADHD Daily Coach will not ask again.
                 </p>
               ) : null}
               {notificationPermission === "unsupported" ? (
@@ -260,9 +260,9 @@ export function ReminderSettingsPanel({
           {prefs.channel === "calendar" ? (
             <div className="flex flex-col gap-2">
               <p className="field-hint">
-                Focus creates the file on your device; nothing is uploaded or sent. Import it
+                ADHD Daily Coach creates the file on your device; nothing is uploaded or sent. Import it
                 into Google Calendar, Apple Calendar, or Outlook, and your calendar app does the
-                reminding, even while Focus is closed.
+                reminding, even while ADHD Daily Coach is closed.
               </p>
               <div>
                 <button className="secondary-button" type="button" onClick={handleCalendarDownload}>

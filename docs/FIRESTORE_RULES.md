@@ -1,4 +1,4 @@
-# Firestore Security Rules for Focus (Calm Daily Coach)
+# Firestore Security Rules for ADHD Daily Coach
 
 Status: rules documented for the v0.4 sync-by-default flip (2026-07-19).
 Extended in v0.9 (2026-07-20) with a `users/{uid}/journal/{entryId}` match

@@ -1,4 +1,4 @@
-# Calm Daily Coach - Autonomous Dev Agent Scaffold
+# ADHD Daily Coach - Autonomous Dev Agent Scaffold
 
 This directory houses an autonomous developer agent scaffold tailored for **calm-daily-coach** React and Next.js frontend development.
 

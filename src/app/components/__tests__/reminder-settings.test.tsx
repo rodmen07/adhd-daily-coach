@@ -61,7 +61,7 @@ describe("ReminderSettingsPanel", () => {
     expect(toggle.checked).toBe(false);
     expect(
       screen.getByText(
-        "Focus never sends anything automatically. Browser nudges appear only while the app is open, email reminders open a prefilled draft in your mail app, and the calendar option downloads a file for you to import yourself.",
+        "ADHD Daily Coach never sends anything automatically. Browser nudges appear only while the app is open, email reminders open a prefilled draft in your mail app, and the calendar option downloads a file for you to import yourself.",
       ),
     ).toBeTruthy();
     expect(screen.queryByLabelText("Reminder time")).toBeNull();
@@ -130,7 +130,7 @@ describe("ReminderSettingsPanel", () => {
     expect(screen.getByRole("button", { name: "Download calendar reminder (.ics)" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Focus creates the file on your device; nothing is uploaded or sent. Import it into Google Calendar, Apple Calendar, or Outlook, and your calendar app does the reminding, even while Focus is closed.",
+        "ADHD Daily Coach creates the file on your device; nothing is uploaded or sent. Import it into Google Calendar, Apple Calendar, or Outlook, and your calendar app does the reminding, even while ADHD Daily Coach is closed.",
       ),
     ).toBeTruthy();
     expect(
@@ -161,7 +161,7 @@ describe("ReminderSettingsPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Download calendar reminder (.ics)" }));
 
-    expect(downloadName).toBe("focus-daily-reminder.ics");
+    expect(downloadName).toBe("adhd-daily-coach-reminder.ics");
     expect(createObjectURL).toHaveBeenCalledTimes(1);
     const blob = createObjectURL.mock.calls[0][0];
     expect(blob.type).toBe("text/calendar;charset=utf-8");
@@ -243,7 +243,7 @@ describe("ReminderSettingsPanel", () => {
     expect(screen.getByRole("button", { name: "Allow notifications" })).toBeTruthy();
     expect(
       screen.getByText(
-        "Optional: allow system notifications so the nudge can reach you while Focus is open in a tab, even when the tab is in the background. There is no push service; nothing arrives once the app is closed.",
+        "Optional: allow system notifications so the nudge can reach you while ADHD Daily Coach is open in a tab, even when the tab is in the background. There is no push service; nothing arrives once the app is closed.",
       ),
     ).toBeTruthy();
   });
@@ -265,7 +265,7 @@ describe("ReminderSettingsPanel", () => {
     expect(screen.queryByRole("button", { name: "Allow notifications" })).toBeNull();
     expect(
       screen.getByText(
-        "System notifications are on. At your reminder time, Focus shows one quiet notification while the app is open in a tab; nothing arrives once the app is closed.",
+        "System notifications are on. At your reminder time, ADHD Daily Coach shows one quiet notification while the app is open in a tab; nothing arrives once the app is closed.",
       ),
     ).toBeTruthy();
   });
@@ -287,7 +287,7 @@ describe("ReminderSettingsPanel", () => {
     expect(screen.queryByRole("button", { name: "Allow notifications" })).toBeNull();
     expect(
       screen.getByText(
-        "Notifications are blocked for this site, so the nudge appears right here instead while the app is open. If you change your mind, allow notifications in your browser's site settings; Focus will not ask again.",
+        "Notifications are blocked for this site, so the nudge appears right here instead while the app is open. If you change your mind, allow notifications in your browser's site settings; ADHD Daily Coach will not ask again.",
       ),
     ).toBeTruthy();
   });
@@ -305,7 +305,7 @@ describe("ReminderSettingsPanel", () => {
     expect(screen.queryByRole("button", { name: "Allow notifications" })).toBeNull();
     expect(
       screen.getByText(
-        "Notifications are blocked for this site, so the nudge appears right here instead while the app is open. If you change your mind, allow notifications in your browser's site settings; Focus will not ask again.",
+        "Notifications are blocked for this site, so the nudge appears right here instead while the app is open. If you change your mind, allow notifications in your browser's site settings; ADHD Daily Coach will not ask again.",
       ),
     ).toBeTruthy();
   });
@@ -342,7 +342,7 @@ describe("ReminderSettingsPanel", () => {
     });
 
     expect(constructed).toHaveLength(1);
-    expect(constructed[0].title).toBe("Focus");
+    expect(constructed[0].title).toBe("ADHD Daily Coach");
     expect(constructed[0].options?.body).toBe("Time for today's plan, whenever you are ready.");
     expect(screen.queryByText("Reminder: it's time for today's plan.")).toBeNull();
   });

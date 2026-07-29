@@ -40,7 +40,9 @@ layout. So the gate makes exactly one decision for all thirteen pages.
 
 **The live site really is gated.** The deployed build is Firebase-configured -
 all six `NEXT_PUBLIC_FIREBASE_*` secrets exist on the repo, and the shipped
-chunk set fetched from https://rodmen07.github.io/calm-daily-coach/ contains a
+chunk set fetched from https://rodmen07.github.io/calm-daily-coach/ (recorded
+evidence: the URL that was live when the probe was run, not a live pointer - do
+not re-slug it at the repo rename) contains a
 baked `firebaseapp.com` auth domain (presence checked, value not printed). So
 `authConfigured` is true in production and a visitor gets the real wall with a
 working Google button, not the "not configured yet" branch. The wall is the

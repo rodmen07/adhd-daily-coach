@@ -1,4 +1,4 @@
-# Calm Daily Coach Monetization Plan
+# ADHD Daily Coach Monetization Plan
 
 > STATUS (2026-07-18): PARTIALLY SUPERSEDED. The Free/Pro/Team feature-gate and Starter/Pro/Team metrics sections below are
 > retired by the single $5/month membership model; ladder steps 4 and 5 carry forward in [ROADMAP.md](ROADMAP.md).

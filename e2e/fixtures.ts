@@ -23,6 +23,17 @@ const CONSOLE_ERROR_ALLOWLIST: ReadonlyArray<{ pattern: RegExp; reason: string }
 /** The path every journey starts from, in the exact shape Pages serves. */
 export const APP_ROOT = `${E2E_BASE_PATH}/`;
 
+/**
+ * Matches an exported route under the LIVE basePath, trailing slash optional.
+ * Specs must never hardcode the repo slug in a URL assertion: the basePath is
+ * derived from the repo name, so a pinned literal breaks the whole suite on a
+ * repo rename. `E2E_BASE_PATH` holds only "/", lowercase letters and "-", all
+ * regex-literal, so no escaping is needed.
+ */
+export function routeUrl(route = ""): RegExp {
+  return new RegExp(`${E2E_BASE_PATH}/${route}${route ? "/?" : ""}$`);
+}
+
 type SmokeFixtures = {
   /** Auto fixture: arms the tripwire on every page in every journey. */
   consoleErrorTripwire: void;

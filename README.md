@@ -1,8 +1,23 @@
-# Focus: Your ADHD friendly self-improvement coach
+# ADHD Daily Coach: Your friendly self-improvement coach
+
+> Formerly "Focus", and originally "Calm Daily Coach". Only the display name
+> changed: the `calm-daily-coach` localStorage key namespace is deliberately
+> frozen so no existing user loses saved plans, journal entries or settings.
+>
+> The repo slug is still `calm-daily-coach` too. Renaming it to
+> `adhd-daily-coach` is a planned two-step operation that briefly breaks the
+> live site, because a rename fires no workflow event and Pages keeps serving
+> the un-rebuilt artifact. Read the [rename runbook](#renaming-the-repo-runbook)
+> **before** renaming.
 
 A deliberate, ADHD friendly self-improvement app where users choose a daily content dose and receive exactly that amount.
 
-Live site: https://rodmen07.github.io/calm-daily-coach/
+Live site: `https://rodmen07.github.io/<repo-slug>/`. Today that is
+**https://rodmen07.github.io/calm-daily-coach/** (verified HTTP 200 on
+2026-07-29). It becomes **https://rodmen07.github.io/adhd-daily-coach/** only
+once the rename *and* the rebuild in the [rename runbook](#renaming-the-repo-runbook)
+have both completed; GitHub Pages project URLs do not redirect, so exactly one
+of the two is live at any moment.
 
 Core principles:
 
@@ -53,7 +68,7 @@ Core principles:
 - This app is configured as a fully static Next.js export for GitHub Pages.
 - Plan generation, check-ins, and weekly summaries run in-browser and persist via local storage.
 - Reminders are user-driven: an in-session browser nudge, a pre-filled `mailto:` email draft, or a downloadable `.ics` calendar file the user imports themselves.
-- The browser nudge can optionally use OS notifications: permission is requested only when the user presses "Allow notifications" (never on load), notifications fire only while a Focus tab is open (there is no push service, so nothing arrives once the app is closed), and the in-page banner remains the fallback when permission is undecided, denied, or unsupported (for example iOS Safari tabs).
+- The browser nudge can optionally use OS notifications: permission is requested only when the user presses "Allow notifications" (never on load), notifications fire only while an ADHD Daily Coach tab is open (there is no push service, so nothing arrives once the app is closed), and the in-page banner remains the fallback when permission is undecided, denied, or unsupported (for example iOS Safari tabs).
 
 ## Run locally
 
@@ -141,7 +156,7 @@ The monetization strategy is tracked in [docs/MONETIZATION_PLAN.md](docs/MONETIZ
 
 - Configure `NEXT_PUBLIC_RUST_COACH_BRIDGE_URL` to enable optional Rust-powered coaching hints.
 - When configured, planner flows call the bridge with JSON payloads compatible with `new-crate-project` stdin bridge semantics.
-- If the bridge is unavailable or returns an error, calm-daily-coach automatically falls back to its local planner/check-in logic.
+- If the bridge is unavailable or returns an error, ADHD Daily Coach automatically falls back to its local planner/check-in logic.
 - GitHub Pages static deploy remains functional without this variable.
 
 ## Branch protection quality gate
@@ -177,7 +192,7 @@ Reminder preferences (opt-in, daily time, and channel) are configured from the d
 
 - Browser channel: an in-session nudge at the chosen time while the app is open (scheduling math in [src/lib/reminder-schedule.ts](src/lib/reminder-schedule.ts)).
 - Email channel: opens a prefilled `mailto:` draft that the user sends themselves ([src/lib/reminder-draft.ts](src/lib/reminder-draft.ts)).
-- Calendar channel: generates a `focus-daily-reminder.ics` file entirely in the browser ([src/lib/reminder-ics.ts](src/lib/reminder-ics.ts)) with a daily recurring event, a display alarm, and a stable UID so re-importing an updated file replaces the event in most calendar apps. The user imports the file into Google Calendar, Apple Calendar, or Outlook, and their calendar app does the reminding, even while Focus is closed. Event times are floating local times (no timezone id), so they ring at the chosen wall-clock time in most clients; Google Calendar pins floating times to the calendar's home timezone. After changing the reminder time, download and import a fresh file to replace the old event.
+- Calendar channel: generates an `adhd-daily-coach-reminder.ics` file entirely in the browser ([src/lib/reminder-ics.ts](src/lib/reminder-ics.ts)) with a daily recurring event, a display alarm, and a stable UID so re-importing an updated file replaces the event in most calendar apps. The filename is branding only; dedup is by the frozen `UID`, so the file was renamed off the retired "Focus" name without orphaning anyone's existing event. The user imports the file into Google Calendar, Apple Calendar, or Outlook, and their calendar app does the reminding, even while ADHD Daily Coach is closed. Event times are floating local times (no timezone id), so they ring at the chosen wall-clock time in most clients; Google Calendar pins floating times to the calendar's home timezone. After changing the reminder time, download and import a fresh file to replace the old event.
 
 ## API contracts
 
@@ -194,6 +209,41 @@ No server API routes in Pages mode.
 1. Push to `main`.
 2. Workflow [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml) builds and deploys automatically.
 3. In repository settings, set Pages source to GitHub Actions if not already set.
+
+## Renaming the repo (runbook)
+
+Renaming `calm-daily-coach` -> `adhd-daily-coach` **breaks the live site until a
+rebuild is triggered by hand.** Do the two steps back to back.
+
+Why: `basePath`, `assetPrefix` and the `.ics` app URL are all derived from
+`GITHUB_REPOSITORY` in [site-base-path.mjs](site-base-path.mjs), so no tracked
+file has to be edited for a build to be correct under the new slug. **That fixes
+the next BUILD. It does not rebuild the artifact already deployed.** A repo
+rename fires no workflow event, and `deploy-pages.yml` triggers only on `push`
+to `main` and `workflow_dispatch`, so at the instant of the rename Pages keeps
+serving the SAME un-rebuilt artifact at the new URL with every asset reference
+inside it still prefixed `/calm-daily-coach/`. All 13 routes come back unstyled
+and unhydrated. There is no ordering of the merge and the rename that avoids
+this window; keep it short.
+
+1. **Rename the repo**: GitHub -> Settings -> General -> Repository name ->
+   `adhd-daily-coach`.
+2. **Immediately trigger a rebuild** - this is the step that repairs the live
+   site, and the outage lasts until it finishes:
+   `gh workflow run "Deploy to GitHub Pages" --repo rodmen07/adhd-daily-coach`
+   (or push an empty commit to `main`), then `gh run watch`.
+3. **Verify the new URL**, and not just for a 200 - the stale artifact returns
+   200 too, so the assertion that matters is that the old prefix is gone:
+   ```bash
+   curl -sI https://rodmen07.github.io/adhd-daily-coach/            # expect 200
+   curl -sL https://rodmen07.github.io/adhd-daily-coach/ | grep -c "/calm-daily-coach/"
+   #                                                                 expect 0
+   ```
+4. **Update external links** (the `Live site` URL above, `docs/ROADMAP.md`, the
+   `Portfolio/infraportal` case study, and `git remote set-url origin`).
+
+Full detail, including everything that is a literal rather than derived and what
+must NOT be rewritten, is in [docs/RENAME_RUNBOOK.md](docs/RENAME_RUNBOOK.md).
 
 ## Dependabot updates
 
