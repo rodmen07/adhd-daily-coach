@@ -66,9 +66,9 @@ describe("buildReminderCalendarIcs", () => {
     expect(ics).toContain("\r\n ");
 
     // Asserted against the exported APP_URL, not a duplicated literal: the URL
-    // is derived from the repo name at build time (next.config.ts), so pinning
-    // a slug here would have to be hand-flipped at the repo rename and would
-    // fail the suite for a value the module never chose.
+    // is derived from the repo name at build time (`site-base-path.mjs`), so
+    // pinning a slug here would have to be hand-flipped at a repo rename and
+    // would fail the suite for a value the module never chose.
     const unfolded = ics.replace(/\r\n /g, "");
     expect(unfolded).toContain(
       `DESCRIPTION:A gentle nudge from ADHD Daily Coach. Open today's plan whenever you are ready.\\n${APP_URL}`,

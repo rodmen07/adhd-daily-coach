@@ -38,12 +38,13 @@ export const REMINDER_CALENDAR_FILE_NAME = "adhd-daily-coach-reminder.ics";
  * A downloaded .ics is a PERSISTED USER ARTIFACT: once imported into Google,
  * Apple or Outlook Calendar it keeps the URL it was generated with, and
  * CALENDAR_UID is (deliberately) frozen, so a wrong value is only repaired for
- * people who happen to re-download later. Hand-maintaining a literal across
- * the pending `calm-daily-coach` -> `adhd-daily-coach` repo rename therefore
- * guarantees a dead link on one side of it whichever way the literal is set.
+ * people who happen to re-download later. The `calm-daily-coach` ->
+ * `adhd-daily-coach` repo rename (done 2026-07-29) is the worked example: a
+ * hand-maintained literal would have been a dead link on one side of it
+ * whichever way it was set.
  *
- * So it is not hand-maintained. `next.config.ts` derives it from the same repo
- * name as the basePath (`site-base-path.mjs`) and inlines it here as
+ * So it is not hand-maintained. `site-base-path.mjs` derives it from the same
+ * repo name as the basePath, and `next.config.ts` inlines it here as
  * NEXT_PUBLIC_APP_URL through Next's `env` config. This module does run
  * client-side, but the substitution happens at BUILD time - Next inlines
  * `NEXT_PUBLIC_*` reads into the client bundle as literals - so a client-side
@@ -52,13 +53,14 @@ export const REMINDER_CALENDAR_FILE_NAME = "adhd-daily-coach-reminder.ics";
  * The fallback is reached only OUTSIDE a Next build (unit tests, and any
  * direct import from plain Node); every `next build` and `next dev` defines
  * the variable, so it is never what a deployed .ics carries. It is pinned to
- * the URL that is actually live today (verified HTTP 200, 2026-07-29) rather
- * than to the post-rename URL, so that the one path that can reach it never
- * yields a dead link. Tests assert against this exported constant rather than
- * a duplicated literal, so the fallback can never silently disagree with them.
+ * the URL that is actually live (verified HTTP 200, 2026-07-29, after the
+ * rename and rebuild; the pre-rename URL now 404s) so that the one path that
+ * can reach it never yields a dead link. Tests assert against this exported
+ * constant rather than a duplicated literal, so the fallback can never
+ * silently disagree with them.
  */
 export const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ?? "https://rodmen07.github.io/calm-daily-coach/";
+  process.env.NEXT_PUBLIC_APP_URL ?? "https://rodmen07.github.io/adhd-daily-coach/";
 /**
  * Stable RFC 5545 dedup key, NOT a display string. Changing it makes a
  * re-imported file create a DUPLICATE recurring event instead of updating the

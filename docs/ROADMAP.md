@@ -32,25 +32,25 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-07-26)
+## Current state (2026-07-29)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
-  static export on GitHub Pages at https://rodmen07.github.io/calm-daily-coach/.
-  No server routes. **Display name only: the repo slug is still
-  `calm-daily-coach`** (verified 2026-07-29: `adhd-daily-coach` is a 404 both as
-  a repo and as a Pages site), as is the frozen localStorage namespace. The
-  `basePath`, `assetPrefix` and the `.ics` app URL are all derived from
+  static export on GitHub Pages at https://rodmen07.github.io/adhd-daily-coach/.
+  No server routes. **The repo slug rename is DONE** (2026-07-29: the repo and
+  the Pages site both return 200 at `adhd-daily-coach`; the old Pages URL 404s,
+  because project URLs do not redirect). The localStorage namespace is still
+  `calm-daily-coach` and is frozen forever on purpose. The `basePath`,
+  `assetPrefix` and the `.ics` app URL are all derived from
   `GITHUB_REPOSITORY` rather than hardcoded, in one shared `site-base-path.mjs`
   that `next.config.ts`, `playwright.config.ts` and `e2e/serve.mjs` all import,
-  so no code change is needed to build correctly under either slug and the
-  export and the e2e server cannot drift apart. But that fixes the NEXT build
-  only, and the post-rename URL above goes live only after the rebuild below. A
-  rename fires no workflow event and `deploy-pages.yml` triggers only on `push`
-  to `main` and `workflow_dispatch`, so Pages keeps serving the un-rebuilt
-  artifact at the new URL with every asset still on the old prefix. The rename
-  requires one manually triggered rebuild and has an unavoidable outage window:
-  see [RENAME_RUNBOOK.md](RENAME_RUNBOOK.md).
+  so the rename needed no code change and the export and the e2e server cannot
+  drift apart. That derivation fixes the NEXT build only, which is why the
+  rename also needed one manually triggered rebuild: a rename fires no workflow
+  event and `deploy-pages.yml` triggers only on `push` to `main` and
+  `workflow_dispatch`, so until the rebuild finished Pages served the
+  un-rebuilt artifact at the new URL with every asset still on the old prefix.
+  For any future rename, see [RENAME_RUNBOOK.md](RENAME_RUNBOOK.md).
 - Persistence: since the v0.4 flip (2026-07-19), an unset
   `NEXT_PUBLIC_CHECKIN_BACKEND` resolves to Firestore for signed-in users on
   Firebase-configured deployments and to localStorage otherwise; explicit

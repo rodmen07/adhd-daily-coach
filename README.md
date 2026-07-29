@@ -1,23 +1,22 @@
 # ADHD Daily Coach: Your friendly self-improvement coach
 
-> Formerly "Focus", and originally "Calm Daily Coach". Only the display name
-> changed: the `calm-daily-coach` localStorage key namespace is deliberately
+> Formerly "Focus", and originally "Calm Daily Coach". The display name and the
+> repo slug both changed (the slug on 2026-07-29). The `calm-daily-coach`
+> localStorage key namespace did **not** and never will: it is deliberately
 > frozen so no existing user loses saved plans, journal entries or settings.
 >
-> The repo slug is still `calm-daily-coach` too. Renaming it to
-> `adhd-daily-coach` is a planned two-step operation that briefly breaks the
-> live site, because a rename fires no workflow event and Pages keeps serving
-> the un-rebuilt artifact. Read the [rename runbook](#renaming-the-repo-runbook)
-> **before** renaming.
+> The rename was a two-step operation that briefly breaks the live site,
+> because a rename fires no workflow event and Pages keeps serving the
+> un-rebuilt artifact. Read the [rename runbook](#renaming-the-repo-runbook)
+> **before** renaming this repo again.
 
 A deliberate, ADHD friendly self-improvement app where users choose a daily content dose and receive exactly that amount.
 
-Live site: `https://rodmen07.github.io/<repo-slug>/`. Today that is
-**https://rodmen07.github.io/calm-daily-coach/** (verified HTTP 200 on
-2026-07-29). It becomes **https://rodmen07.github.io/adhd-daily-coach/** only
-once the rename *and* the rebuild in the [rename runbook](#renaming-the-repo-runbook)
-have both completed; GitHub Pages project URLs do not redirect, so exactly one
-of the two is live at any moment.
+Live site: **https://rodmen07.github.io/adhd-daily-coach/** (verified HTTP 200
+on 2026-07-29, after the rename and the rebuild). GitHub Pages project URLs do
+not redirect, so the pre-rename
+`https://rodmen07.github.io/calm-daily-coach/` now returns 404 and is not a
+usable link anywhere.
 
 Core principles:
 
@@ -212,8 +211,13 @@ No server API routes in Pages mode.
 
 ## Renaming the repo (runbook)
 
-Renaming `calm-daily-coach` -> `adhd-daily-coach` **breaks the live site until a
-rebuild is triggered by hand.** Do the two steps back to back.
+**Status: the `calm-daily-coach` -> `adhd-daily-coach` rename is DONE
+(2026-07-29).** The rebuild ran, the new URL serves a working site, and the old
+Pages URL 404s. The steps below are kept as reusable guidance for any future
+rename.
+
+Renaming this repo **breaks the live site until a rebuild is triggered by
+hand.** Do the two steps back to back.
 
 Why: `basePath`, `assetPrefix` and the `.ics` app URL are all derived from
 `GITHUB_REPOSITORY` in [site-base-path.mjs](site-base-path.mjs), so no tracked
@@ -222,22 +226,21 @@ the next BUILD. It does not rebuild the artifact already deployed.** A repo
 rename fires no workflow event, and `deploy-pages.yml` triggers only on `push`
 to `main` and `workflow_dispatch`, so at the instant of the rename Pages keeps
 serving the SAME un-rebuilt artifact at the new URL with every asset reference
-inside it still prefixed `/calm-daily-coach/`. All 13 routes come back unstyled
+inside it still prefixed with the OLD slug. All 13 routes come back unstyled
 and unhydrated. There is no ordering of the merge and the rename that avoids
 this window; keep it short.
 
-1. **Rename the repo**: GitHub -> Settings -> General -> Repository name ->
-   `adhd-daily-coach`.
+1. **Rename the repo**: GitHub -> Settings -> General -> Repository name.
 2. **Immediately trigger a rebuild** - this is the step that repairs the live
    site, and the outage lasts until it finishes:
-   `gh workflow run "Deploy to GitHub Pages" --repo rodmen07/adhd-daily-coach`
+   `gh workflow run "Deploy to GitHub Pages" --repo rodmen07/<new-slug>`
    (or push an empty commit to `main`), then `gh run watch`.
 3. **Verify the new URL**, and not just for a 200 - the stale artifact returns
    200 too, so the assertion that matters is that the old prefix is gone:
    ```bash
-   curl -sI https://rodmen07.github.io/adhd-daily-coach/            # expect 200
-   curl -sL https://rodmen07.github.io/adhd-daily-coach/ | grep -c "/calm-daily-coach/"
-   #                                                                 expect 0
+   curl -sI https://rodmen07.github.io/<new-slug>/            # expect 200
+   curl -sL https://rodmen07.github.io/<new-slug>/ | grep -c "/<old-slug>/"
+   #                                                           expect 0
    ```
 4. **Update external links** (the `Live site` URL above, `docs/ROADMAP.md`, the
    `Portfolio/infraportal` case study, and `git remote set-url origin`).
