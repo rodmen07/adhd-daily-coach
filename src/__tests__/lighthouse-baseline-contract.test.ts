@@ -46,10 +46,24 @@ function read(absPath: string): string {
 const rc = createRequire(import.meta.url)("../../lighthouserc.cjs") as {
   ci: {
     collect: { url: string[]; numberOfRuns: number; startServerReadyPattern: string };
-    assert: { assertions: Record<string, [string, { minScore?: number }]> };
+    assert: {
+      assertions: Record<
+        string,
+        [string, { minScore?: number; maxNumericValue?: number }]
+      >;
+    };
     upload: { target: string };
   };
 };
+
+/**
+ * Below this, a Lighthouse score is on the saturated part of its curve: the
+ * metric is already deep in the red, and a large real regression moves the
+ * score by less than the gate's own tolerance. A floor down there is not a
+ * gate, it is a decoration - and a floor of exactly 0 cannot fail at all,
+ * since a score is never negative.
+ */
+const SATURATED_SCORE = 0.1;
 
 /** The metrics the gate is allowed to assert on. TBT stands in for INP, which
  *  Lighthouse cannot produce in navigation mode; see lighthouserc.cjs. */
@@ -70,6 +84,29 @@ describe("web vitals gate contract", () => {
       // reads, which is the difference between a gate and a decoration.
       expect(level, `${metric} must fail the run, not warn`).toBe("error");
       expect(typeof options.minScore, `${metric} needs a score floor`).toBe("number");
+    }
+  });
+
+  it("never gates a metric only by a predicate that cannot fail", () => {
+    // The generalisation of the INP rule below, learned from this repo's own
+    // first measurement: LCP came in at 0.07 and CLS at 0.06, so D1's literal
+    // `measured - 0.05` floors would have been 0.02 and 0.00. A floor of 0.00
+    // can never fail. Rejecting a dead assertion for INP and then shipping one
+    // for CLS would be the same mistake wearing a different hat.
+    //
+    // A saturated score is allowed ONLY when a raw-value ceiling is carrying
+    // the gate, because once a metric is deep in the red the raw value is the
+    // only thing that still moves usefully.
+    for (const [metric, [, options]] of Object.entries(rc.ci.assert.assertions)) {
+      const live =
+        (options.minScore ?? 0) >= SATURATED_SCORE ||
+        options.maxNumericValue !== undefined;
+      expect(
+        live,
+        `${metric} is gated only by minScore ${options.minScore}, which is on the ` +
+          `saturated part of the score curve; give it a maxNumericValue ceiling ` +
+          `or the gate cannot detect a regression in it`,
+      ).toBe(true);
     }
   });
 

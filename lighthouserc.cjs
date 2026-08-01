@@ -95,16 +95,46 @@ module.exports = {
       // belong to the QA stream's own passes, and the resulting red would say
       // "something in this repo is imperfect" rather than "this PR regressed
       // performance", which is the only question this gate exists to answer.
-      // CALIBRATION PENDING: floors are 0 on this first push on purpose, per
-      // D4 ("non-blocking on the first run"). Guessing a threshold before the
-      // runner has ever measured this artifact would gate every later PR on a
-      // number nobody observed. The first CI run on this PR writes the real
-      // scores to its job summary; the next push replaces these three zeroes
-      // with `measured - 0.05` and records the measured values in the doc.
+      // Calibrated from run 30707333707 on this PR: the median of three runs
+      // on ubuntu-latest against the real export. Every number below is
+      // measured, none is aspirational, and section 7 of the design doc holds
+      // the same values (the contract test fails if the two ever disagree).
+      //
+      // WHY TWO OF THESE CARRY A NUMERIC CEILING AS WELL AS A SCORE FLOOR
+      // ----------------------------------------------------------------
+      // D1's approved form is "a 5+ point drop fails", i.e. a floor at
+      // `measured - 0.05`. That works only while the score has room to fall.
+      // This app's first measurement came in at LCP 0.07 and CLS 0.06, so the
+      // literal floors would be 0.02 and 0.00 - and a floor of 0.00 cannot
+      // fail, because a score is never negative. Shipping that would be a
+      // dead gate reporting green forever, which is the exact thing the INP
+      // assertion was rejected for a few lines above. Rejecting it there and
+      // accepting it here would be the same mistake wearing a different hat.
+      //
+      // Lighthouse scores are a saturating curve over the raw value: once a
+      // metric is deep in the red, a large real regression barely moves the
+      // score. So for the two saturated metrics the regression signal is the
+      // RAW VALUE, and the ceilings below sit just above the worst of the
+      // three measured runs. `minScore` is kept alongside them because it is
+      // D1's approved form and it starts biting again the moment these
+      // metrics improve - which is what v0.19's perf pass is for.
+      //
+      // `total-blocking-time` needs no ceiling: at 0.96 its score floor of
+      // 0.90 is a live gate on its own.
       assertions: {
-        "largest-contentful-paint": ["error", { minScore: 0 }],
-        "cumulative-layout-shift": ["error", { minScore: 0 }],
-        "total-blocking-time": ["error", { minScore: 0 }],
+        // 6757 ms measured (6756-6758 across three runs); ceiling at 8 s.
+        "largest-contentful-paint": [
+          "error",
+          { minScore: 0.02, maxNumericValue: 8000 },
+        ],
+        // 0.752 measured, byte-identical across all three runs; ceiling 0.80.
+        "cumulative-layout-shift": [
+          "error",
+          { minScore: 0, maxNumericValue: 0.8 },
+        ],
+        // 130 ms measured (128-139 across three runs). The noisiest of the
+        // three on a shared runner, and the only one whose score gate is live.
+        "total-blocking-time": ["error", { minScore: 0.9 }],
       },
     },
     upload: {

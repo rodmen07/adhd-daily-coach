@@ -198,16 +198,62 @@ them.
 
 URL: `http://127.0.0.1:4173/adhd-daily-coach/` (the `/` route)
 
+Captured from run `30707333707`, Lighthouse 12.6.1, mobile emulation with
+simulated throttling (the Lighthouse default, and the conservative side of the
+measurement).
+
 The **floor is the load-bearing number** and so comes first: it is the value
 `lighthouserc.cjs` enforces, and the contract test pins the two to each other.
 
-| Metric | Audit id | Enforced floor | Measured score | Measured value |
-| --- | --- | --- | --- | --- |
-| Largest Contentful Paint | `largest-contentful-paint` | 0.00 | pending | pending |
-| Cumulative Layout Shift | `cumulative-layout-shift` | 0.00 | pending | pending |
-| Total Blocking Time | `total-blocking-time` | 0.00 | pending | pending |
+| Metric | Audit id | Enforced floor | Numeric ceiling | Measured score | Measured value |
+| --- | --- | --- | --- | --- | --- |
+| Largest Contentful Paint | `largest-contentful-paint` | 0.02 | 8000 ms | 0.07 | 6757 ms |
+| Cumulative Layout Shift | `cumulative-layout-shift` | 0.00 | 0.80 | 0.06 | 0.752 |
+| Total Blocking Time | `total-blocking-time` | 0.90 | — | 0.96 | 130 ms |
 
-Recalibrating is mechanical, not a judgement call: every run prints its own
-calibrated floors to the job summary, so a deliberate future change in the
-performance profile is a copy of those three numbers into `lighthouserc.cjs`
-plus this table, and the contract test fails if only one of the two is updated.
+Performance category: **0.52**. Accessibility 0.96, best practices 1.00, SEO 1.00.
+Run-to-run spread over the three runs: LCP 6756–6758 ms, CLS 0.752 exactly,
+TBT 128–139 ms.
+
+### Why two metrics also carry a numeric ceiling
+
+D1's approved form is a score floor at `measured − 0.05`, and that works only
+while the score has room to fall. The first measurement came in at LCP 0.07 and
+CLS 0.06, so the literal floors are 0.02 and **0.00** — and a floor of 0.00
+cannot fail, because a score is never negative.
+
+Shipping that would be a dead gate reporting green forever, which is exactly
+what the INP assertion was rejected for in section 6. Rejecting it there and
+accepting it here would be the same mistake wearing a different hat.
+
+Lighthouse scores are a saturating curve over the raw value: once a metric is
+deep in the red, a large real regression barely moves the score. So for the two
+saturated metrics the regression signal is the **raw value**, and the ceilings
+sit just above the worst of the three measured runs. The score floors are kept
+alongside them because they are D1's approved form and they start biting again
+the moment these metrics improve. `total-blocking-time` needs no ceiling: at
+0.96 its floor of 0.90 is a live gate on its own.
+
+`src/__tests__/lighthouse-baseline-contract.test.ts` enforces the general rule
+this came from: **no tracked metric may be gated only by a predicate that
+cannot fail.**
+
+### What the baseline immediately revealed
+
+This is the point of the milestone, and it paid for itself on the first run:
+**the entry route scores 0.52 on performance**, with a 6.8 s Largest Contentful
+Paint and a 0.752 Cumulative Layout Shift on emulated mobile. Both are well
+into Lighthouse's red band, and CLS at 0.752 means roughly three quarters of
+the viewport moves under the reader after first paint — on an app whose entire
+product premise is being calm to use with ADHD.
+
+Nobody had measured this before, and nothing in CI would have told us. Filed as
+a bug in the backlog and it is the natural seed for the v0.19 perf pass, which
+now has a CI-checkable "before" to defend its "after" against.
+
+### Recalibrating
+
+Mechanical, not a judgement call: every run prints its own calibrated floors to
+the job summary, so a deliberate future change in the performance profile is a
+copy of those numbers into `lighthouserc.cjs` plus this table — and the
+contract test fails if only one of the two is updated.
