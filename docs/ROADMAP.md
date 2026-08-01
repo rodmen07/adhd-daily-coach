@@ -1,6 +1,6 @@
 # ADHD Daily Coach - Product Roadmap
 
-Canonical forward roadmap, last audited against real git/gh state 2026-07-26. This
+Canonical forward roadmap, last audited against real git/gh state 2026-08-01. This
 document supersedes the forward-looking sections of docs/FRONTEND_FUNCTIONALITY_PLAN.md,
 docs/AUTONOMOUS_IMPLEMENTATION_PLAN.md, and docs/MONETIZATION_PLAN.md; those files remain
 as historical records with status banners.
@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-07-29)
+## Current state (2026-08-01)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
@@ -853,13 +853,24 @@ audit, plan, and every overridable default:
   is met, the pre-existing migration tests pass unchanged, and the five pinned
   gate commands are green on both PRs.
 
+### v0.18 - Web Vitals Baseline: measure performance so future optimizations are CI-checkable
+
+Defined 2026-08-01 (product-role increment). Status: awaiting user sign-off on decision D1.
+
+**Scope:** add Lighthouse CI to every PR and main push to report Core Web Vitals (LCP, CLS, INP) against the deployed Pages artifact, establish a regression gate, and capture baseline measurements. **Zero user-facing features** — this is pure instrumentation that removes the blocker preventing future "Perf Pass" milestones from being CI-verifiable. The perf pass has been the standing runner-up since v0.12, deferred on "no web-vitals baseline exists, so 'faster' is not CI-checkable" — this milestone establishes the baseline and unblocks every future optimization.
+
+**Plan and every default:** [`docs/design/WEB_VITALS_BASELINE.md`](design/WEB_VITALS_BASELINE.md), decisions D1-D5. Decision D1 (the key one, user-facing): establish a 5-point regression gate that **fails the PR** (default) or **advisory-only** (alt A) or **no gate** (alt B). All other defaults are battle-tested, RFC-quality Lighthouse team recommendations. All overridable; user confirms or edits before dev work starts.
+
+**Done when:** the `.lighthouserc.json` config and Lighthouse CI workflow integration are merged, the baseline is captured from the first run and recorded in this document, the check is non-blocking per D4, branch protection stays `["lint-and-build"]` unchanged, and the quality gate is green.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.17 have all landed, and no next milestone is defined yet** - when
-one is, this sentence is the one that goes stale, so the pass that defines it
-reads it first. (Corrected five times, three on 2026-07-26; the 2026-07-27
+through v0.17 have all landed, and v0.18 is being defined** - when the
+definition PR merges, this sentence will be the first thing the next pass
+reads, because it is the part `roadmap-milestone-status.test.ts` cannot
+mechanically check and therefore is most likely to go stale. (Corrected five times, three on 2026-07-26; the 2026-07-27
 edition broke the recurring shape for once: the previous editions asked "the
 audit that closes v0.N" to fix this sentence and the closing dev increment
 never did, so the fix always arrived one increment late via the next product
@@ -877,13 +888,13 @@ stale.)
   multiple USER-ONLY gates before any code is exercisable - not agent-doable
   now, unlike the milestones above it. (Re-checked at the v0.17 definition,
   2026-07-26: unchanged, still console-gated.)
-- Performance pass: bundle analysis, web-vitals instrumentation, Firebase SDK load
-  optimization (AUTONOMOUS plan Phase 4). Passed over at every definition since
-  v0.12 on "no web-vitals baseline exists" - noted at the v0.17 definition that
-  this objection is self-curing (the baseline IS the natural PR1 of the
-  milestone) and cannot keep deferring it forever; it lost to v0.17 on user
-  value (a measured-then-trimmed bundle vs. a guest visibly losing their
-  workspace at sign-in), not on feasibility, and is the standing runner-up.
+- Performance optimization pass (v0.19+): bundle analysis, Firebase SDK load
+  optimization, code-split tuning (AUTONOMOUS plan Phase 4). The "web-vitals
+  instrumentation" half was split out as **v0.18 above (2026-08-01)** because
+  establishing the measurement baseline first is prerequisite to making "we
+  optimized X" CI-verifiable instead of aspirational. This future milestone
+  will have a complete web-vitals baseline to measure against and defend every
+  optimization claim in CI. Still unscheduled, but v0.18 unblocks it.
 - Security hardening: replace the untouched template SECURITY.md with a real policy,
   secret scanning, dependency review (AUTONOMOUS plan Phase 5).
 - ~~Playwright E2E smoke test for the daily loop~~ (AUTONOMOUS plan Phase 6):
