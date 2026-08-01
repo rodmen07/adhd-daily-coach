@@ -336,10 +336,11 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       cannot silently give it back.)*
 - [ ] The Lighthouse job on the final PR reports **LCP ≤ 4.0 s** on `/`
       (from 6.8 s).
-      *(PR #140: 6757 ms → **5403 ms** best-of-run, score 0.07 → 0.20, on run
-      `30715170249`. Two fifths of the way; the gate now holds it at
-      `minScore: 0.15` / `≤ 6500 ms` so it cannot be given back. The rest is
-      PR3's Firebase chunk.)*
+      *(PR #140: 6757 ms → **5403 ms and 5547 ms** best-of-run across two
+      independent runs (`30715170249`, `30715529983`), score 0.07 → 0.20/0.18.
+      Two fifths of the way; the gate now holds it at `minScore: 0.13` /
+      `≤ 6500 ms` so it cannot be given back. The rest is PR3's Firebase
+      chunk.)*
 - [ ] Script transfer for `/` on the gate's harness is **≤ 1.0 MB** (from
       1.69 MB), verifiable from the same report JSON's `resource-summary`.
       *(PR #140: **21 requests / 1,445,861 B** on run `30715170249`, from 22
