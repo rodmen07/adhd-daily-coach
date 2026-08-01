@@ -929,11 +929,23 @@ Full audit, plan, and every overridable default:
   reset honored. **PR #124's regression test must pass unchanged and must not
   appear in the diff** - if it has to be edited, the fix reintroduced the
   hydration mismatch it is standing on.
-- PR2: stop shipping code the first screen cannot use. Defer Firebase and split
-  Firestore from Auth (D4); attribute the zod chunk properly and only then
-  decide whether to drop the dependency (D5). **Carries the package.json bump to
-  0.19.0 and flips this heading to DONE in the same commit**, per the
-  `roadmap-milestone-status.test.ts` contract.
+- PR2 and PR3: stop shipping code the first screen cannot use. **Planned as one
+  PR, split into two on size grounds once the file inventory was taken** - D4
+  reaches 12 runtime and 21 test files because every synchronous
+  `getFirebaseFirestore()` capability probe has to become an awaited one, while
+  D5 reaches 2 runtime files and no async boundary; the reasoning is recorded in
+  [docs/design/PERF_PASS.md](design/PERF_PASS.md) section 3.
+  - **PR2 (done, PR #140): zod leaves the entry route (D5).** Attribution ran
+    first as D5's honesty gate demanded, by counterfactual build rather than
+    marker scan: removing it takes the entry document from 1,672,898 B across 12
+    chunks to 1,389,779 B across 11, and the 301,096 B chunk disappears rather
+    than shrinking, so zod was ~94 % of it. The two schemas are now hand-written
+    over `src/lib/parse.ts`, and the zod-era `onboarding.test.ts` and
+    `plan.test.ts` are not in the diff and still pass, which is the
+    behavior-preserving receipt.
+  - **PR3 (next): defer Firebase and split Firestore from Auth (D4). Carries the
+    package.json bump to 0.19.0 and flips this heading to DONE in the same
+    commit**, per the `roadmap-milestone-status.test.ts` contract.
 - Both PRs **ratchet the gate down** in the same commit that improves the
   metric (D3): a win the gate does not defend decays back.
 - Explicitly NOT in scope: widening the gate beyond `/`, promoting the

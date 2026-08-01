@@ -7,9 +7,9 @@
  * by each caller:
  *
  * - `getOnboardingPreferences()` - "is there a complete, trustworthy record?"
- *   Validates the whole object with zod and returns null for anything else.
- *   This is the answer the dashboard needs when deciding whether a person has
- *   actually been through onboarding.
+ *   Validates the whole object and returns null for anything else. This is the
+ *   answer the dashboard needs when deciding whether a person has actually been
+ *   through onboarding.
  * - `readOnboardingDefaults()` - "which individual preferences can I use?"
  *   Validates field by field and returns null per field, so a record that is
  *   partial or partly foreign still contributes what it legitimately has. This
@@ -23,16 +23,42 @@
  * `src/__tests__/onboarding-storage-contract.test.ts` fails if a fourth
  * spelling appears.
  */
-import { z } from "zod";
+import { PARSE_FAILURE, isRecord, readEnum, type ParseResult } from "@/lib/parse";
 import { DOSE_OPTIONS, FOCUS_AREAS, type DailyDose, type FocusArea } from "@/lib/plan";
 
-export const onboardingPreferencesSchema = z.object({
-  defaultFocus: z.enum(FOCUS_AREAS),
-  defaultDose: z.enum(DOSE_OPTIONS),
-  defaultTheme: z.enum(["light", "dark"]),
-});
+const THEMES = ["light", "dark"] as const;
 
-export type OnboardingPreferences = z.infer<typeof onboardingPreferencesSchema>;
+export type OnboardingPreferences = {
+  defaultFocus: FocusArea;
+  defaultDose: DailyDose;
+  defaultTheme: (typeof THEMES)[number];
+};
+
+/**
+ * The complete-record contract. Hand-written rather than schema-generated; the
+ * primitives and the reason live in `@/lib/parse`.
+ *
+ * All three fields are required, so any one of them missing or foreign fails
+ * the whole record - that is what makes this the STRICT reader, as opposed to
+ * `readOnboardingDefaults` below.
+ */
+export const onboardingPreferencesSchema = {
+  safeParse(value: unknown): ParseResult<OnboardingPreferences> {
+    if (!isRecord(value)) {
+      return PARSE_FAILURE;
+    }
+
+    const defaultFocus = readEnum(value.defaultFocus, FOCUS_AREAS);
+    const defaultDose = readEnum(value.defaultDose, DOSE_OPTIONS);
+    const defaultTheme = readEnum(value.defaultTheme, THEMES);
+
+    if (defaultFocus === null || defaultDose === null || defaultTheme === null) {
+      return PARSE_FAILURE;
+    }
+
+    return { success: true, data: { defaultFocus, defaultDose, defaultTheme } };
+  },
+};
 
 /**
  * What the planner can salvage from the stored record, field by field. A null
@@ -91,20 +117,14 @@ export function readOnboardingDefaults(): OnboardingDefaults {
   }
 
   try {
-    const parsed = JSON.parse(stored) as {
-      defaultFocus?: FocusArea;
-      defaultDose?: DailyDose;
-    } | null;
+    const parsed: unknown = JSON.parse(stored);
+    if (!isRecord(parsed)) {
+      return noDefaults();
+    }
 
     return {
-      defaultFocus:
-        parsed?.defaultFocus && FOCUS_AREAS.includes(parsed.defaultFocus)
-          ? parsed.defaultFocus
-          : null,
-      defaultDose:
-        parsed?.defaultDose && DOSE_OPTIONS.includes(parsed.defaultDose)
-          ? parsed.defaultDose
-          : null,
+      defaultFocus: readEnum(parsed.defaultFocus, FOCUS_AREAS),
+      defaultDose: readEnum(parsed.defaultDose, DOSE_OPTIONS),
     };
   } catch {
     return noDefaults();
