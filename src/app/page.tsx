@@ -398,14 +398,19 @@ export default function Home() {
             render without a browser cannot reach this branch. That guard used
             to be what kept the overlay out of the static HTML, and it was also
             what hid the mismatch, since the initializer had already disagreed
-            with the prerender by the time this line ran. */}
+            with the prerender by the time this line ran.
+
+            The `<div className="mb-6">` that used to wrap this is gone with
+            v0.19 PR1: Onboarding now renders its own fixed, full-viewport
+            overlay (`.first-run-overlay`), so it occupies no space in this
+            column and its post-hydration arrival cannot push `section.panel`
+            down. That push was the entry route's whole 0.752 CLS. A margin on
+            an out-of-flow element would do nothing anyway. */}
         {showOnboarding && (
-          <div className="mb-6">
-            <Onboarding
-              onComplete={handleOnboardingComplete}
-              onSkip={handleOnboardingSkip}
-            />
-          </div>
+          <Onboarding
+            onComplete={handleOnboardingComplete}
+            onSkip={handleOnboardingSkip}
+          />
         )}
 
         <section className="panel mb-5">
