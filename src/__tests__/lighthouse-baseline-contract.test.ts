@@ -83,7 +83,16 @@ describe("web vitals gate contract", () => {
       // "warn" would keep the job green while printing a complaint nobody
       // reads, which is the difference between a gate and a decoration.
       expect(level, `${metric} must fail the run, not warn`).toBe("error");
-      expect(typeof options.minScore, `${metric} needs a score floor`).toBe("number");
+      // At least one predicate, of either kind. Which kind is right depends on
+      // the metric - see the saturation and noise notes in lighthouserc.cjs -
+      // but an assertion carrying neither would assert nothing at all. That
+      // is not hypothetical: with no predicate, Lighthouse CI silently
+      // substitutes a default `minScore` of 0.9, so an empty options object
+      // enforces a threshold nobody in this repo chose.
+      expect(
+        options.minScore !== undefined || options.maxNumericValue !== undefined,
+        `${metric} carries no threshold at all`,
+      ).toBe(true);
     }
   });
 
@@ -177,16 +186,22 @@ describe("web vitals gate contract", () => {
     expect(workflow).toContain("NOT a required branch-protection context");
   });
 
-  it("documents the same baseline the gate is calibrated against", () => {
-    // The doc's table is where a person looks up "how fast is this app".
-    // If it can drift from the floors below, it becomes decoration.
+  it("documents the same thresholds the gate is calibrated against", () => {
+    // The doc's table is where a person looks up "how fast is this app" and
+    // "what would fail". If it can drift from the enforced numbers, it is
+    // decoration - and this repo's most persistent defect class is prose that
+    // asserts a state the code contradicts.
     const doc = read(DOC_PATH);
     for (const metric of TRACKED) {
-      const floor = rc.ci.assert.assertions[metric][1].minScore as number;
+      const options = rc.ci.assert.assertions[metric][1];
+      const floor = options.minScore === undefined ? "—" : options.minScore.toFixed(2);
+      const ceiling =
+        options.maxNumericValue === undefined ? "—" : String(options.maxNumericValue);
       expect(
         doc,
-        `docs/design/WEB_VITALS_BASELINE.md must record the ${metric} floor of ${floor.toFixed(2)}`,
-      ).toContain(`\`${metric}\` | ${floor.toFixed(2)}`);
+        `docs/design/WEB_VITALS_BASELINE.md must carry a row reading ` +
+          `\`${metric}\` | ${floor} | ${ceiling}`,
+      ).toContain(`\`${metric}\` | ${floor} | ${ceiling}`);
     }
   });
 });
