@@ -192,6 +192,26 @@ one-off bundle analysis run) and to record the real number. **If attribution
 shows zod is a minority of that chunk, this decision is dropped and said so in
 the PR**, rather than the schemas being rewritten for a win that was not there.
 
+**ATTRIBUTION RESULT (PR2, 2026-08-01): the decision is CONFIRMED, by
+measurement rather than by marker scan.** Source maps were tried first and are
+not usable here: `productionBrowserSourceMaps: true` under Turbopack 16.2.11
+emits 26 `.map` files whose `.js` siblings do not exist in `out/`, and exactly
+one of the twelve chunks the entry document loads has a usable map. So the
+attribution was done as a **counterfactual build** instead, which answers the
+sharper question anyway ("what does removing it actually save", not "what
+share of these bytes is nominally zod's"):
+
+| Build | Scripts on `out/index.html` | Total |
+| --- | --- | --- |
+| baseline (`origin/main`, 28ad62b) | 12 | 1,672,898 B |
+| zod's two consumers hand-written | 11 | 1,389,779 B |
+
+**-283,119 bytes, and the 301,096-byte chunk disappears entirely** rather than
+shrinking, so zod was ~94 % of it. That is a majority by a wide margin and the
+schemas are worth rewriting. Method note for anyone repeating this: measure the
+scripts the ENTRY DOCUMENT references, not `out/_next/static/chunks/*`, which
+also contains every other route's chunks.
+
 **D6 (fixed): no user-visible change other than "it arrives sooner and does not
 jump".**
 
@@ -255,18 +275,55 @@ which `src/__tests__/lighthouse-baseline-contract.test.ts` enforces.
   assertion fail, and the Lighthouse job on this PR must show CLS falling from
   0.752 in the run summary the v0.18 workflow already writes.
 
-### PR2: stop shipping code the first screen cannot use
+### PR2 and PR3: stop shipping code the first screen cannot use
 
-- Attribute the two large chunks to their modules and record the real numbers
-  before changing anything (D5's honesty gate).
-- Defer Firebase per D4, splitting Firestore from Auth.
-- Replace the two zod schemas with hand-written validation and remove the
-  dependency if and only if attribution justified it, keeping the existing
-  onboarding and plan tests unchanged as the behavior-preserving receipt.
-- Re-derive the LCP ceiling from this PR's own run and update both sides (D3).
+**This half was planned as one PR and is being shipped as two.** The split is
+recorded here rather than left as a surprise in the git log, because the plan
+matching reality is this repo's most frequent defect class.
+
+The reason is size, measured rather than felt: D4 (defer Firebase) reaches
+**12 runtime files and 21 test files**, because `getFirebaseFirestore()` is
+called synchronously as a capability probe by three store factories
+(`checkin-store.ts`, `focus-session-store.ts`, `journal-store.ts`) as well as
+by `subscription-guard.tsx` and `page.tsx`, and four `firestore-*.ts` modules
+statically import `firebase/firestore`. Every one of those paths has to break
+for the SDK to leave the entry chunk, and each one turns a sync call into an
+awaited one. D5 (drop zod) reaches 2 runtime files and touches no async
+boundary at all. Shipping them together would put a mechanical dependency swap
+and a wide auth/persistence refactor in one unreviewable diff, and an auth
+regression is the worse of the two risks by a distance.
+
+**PR2 - zod leaves the entry route (D5). SHIPPED (PR #140, 2026-08-01).**
+
+- Attribution first, per D5's honesty gate: recorded in D5 above, confirmed by
+  counterfactual build (-283,119 B, chunk gone entirely).
+- The two schemas are hand-written against three primitives in
+  `src/lib/parse.ts` (`isRecord`, `readEnum`, `readBoundedString`), keeping the
+  `safeParse` shape the existing tests describe.
+- `zod` removed from `dependencies`.
+- **Behavior-preserving receipt: `src/lib/__tests__/onboarding.test.ts` and
+  `src/lib/__tests__/plan.test.ts` are not in the diff and still pass** - they
+  were written against zod and they now exercise the hand-written path.
+- Re-derives the LCP ceiling from its own run (D3).
+- Does NOT bump `package.json`: the milestone is not complete until PR3, and
+  0.19.0 with a non-DONE v0.19 heading is a red `roadmap-milestone-status
+  .test.ts` by construction. Same reasoning as v0.14 PR1 (PR #117).
+
+**PR3 - Firebase stops loading on first paint (D4). NEXT.**
+
+- Split `src/lib/firebase.ts` into a config probe with no SDK import (the
+  synchronous `isFirebaseConfigured()` that the store factories actually want)
+  and async `loadFirebaseAuth()` / `loadFirebaseFirestore()` behind dynamic
+  `import()`.
+- Move the `firebase/firestore` imports in `firestore-checkins.ts`,
+  `firestore-focus-sessions.ts`, `firestore-journal.ts` and `firestore-user.ts`
+  inside their already-async functions.
+- `use-coach-auth.ts`: `authConfigured` becomes a config read rather than
+  `getFirebaseAuth() !== null`, and the SDK loads inside the effect.
 - **Carries the `package.json` bump to 0.19.0 and flips the roadmap heading to
   DONE in the same commit**, per the `roadmap-milestone-status.test.ts`
   contract.
+- Re-derives the LCP ceiling again from its own run (D3).
 
 ## 4. Done-when (checkable)
 
@@ -279,17 +336,30 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       cannot silently give it back.)*
 - [ ] The Lighthouse job on the final PR reports **LCP ≤ 4.0 s** on `/`
       (from 6.8 s).
+      *(PR #140: 6757 ms → **5403 ms and 5547 ms** best-of-run across two
+      independent runs (`30715170249`, `30715529983`), score 0.07 → 0.20/0.18.
+      Two fifths of the way; the gate now holds it at `minScore: 0.13` /
+      `≤ 6500 ms` so it cannot be given back. The rest is PR3's Firebase
+      chunk.)*
 - [ ] Script transfer for `/` on the gate's harness is **≤ 1.0 MB** (from
       1.69 MB), verifiable from the same report JSON's `resource-summary`.
+      *(PR #140: **21 requests / 1,445,861 B** on run `30715170249`, from 22
+      requests / ~1.69 MB. Measured independently on the built `out/`, the
+      entry document's own script set went 1,672,898 B across 12 chunks →
+      1,389,779 B across 11. Not met yet and not expected to be until PR3: the
+      669,957 B Firebase chunk is most of the remaining gap.)*
 - [ ] `lighthouserc.cjs` and section 7 of
       [WEB_VITALS_BASELINE.md](WEB_VITALS_BASELINE.md) both carry the new
       numbers, and `src/__tests__/lighthouse-baseline-contract.test.ts` is green
       (it fails if they disagree).
 - [ ] `keeps the onboarding overlay out of the first render pass, so it matches
       the prerender` passes unchanged, and does not appear in either PR's diff.
-- [ ] If zod was removed: `npm ls zod` reports it absent from `dependencies`,
+- [x] If zod was removed: `npm ls zod` reports it absent from `dependencies`,
       and `src/__tests__/static-export-surface.test.ts` stays green (it fails on
       an unimported production dependency).
+      *(PR #140: `npm ls zod` now reports it only under
+      `eslint-config-next > eslint-plugin-react-hooks > zod-validation-error`,
+      i.e. a dev-tooling transitive, and `grep -n zod package.json` is empty.)*
 - [ ] The five pinned gate commands from `.github/workflows/ci.yml` are green on
       both PRs, and the `e2e` job is green (the four Playwright journeys walk
       the first-run path this milestone moves).

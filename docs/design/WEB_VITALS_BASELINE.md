@@ -208,16 +208,17 @@ best of the three runs must clear this*.
 
 | Metric | Audit id | Score floor | Numeric ceiling | Best-of-run score | Best-of-run value |
 | --- | --- | --- | --- | --- | --- |
-| Largest Contentful Paint | `largest-contentful-paint` | 0.02 | 8000 | 0.07, 0.07 | 6756.8 ms, 6757.2 ms |
+| Largest Contentful Paint | `largest-contentful-paint` | 0.13 | 6500 | 0.20, 0.18 | 5403 ms, 5547 ms |
 | Cumulative Layout Shift | `cumulative-layout-shift` | 0.95 | 0.1 | 1.00 | 0.000 |
 | Total Blocking Time | `total-blocking-time` | — | 500 | 0.96, 0.89 | 128 ms, 204 ms |
 
-Performance category: **0.52**. Accessibility 0.96, best practices 1.00, SEO 1.00.
+Performance category: **0.52** at baseline; **0.77** best-of-run as of v0.19
+PR2. Accessibility 0.96, best practices 1.00, SEO 1.00.
 
-**The CLS row is no longer a baseline row — it is a ratchet.** Its four numbers
-come from run `30713366106` (PR #139, v0.19 PR1), not from the two calibration
-runs above; every other row is still the original baseline. See *Ratcheted by
-v0.19 PR1* below.
+**Two of these rows are no longer baseline rows — they are ratchets.** CLS comes
+from run `30713366106` (PR #139, v0.19 PR1) and LCP from run `30715170249`
+(PR #140, v0.19 PR2); only the TBT row is still the original calibration. See
+*Ratcheted by v0.19 PR1* and *Ratcheted by v0.19 PR2* below.
 
 ### Ratcheted by v0.19 PR1
 
@@ -251,6 +252,50 @@ LCP and TBT are deliberately untouched here. PR1 was a layout fix and did not
 address the 1.69 MB of script the entry route downloads, which is v0.19 PR2's
 subject; ratcheting a metric a PR did not improve would just import runner
 noise into the gate.
+
+### Ratcheted by v0.19 PR2
+
+PR #140 removed `zod` from the entry route (PERF_PASS.md D5). Measured on runs
+`30715170249` and `30715529983` — **two independent runs of three, the same
+standard the original calibration was held to**:
+
+| | Before (baseline) | After (PR #140) |
+| --- | --- | --- |
+| LCP value (best of run) | 6756.8 ms, 6757.2 ms | **5403 ms, 5547 ms** |
+| LCP score (best of run) | 0.07, 0.07 | **0.20, 0.18** |
+| Script transfer (`resource-summary`) | 22 requests, ~1.69 MB | **21 requests, 1,445,861 B** |
+| `unused-javascript` savings | 1,047 KiB | 843,159 B |
+| Performance category (best of run) | 0.52 | **0.77** |
+
+Per-sample, so the noise is visible rather than hidden behind the aggregate:
+`11851, 5403, 5535` and `8984, 5558, 5547`. The first sample of each run is a
+cold-start outlier of exactly the kind `optimistic` aggregation exists to
+absorb; the four warm samples span 155 ms in total.
+
+**LCP has left the saturated region, so D1's five-point score floor does real
+work here for the second time**, exactly the mechanism the CLS ratchet above
+predicted would start biting "the moment these metrics improve".
+
+**The floor is 0.13, and it was deliberately loosened from 0.15 before merge.**
+The first run alone gave 0.20, so D1's five points read 0.15, and that is what
+this PR originally committed. The second run then came in at 0.18 — passing, but
+with only three points of headroom. Three points on a browser timing is inside
+the noise this very document records for TBT, so the floor was recalibrated
+against the WORST best-of-run rather than the first one seen: 0.18 − 0.05 =
+0.13. Calibrating a ratchet against the single flattering sample is how a gate
+starts crying wolf, and TBT's lost score floor below is what that costs.
+
+The numeric ceiling drops 8000 → **6500 ms**: the worst best-of-run 5547 ms plus
+~17 % headroom, close to the ~18 % the original 8000 carried over 6757. It is
+the looser half of the assertion, kept as the backstop for a Lighthouse scoring
+change, exactly as the CLS ceiling is. If the floor still proves noisy, the
+remedy is `numberOfRuns: 5` — tightening the aggregation — and NOT loosening the
+threshold, per the standing rule below.
+
+TBT is untouched here for the same reason PR1 left LCP alone: its best-of-run
+values in this run were 176 ms and 163 ms against a 500 ms ceiling, comfortably
+inside the noise band already documented, and a metric this PR did not set out
+to improve should not import that noise into the gate.
 
 ### Total Blocking Time gets no score floor, and that is a finding
 

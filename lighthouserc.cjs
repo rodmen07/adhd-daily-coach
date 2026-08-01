@@ -147,11 +147,37 @@ module.exports = {
       // infrastructure; that is a finding about the runner, not a softening of
       // the decision, and it is filed for the user in the backlog.
       assertions: {
-        // Best-of-run 6757 ms in BOTH runs (6756.8 and 6757.2), the most
-        // stable of the three. Ceiling at 8 s, ~18% headroom.
+        // RATCHETED by v0.19 PR2 (docs/design/PERF_PASS.md D3). Was
+        // `{ minScore: 0.02, maxNumericValue: 8000 }`, calibrated against a
+        // best-of-run 6757 ms measured in both baseline runs.
+        //
+        // PR #140 took zod off the entry route. Calibrated the same way the
+        // original baseline was — against the WORST best-of-run across two
+        // independent runs on this PR, not against one flattering sample:
+        //
+        //   run 30715170249:  11851, 5403, 5535 ms  -> best 5403 (score 0.20)
+        //   run 30715529983:   8984, 5558, 5547 ms  -> best 5547 (score 0.18)
+        //
+        // The first sample of each is a cold-start outlier of the kind
+        // `optimistic` aggregation exists to absorb; the warm samples sit
+        // within 155 ms of each other across both runs.
+        //
+        // LCP has left the saturated region, so D1's five-point floor does real
+        // work again: worst best-of-run 0.18 - 0.05 = 0.13, and that is the
+        // BINDING half. A floor of 0.15 was measured first (0.20 - 0.05, from
+        // the first run alone) and DELIBERATELY LOOSENED to 0.13 before merge
+        // when the second run came in at 0.18: three points of headroom on a
+        // browser timing is inside the noise this file already documents for
+        // TBT, and a gate that cries wolf is worse than no gate.
+        //
+        // The ceiling drops 8000 -> 6500: the worst best-of-run 5547 plus ~17%
+        // headroom, close to the ~18% the old 8000 carried over 6757. It is the
+        // looser half, kept as the backstop for an upstream scoring-curve
+        // change. If this floor still proves noisy the remedy is
+        // `numberOfRuns: 5`, never a looser threshold.
         "largest-contentful-paint": [
           "error",
-          { minScore: 0.02, maxNumericValue: 8000 },
+          { minScore: 0.13, maxNumericValue: 6500 },
         ],
         // RATCHETED by v0.19 PR1 (docs/design/PERF_PASS.md D3: a win the gate
         // does not defend decays back). Was `{ minScore: 0, maxNumericValue:

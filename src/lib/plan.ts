@@ -1,4 +1,10 @@
-import { z } from "zod";
+import {
+  PARSE_FAILURE,
+  isRecord,
+  readBoundedString,
+  readEnum,
+  type ParseResult,
+} from "@/lib/parse";
 
 const focusAreas = [
   "Career",
@@ -20,14 +26,51 @@ const focusAreas = [
 
 const doseOptions = ["light", "medium", "deep"] as const;
 
-export const dailyPlanInputSchema = z.object({
-  focus: z.enum(focusAreas),
-  dose: z.enum(doseOptions),
-  notes: z.string().max(280).optional(),
-});
-
 export type FocusArea = (typeof focusAreas)[number];
 export type DailyDose = (typeof doseOptions)[number];
+
+/** The longest note the planner accepts, in UTF-16 code units. */
+export const NOTES_MAX_LENGTH = 280;
+
+export type DailyPlanInput = {
+  focus: FocusArea;
+  dose: DailyDose;
+  notes?: string;
+};
+
+/**
+ * Validates a planner input record. Hand-written rather than schema-generated;
+ * the primitives and the reason live in `@/lib/parse`.
+ *
+ * `notes` is optional, so its three states are kept distinct: absent is fine,
+ * present-and-within-the-cap is fine, and present-but-not-a-string or over the
+ * cap fails the whole record. Treating "absent" and "invalid" alike would let
+ * a 5000-character note through as an omitted one.
+ */
+export const dailyPlanInputSchema = {
+  safeParse(value: unknown): ParseResult<DailyPlanInput> {
+    if (!isRecord(value)) {
+      return PARSE_FAILURE;
+    }
+
+    const focus = readEnum(value.focus, focusAreas);
+    const dose = readEnum(value.dose, doseOptions);
+    if (focus === null || dose === null) {
+      return PARSE_FAILURE;
+    }
+
+    if (value.notes === undefined) {
+      return { success: true, data: { focus, dose } };
+    }
+
+    const notes = readBoundedString(value.notes, NOTES_MAX_LENGTH);
+    if (notes === null) {
+      return PARSE_FAILURE;
+    }
+
+    return { success: true, data: { focus, dose, notes } };
+  },
+};
 
 export type DailyPlan = {
   date: string;
@@ -359,7 +402,7 @@ function pickActionVariant(focus: FocusArea, dose: DailyDose, date: string, note
   return selected;
 }
 
-export function buildDailyPlan(input: z.infer<typeof dailyPlanInputSchema>): DailyPlan {
+export function buildDailyPlan(input: DailyPlanInput): DailyPlan {
   const minutes = doseMinutes[input.dose];
   const date = new Date().toISOString().slice(0, 10);
 
