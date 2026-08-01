@@ -853,24 +853,32 @@ audit, plan, and every overridable default:
   is met, the pre-existing migration tests pass unchanged, and the five pinned
   gate commands are green on both PRs.
 
-### v0.18 - Web Vitals Baseline: measure performance so future optimizations are CI-checkable
+### v0.18 - Web Vitals Baseline: measure performance so future optimizations are CI-checkable (DONE)
 
-Defined 2026-08-01 (product-role increment). Status: awaiting user sign-off on decision D1.
+Defined 2026-08-01 (product-role increment, PR #135); shipped 2026-08-01 (DevSecOps-role increment). Decision D1 was approved by the user as its default on 2026-08-01.
 
-**Scope:** add Lighthouse CI to every PR and main push to report Core Web Vitals (LCP, CLS, INP) against the deployed Pages artifact, establish a regression gate, and capture baseline measurements. **Zero user-facing features** — this is pure instrumentation that removes the blocker preventing future "Perf Pass" milestones from being CI-verifiable. The perf pass has been the standing runner-up since v0.12, deferred on "no web-vitals baseline exists, so 'faster' is not CI-checkable" — this milestone establishes the baseline and unblocks every future optimization.
+**Scope:** add Lighthouse CI to every PR and main push to report Core Web Vitals against the deployed Pages artifact, establish a regression gate, and capture baseline measurements. **Zero user-facing features** — this is pure instrumentation that removes the blocker preventing future "Perf Pass" milestones from being CI-verifiable. The perf pass has been the standing runner-up since v0.12, deferred on "no web-vitals baseline exists, so 'faster' is not CI-checkable" — this milestone establishes the baseline and unblocks every future optimization.
 
-**Plan and every default:** [`docs/design/WEB_VITALS_BASELINE.md`](design/WEB_VITALS_BASELINE.md), decisions D1-D5. Decision D1 (the key one, user-facing): establish a 5-point regression gate that **fails the PR** (default) or **advisory-only** (alt A) or **no gate** (alt B). All other defaults are battle-tested, RFC-quality Lighthouse team recommendations. All overridable; user confirms or edits before dev work starts.
+**Plan and every default:** [`docs/design/WEB_VITALS_BASELINE.md`](design/WEB_VITALS_BASELINE.md), decisions D1-D5, each now annotated with what actually shipped.
 
-**Done when:** the `.lighthouserc.json` config and Lighthouse CI workflow integration are merged, the baseline is captured from the first run and recorded in this document, the check is non-blocking per D4, branch protection stays `["lint-and-build"]` unchanged, and the quality gate is green.
+DONE:
+- `.github/workflows/lighthouse.yml` runs Lighthouse CI on every PR and every main push (D5), measuring the real static export served by `e2e/serve.mjs` under the production basePath (D3).
+- `lighthouserc.cjs` pins the gate: a per-audit `minScore` floor at `measured baseline - 0.05`, which is D1's approved "5+ point drop fails the PR" in the units Lighthouse actually scores in.
+- **The tracked third metric is Total Blocking Time, not INP.** Lighthouse declares `interaction-to-next-paint` with `supportedModes: ['timespan']` and `weight: 0`, so a navigation run never produces it and an INP assertion could never fail. TBT is Lighthouse's own lab stand-in for responsiveness and carries the largest weight in the performance category. Verified at the source, recorded in section 6 of the design doc, guarded by `src/__tests__/lighthouse-baseline-contract.test.ts`, and open for user confirmation in the backlog.
+- The measured baseline is recorded in section 7 of the design doc, and every run prints its own calibrated floors to the job summary so recalibration is mechanical.
+- The check is non-blocking per D4: branch protection stays exactly `["lint-and-build"]`, the same precedent `security-audit.yml` and `e2e.yml` already set. Promoting it to required once the baseline proves stable is a filed follow-up, not an assumption.
 
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.17 have all landed, and v0.18 is being defined** - when the
-definition PR merges, this sentence will be the first thing the next pass
-reads, because it is the part `roadmap-milestone-status.test.ts` cannot
-mechanically check and therefore is most likely to go stale. (Corrected five times, three on 2026-07-26; the 2026-07-27
+through v0.18 have all landed, and no next milestone is defined yet** - the
+next product slot defines v0.19. This sentence is the part
+`roadmap-milestone-status.test.ts` cannot
+mechanically check and therefore is most likely to go stale. (Corrected six times, three on 2026-07-26; the 2026-08-01
+edition was written by the increment that SHIPPED v0.18, in the same PR as
+the heading flip, which is the pattern the 2026-07-27 note below asked for.
+The 2026-07-27
 edition broke the recurring shape for once: the previous editions asked "the
 audit that closes v0.N" to fix this sentence and the closing dev increment
 never did, so the fix always arrived one increment late via the next product

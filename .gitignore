@@ -19,6 +19,10 @@
 /blob-report/
 /playwright/.cache/
 
+# lighthouse ci (web vitals baseline, v0.18) - raw runs and rendered reports.
+# The reports are kept as a workflow artifact instead; see lighthouserc.cjs.
+/.lighthouseci/
+
 # next.js
 /.next/
 /out/
