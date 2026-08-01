@@ -75,26 +75,39 @@ is written next to.
   typecheck, tests, build) so the branch-protection check now actually gates all of
   them; it previously gated only lint and build. Verified 2026-07-26: the required
   context is exactly `["lint-and-build"]`, posted by that one consolidated job.
-  Two DevSecOps increments have since extended the safety net around it, and this
-  bullet did not mention either until now. PR #111 (2026-07-25) added
+  **Four** DevSecOps increments have since extended the safety net around it
+  (corrected from "two" 2026-08-01: the sentence was written when there were two
+  and was never re-counted). PR #111 (2026-07-25) added
   `.github/workflows/security-audit.yml`, which runs the gate's own
   `npm audit --audit-level=high` daily; it **gates nothing** and exists because that
   command queries the live advisory database, so it had flipped an unchanged main
   red four times (#99, #101, #102, #107), each time discovered reactively by the
   next PR. PR #119 (2026-07-26) added `src/__tests__/static-export-surface.test.ts`
-  after removing the last pre-static-export server code. **Seven** guard tests now
+  after removing the last pre-static-export server code. PR #127 (2026-07-27)
+  added `src/__tests__/lockfile-version-parity.test.ts`. PR #136 (2026-08-01)
+  added `.github/workflows/lighthouse.yml`, the v0.18 Web Vitals gate, which also
+  gates nothing by design. The repo now carries six workflows in total
+  (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
+  `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
+  **Nine** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
   `roadmap-milestone-status`, `onboarding-storage-contract`,
-  `auth-message-contract` (PR #123), and `lockfile-version-parity` (PR #127).
-  (This count is the file's most reliable staleness generator: written as "five"
+  `auth-message-contract` (PR #123), `lockfile-version-parity` (PR #127),
+  `lighthouse-baseline-contract` (PR #136), and `roadmap-guard-count` (PR #138).
+  (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
-  after PR #127 landed within hours of the v0.16 pass - always in exactly the
-  prose the milestone-status guard cannot read. Verified this time by
-  `ls src/__tests__/` plus the `theme-token-guard` file under
-  `src/app/__tests__/`, not by recall.)
+  after PR #127 landed within hours of the v0.16 pass, and found stale again on
+  2026-08-01 at "seven" when the real count was eight - always in exactly the
+  prose the milestone-status guard could not read. **It is no longer prose the
+  repo cannot check:** `src/__tests__/roadmap-guard-count.test.ts`, added by the
+  v0.19 definition, reads this paragraph and the real filesystem and fails when
+  the number word or the list of names disagrees with the guard suites that
+  actually exist. A defect that recurs four times is a missing check, not a
+  missing reminder, which is the same reasoning that produced
+  `roadmap-milestone-status` for the headings.)
 - Accessibility: PR #87 (2026-07-20, v0.8) added a global focus-visible ring, a
   skip-to-content link, a reduced-motion reset that covers every animated surface (it
   had previously only covered some), a single layout `<main>` landmark, aria-current
@@ -109,7 +122,7 @@ is written next to.
   insights, plan editor, browser reminders, offline/sync status) are complete as of
   2026-07-18.
 - New surfaces since the 2026-07-18 snapshot above (this bullet last extended
-  2026-07-26): `/trends`, a 4-week
+  2026-08-01): `/trends`, a 4-week
   check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
   calm focus-session timer (NF-6, PR #104) backed by a local-first
   `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
@@ -125,7 +138,14 @@ is written next to.
   (PR #126 + PR #129) added no page either but the repo's first surface outside
   jsdom: a four-journey Playwright smoke suite (`e2e/`) driven by real chromium
   against the real static export, with its own non-required `e2e` CI job.
-  package.json reads 0.16.0.
+  v0.17 (PR #131 + PR #132, 2026-07-27) added no page either: it extended
+  guest-to-account migration to slicer task history and to today's plan, so
+  signing in no longer empties the workspace a guest built. v0.18 (PR #136,
+  2026-08-01) added the repo's first performance measurement, a Lighthouse CI
+  job with its own non-required `lighthouse` context. **package.json reads
+  0.18.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale;
+  it is the one claim in this bullet that the milestone-status guard already
+  checks from the other direction, via the headings).
 - Access (corrected 2026-07-26 by v0.14): **the app is open to a signed-out
   person on every route.** Until v0.14 it was not - `subscription-guard.tsx`
   answered `!authUser` with a full-screen "Sign in required" wall via
@@ -868,16 +888,88 @@ DONE:
 - The measured baseline is recorded in section 7 of the design doc, and every run prints its own calibrated floors to the job summary so recalibration is mechanical.
 - The check is non-blocking per D4: branch protection stays exactly `["lint-and-build"]`, the same precedent `security-audit.yml` and `e2e.yml` already set. Promoting it to required once the baseline proves stable is a filed follow-up, not an assumption.
 
+### v0.19 - Perf pass: the first screen arrives calm and stops moving (agent-doable now)
+
+Defined 2026-08-01 (product-role increment), the milestone after v0.18. This is
+the milestone v0.18 was built to make possible, and it closes the HIGH bug
+v0.18's first measurement found.
+
+**Every target below is a measured number, not an aspiration.** Read out of the
+Lighthouse report JSON of run `30709755854` (the post-merge main run of PR
+#137), not inferred: performance 0.50, LCP 6.8 s of which **93 % is render
+delay** (TTFB 454 ms, load delay 0, load time 0, render delay 6371 ms), CLS
+0.752, TTI 12.9 s, 22 scripts totalling 1.69 MB with 1,047 KiB reported unused
+on this route.
+
+Both headline numbers have a named cause:
+
+- **CLS 0.752 is one single shift**, and the node that moves is
+  `main#main-content > div.page-shell > div.mx-auto > section.panel`. The only
+  thing that can appear above it is the first-run onboarding block, which
+  `out/index.html` does not contain (`grep -c 'onboarding-container'` returns 0,
+  by PR #124's design) and which hydration then raises **in normal flow**,
+  pushing the whole dashboard down. On an app whose premise is being calm to use
+  with ADHD, three quarters of the viewport moving under the reader is the
+  product contradicting itself.
+- **LCP is waiting on script, not on the network.** Nothing about the LCP
+  element is late to download; it is late to render. The largest chunk on the
+  route is 670 KB carrying `@firebase/app`, `@firebase/auth` and
+  `@firebase/firestore` with **531 KiB unused here**, pulled in by
+  `src/lib/firebase.ts` through `use-coach-auth.ts` through
+  `subscription-guard.tsx` through `layout.tsx`, so every page of this app
+  downloads the whole Firebase SDK. The second largest is 295 KiB with 224 KiB
+  unused and carries `zod`, whose only two consumers in this repo are a
+  three-field schema and a three-field schema.
+
+Full audit, plan, and every overridable default:
+[docs/design/PERF_PASS.md](design/PERF_PASS.md), decisions D1 to D7.
+
+- PR1: stop the shift. Render the first-run overlay out of normal flow (D1),
+  with focus move, Escape to skip, focus containment and the v0.8 reduced-motion
+  reset honored. **PR #124's regression test must pass unchanged and must not
+  appear in the diff** - if it has to be edited, the fix reintroduced the
+  hydration mismatch it is standing on.
+- PR2: stop shipping code the first screen cannot use. Defer Firebase and split
+  Firestore from Auth (D4); attribute the zod chunk properly and only then
+  decide whether to drop the dependency (D5). **Carries the package.json bump to
+  0.19.0 and flips this heading to DONE in the same commit**, per the
+  `roadmap-milestone-status.test.ts` contract.
+- Both PRs **ratchet the gate down** in the same commit that improves the
+  metric (D3): a win the gate does not defend decays back.
+- Explicitly NOT in scope: widening the gate beyond `/`, promoting the
+  `lighthouse` context to required (both already filed as their own follow-ups),
+  any visual redesign or copy change, images (the report shows zero on this
+  route), and fonts (`font-display` already scores 1).
+- **Two harness divergences were confirmed during this design pass and are
+  recorded rather than fixed (D7):** `e2e/serve.mjs` serves uncompressed while
+  GitHub Pages serves gzip (measured on the live site: the 13 assets the
+  deployed entry document references are 1,751,261 bytes uncompressed and
+  494,416 bytes gzipped), and the Lighthouse build receives no
+  `NEXT_PUBLIC_FIREBASE_*` values while the deployed build does. The gate stays
+  a valid relative regression detector either way, but its absolute numbers are
+  pessimistic for a real visitor, and this file should not be read as saying
+  otherwise.
+- Done when: the checklist in
+  [docs/design/PERF_PASS.md section 4](design/PERF_PASS.md#4-done-when-checkable)
+  is met - CLS ≤ 0.10 and LCP ≤ 4.0 s reported by the gate's own job, script
+  transfer ≤ 1.0 MB, `lighthouserc.cjs` and WEB_VITALS_BASELINE.md section 7
+  carrying the new numbers with the contract test green, and the five pinned
+  gate commands plus the `e2e` job green on both PRs.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.18 have all landed, and no next milestone is defined yet** - the
-next product slot defines v0.19. This sentence is the part
+through v0.18 have all landed and v0.19 is DEFINED and open above** (PR #138,
+2026-08-01), so the dev queue is not empty and the next dev slot is v0.19 PR1,
+not filler. This sentence is the part
 `roadmap-milestone-status.test.ts` cannot
-mechanically check and therefore is most likely to go stale. (Corrected six times, three on 2026-07-26; the 2026-08-01
+mechanically check and therefore is most likely to go stale. (Corrected seven times, three on 2026-07-26; the 2026-08-01
 edition was written by the increment that SHIPPED v0.18, in the same PR as
-the heading flip, which is the pattern the 2026-07-27 note below asked for.
+the heading flip, which is the pattern the 2026-07-27 note below asked for,
+and then rewritten hours later by the increment that DEFINED v0.19, because
+defining a milestone falsifies "no next milestone is defined yet" exactly as
+reliably as shipping one falsifies a heading.
 The 2026-07-27
 edition broke the recurring shape for once: the previous editions asked "the
 audit that closes v0.N" to fix this sentence and the closing dev increment
@@ -896,13 +988,15 @@ stale.)
   multiple USER-ONLY gates before any code is exercisable - not agent-doable
   now, unlike the milestones above it. (Re-checked at the v0.17 definition,
   2026-07-26: unchanged, still console-gated.)
-- Performance optimization pass (v0.19+): bundle analysis, Firebase SDK load
-  optimization, code-split tuning (AUTONOMOUS plan Phase 4). The "web-vitals
-  instrumentation" half was split out as **v0.18 above (2026-08-01)** because
-  establishing the measurement baseline first is prerequisite to making "we
-  optimized X" CI-verifiable instead of aspirational. This future milestone
-  will have a complete web-vitals baseline to measure against and defend every
-  optimization claim in CI. Still unscheduled, but v0.18 unblocks it.
+- ~~Performance optimization pass (v0.19+): bundle analysis, Firebase SDK load
+  optimization, code-split tuning (AUTONOMOUS plan Phase 4)~~: **promoted into
+  v0.19 above (2026-08-01)**; no longer just a candidate. It had been the
+  standing runner-up since v0.12, deferred every time on "no web-vitals baseline
+  exists, so 'faster' is not CI-checkable"; v0.18 retired that objection on
+  2026-08-01 and its first measurement named the targets the same day. The
+  "code-split tuning" half of the original wording is carried forward in v0.19's
+  D4 (defer Firebase, split Firestore from Auth); "bundle analysis" is carried
+  forward as D5's attribution gate rather than as an end in itself.
 - Security hardening: replace the untouched template SECURITY.md with a real policy,
   secret scanning, dependency review (AUTONOMOUS plan Phase 5).
 - ~~Playwright E2E smoke test for the daily loop~~ (AUTONOMOUS plan Phase 6):
