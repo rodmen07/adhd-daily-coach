@@ -147,11 +147,28 @@ module.exports = {
       // infrastructure; that is a finding about the runner, not a softening of
       // the decision, and it is filed for the user in the backlog.
       assertions: {
-        // Best-of-run 6757 ms in BOTH runs (6756.8 and 6757.2), the most
-        // stable of the three. Ceiling at 8 s, ~18% headroom.
+        // RATCHETED by v0.19 PR2 (docs/design/PERF_PASS.md D3). Was
+        // `{ minScore: 0.02, maxNumericValue: 8000 }`, calibrated against a
+        // best-of-run 6757 ms measured in both baseline runs.
+        //
+        // PR #140 took zod off the entry route and run 30715170249 measured
+        // best-of-run LCP 5403 ms at score 0.20 (samples: 11851, 5403, 5535 —
+        // the first a cold-start outlier of the kind `optimistic` exists to
+        // absorb, the two warm ones 132 ms apart).
+        //
+        // So LCP has left the saturated region and D1's five-point floor does
+        // real work again: 0.20 - 0.05 = 0.15, which is the BINDING half. The
+        // ceiling drops 8000 -> 6500, the measured 5403 plus ~20% headroom —
+        // the same proportional headroom 8000 carried over 6757 — and stays as
+        // the backstop for an upstream scoring-curve change.
+        //
+        // Caveat recorded in WEB_VITALS_BASELINE.md section 7: this rests on
+        // ONE run of three, not two independent runs like the original
+        // calibration. If it proves noisy the remedy is `numberOfRuns: 5`,
+        // never a looser threshold.
         "largest-contentful-paint": [
           "error",
-          { minScore: 0.02, maxNumericValue: 8000 },
+          { minScore: 0.15, maxNumericValue: 6500 },
         ],
         // RATCHETED by v0.19 PR1 (docs/design/PERF_PASS.md D3: a win the gate
         // does not defend decays back). Was `{ minScore: 0, maxNumericValue:
