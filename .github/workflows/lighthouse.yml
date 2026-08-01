@@ -1,0 +1,101 @@
+# Web Vitals baseline and regression gate (v0.18,
+# docs/design/WEB_VITALS_BASELINE.md).
+#
+# Runs on every PR and every main push (design decision D5) and is
+# deliberately NOT a required branch-protection context (design decision D4):
+# a browser-timing gate must earn requiredness through observed stability
+# first, exactly the precedent security-audit.yml (PR #111) and e2e.yml
+# (PR #126) already set here. Branch protection stays exactly
+# ["lint-and-build"], and a follow-up product item owns the decision to
+# promote this once the baseline has held for a while.
+#
+# WHY THIS IS ITS OWN FILE rather than steps appended to deploy-pages.yml,
+# which is where the design doc's technical plan put it: deploy-pages.yml
+# triggers on `push: main` only, so putting the job there would measure
+# nothing on the PR that introduced the regression - it would report it after
+# the deploy, which is the wrong end of the merge. It would also put a
+# browser-timing step inside the deployment path, where a flake stops the
+# site from shipping. Measuring is not deploying, so they are separate
+# workflows.
+#
+# The three Lighthouse CI phases are run as SEPARATE steps rather than via
+# `lhci autorun`, for one reason: autorun stops at the first failing phase, so
+# a red gate would leave no report and no summary - exactly the run a person
+# most needs to read. Split this way, collect and upload and the summary
+# always happen, and `assert` is the last step, so a red on this job means
+# "the gate fired" and nothing else.
+
+name: Web Vitals
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-vitals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The measured artifact is the real static export, served by the same
+      # e2e/serve.mjs under the same production basePath (design decision D3).
+      # lighthouserc.cjs starts and stops that server itself.
+      - name: Build the static export
+        run: npm run build
+
+      # Pinned to an exact version, not a range: this tool decides whether a
+      # PR merges, and a floating minor of Lighthouse can move a metric's
+      # scoring curve, which would look like a code regression. Installed
+      # globally rather than added to package.json on purpose - Lighthouse
+      # pulls a large tree, and everything in this repo's dependencies is
+      # scanned by the BLOCKING `npm audit --audit-level=high` step in ci.yml,
+      # which a fresh advisory in CI-only tooling would then wedge (the exact
+      # incident behind PRs #99, #101, #102, #107).
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.15.1
+
+      - name: Collect Lighthouse runs
+        run: lhci collect --config=./lighthouserc.cjs
+
+      - name: Save the reports
+        if: always()
+        run: lhci upload --config=./lighthouserc.cjs
+
+      - name: Write the measured Web Vitals to the run summary
+        if: always()
+        run: node scripts/lighthouse-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-report-${{ github.run_id }}
+          path: .lighthouseci/report/
+          retention-days: 7
+
+      # THE GATE. Last on purpose (see the header note): everything above is
+      # measurement and reporting, so a red on this job is always this step,
+      # and always means a tracked metric fell more than 5 points below the
+      # baseline recorded in docs/design/WEB_VITALS_BASELINE.md.
+      - name: Assert no Web Vitals regression
+        run: lhci assert --config=./lighthouserc.cjs
