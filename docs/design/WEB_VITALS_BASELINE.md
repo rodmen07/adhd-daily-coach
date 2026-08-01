@@ -209,10 +209,48 @@ best of the three runs must clear this*.
 | Metric | Audit id | Score floor | Numeric ceiling | Best-of-run score | Best-of-run value |
 | --- | --- | --- | --- | --- | --- |
 | Largest Contentful Paint | `largest-contentful-paint` | 0.02 | 8000 | 0.07, 0.07 | 6756.8 ms, 6757.2 ms |
-| Cumulative Layout Shift | `cumulative-layout-shift` | 0.00 | 0.8 | 0.06, 0.06 | 0.752, 0.752 |
+| Cumulative Layout Shift | `cumulative-layout-shift` | 0.95 | 0.1 | 1.00 | 0.000 |
 | Total Blocking Time | `total-blocking-time` | — | 500 | 0.96, 0.89 | 128 ms, 204 ms |
 
 Performance category: **0.52**. Accessibility 0.96, best practices 1.00, SEO 1.00.
+
+**The CLS row is no longer a baseline row — it is a ratchet.** Its four numbers
+come from run `30713366106` (PR #139, v0.19 PR1), not from the two calibration
+runs above; every other row is still the original baseline. See *Ratcheted by
+v0.19 PR1* below.
+
+### Ratcheted by v0.19 PR1
+
+`docs/design/PERF_PASS.md` D3: **a win the gate does not defend decays back**,
+so each PR of the perf pass re-derives its own ceilings from its own measured
+run and updates this table in the same commit.
+
+PR #139 rendered the first-run onboarding panel out of normal flow. Measured on
+run `30713366106`, three runs, same harness as above:
+
+| | Before (baseline) | After (PR #139) |
+| --- | --- | --- |
+| CLS value | 0.752 in all six runs | **0.000 in all three runs** |
+| CLS score | 0.06 | **1.00** |
+| `layout-shifts` entries | one, carrying all of it | **zero** |
+| Performance category | 0.52 | 0.73 (best of run; the third run's TBT noise pulled one sample to 0.50) |
+
+Not a smaller shift: no shift. That is the confirmation that the report's
+attribution was right — the single moving node was `section.panel`, and the
+only thing that could appear above it was the first-run panel.
+
+The new floor is D1's approved form at last doing the work: 1.00 − 0.05 =
+**0.95**, roughly a raw CLS of 0.05, and it is now the binding half of the
+assertion. The 0.10 ceiling is D2's target (the Core Web Vitals "good"
+boundary) kept as a backstop for the case an upstream Lighthouse moves the
+scoring curve. A ceiling of exactly 0.0 was rejected: it would fail an honest
+PR over a 0.001 shift, and a gate that cries wolf is the failure mode TBT's
+missing score floor already documents below.
+
+LCP and TBT are deliberately untouched here. PR1 was a layout fix and did not
+address the 1.69 MB of script the entry route downloads, which is v0.19 PR2's
+subject; ratcheting a metric a PR did not improve would just import runner
+noise into the gate.
 
 ### Total Blocking Time gets no score floor, and that is a finding
 
@@ -252,8 +290,18 @@ deep in the red, a large real regression barely moves the score. So for the two
 saturated metrics the regression signal is the **raw value**, and the ceilings
 sit just above the worst of the three measured runs. The score floors are kept
 alongside them because they are D1's approved form and they start biting again
-the moment these metrics improve. `total-blocking-time` needs no ceiling: at
-0.96 its floor of 0.90 is a live gate on its own.
+the moment these metrics improve.
+
+**That last sentence has since come true, which is why this subsection is now
+partly history.** v0.19 PR1 took CLS from 0.752 to 0.000, so its floor was
+ratcheted to 0.95 and is a live gate rather than a decoration; only
+`largest-contentful-paint` is still gated primarily by its raw value. Two
+sentences here were also stale on arrival and are corrected in the same edit
+rather than left to harden: the original text read *"the two saturated metrics"*
+counting LCP and CLS, and closed with *"`total-blocking-time` needs no ceiling:
+at 0.96 its floor of 0.90 is a live gate on its own"* — which is the opposite of
+what shipped. TBT has **no score floor and a 500 ms ceiling**, for the runner-
+noise reason the subsection immediately above spells out with its evidence.
 
 `src/__tests__/lighthouse-baseline-contract.test.ts` enforces the general rule
 this came from: **no tracked metric may be gated only by a predicate that

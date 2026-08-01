@@ -233,7 +233,15 @@ recalibration and no other change in the same PR.
 
 ## 3. Technical plan
 
-### PR1: stop the shift
+### PR1: stop the shift — SHIPPED (PR #139, 2026-08-01)
+
+Measured on the PR's own Lighthouse run `30713366106`: **CLS 0.752 → 0.000 in
+all three runs, score 0.06 → 1.00, and `layout-shifts` reports zero entries** —
+not a smaller shift, no shift. That is also the confirmation that section 0's
+attribution was correct. The CLS ceiling was ratcheted in the same PR (D3) to
+`minScore: 0.95, maxNumericValue: 0.1`, and section 7 of
+[WEB_VITALS_BASELINE.md](WEB_VITALS_BASELINE.md) carries the same two numbers,
+which `src/__tests__/lighthouse-baseline-contract.test.ts` enforces.
 
 - Render the first-run onboarding block out of normal flow per D1, with focus
   move, Escape to skip, focus containment, and the reduced-motion reset honored.
@@ -264,8 +272,11 @@ recalibration and no other change in the same PR.
 
 Every line below is checkable by a command or by a CI run, not by opinion.
 
-- [ ] The Lighthouse job on the final PR reports **CLS ≤ 0.10** on `/`
+- [x] The Lighthouse job on the final PR reports **CLS ≤ 0.10** on `/`
       (from 0.752), and `layout-shifts` reports no shift above 0.05.
+      *(PR #139: 0.000 in all three runs of run `30713366106`, zero shift
+      entries. The gate now holds it at `minScore: 0.95` / `≤ 0.1`, so PR2
+      cannot silently give it back.)*
 - [ ] The Lighthouse job on the final PR reports **LCP ≤ 4.0 s** on `/`
       (from 6.8 s).
 - [ ] Script transfer for `/` on the gate's harness is **≤ 1.0 MB** (from

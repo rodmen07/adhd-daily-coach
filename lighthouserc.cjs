@@ -153,10 +153,24 @@ module.exports = {
           "error",
           { minScore: 0.02, maxNumericValue: 8000 },
         ],
-        // 0.752 in all six runs, byte-identical. Ceiling 0.80.
+        // RATCHETED by v0.19 PR1 (docs/design/PERF_PASS.md D3: a win the gate
+        // does not defend decays back). Was `{ minScore: 0, maxNumericValue:
+        // 0.8 }`, calibrated against 0.752 measured in all six baseline runs.
+        // PR #139 took the first-run panel out of normal flow and CLS measured
+        // 0.000 with score 1.00 in ALL THREE runs of run 30713366106, with
+        // `layout-shifts` reporting zero shift entries - not a smaller shift, no
+        // shift.
+        //
+        // So the score floor is live again for the first time: 1.00 minus D1's
+        // five points is 0.95, which is roughly a raw CLS of 0.05 and is now
+        // the binding half of this assertion. The ceiling stays at D2's target
+        // of 0.10, the Core Web Vitals "good" boundary, as the backstop for the
+        // case a future Lighthouse moves the scoring curve under us. A ceiling
+        // of exactly 0.0 was rejected: it would fail an honest PR over a 0.001
+        // shift, and this gate's credibility is why TBT lost its score floor.
         "cumulative-layout-shift": [
           "error",
-          { minScore: 0, maxNumericValue: 0.8 },
+          { minScore: 0.95, maxNumericValue: 0.1 },
         ],
         // Best-of-run 128 ms then 204 ms. Ceiling at 500 ms: ~2.5x the worse
         // of the two, which still catches a real regression while sitting well
