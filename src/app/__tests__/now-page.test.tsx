@@ -7,7 +7,7 @@ import {
   addFirestoreFocusSession,
   putFirestoreFocusSession,
 } from "@/lib/firestore-focus-sessions";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
 import { FOCUS_SESSION_COPY as C } from "@/lib/focus-session-copy";
 import type { Firestore } from "firebase/firestore";
 
@@ -16,8 +16,17 @@ vi.mock("@/app/hooks/use-coach-auth", () => ({
 }));
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
+
+/** One switch for both halves of the v0.19 PR3 surface: the sync config
+ * probe the store factory reads and the lazy client its adapters await. */
+function mockFirebase(db: Firestore | null) {
+  vi.mocked(isFirebaseConfigured).mockReturnValue(db !== null);
+  vi.mocked(loadFirebaseFirestore).mockResolvedValue(db);
+}
 
 vi.mock("@/lib/firestore-focus-sessions", () => ({
   addFirestoreFocusSession: vi.fn(() =>
@@ -72,7 +81,7 @@ function runOneSession(task: string) {
 describe("Now page", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    vi.mocked(getFirebaseFirestore).mockReturnValue(null);
+    mockFirebase(null);
     vi.mocked(useCoachAuth).mockReturnValue(guestAuthMock as never);
   });
 
@@ -102,7 +111,7 @@ describe("Now page", () => {
 
   it("writes a signed-in person's session to Firestore instead of this browser", async () => {
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     render(<NowPage />);
 
     runOneSession("write the summary");
@@ -122,7 +131,7 @@ describe("Now page", () => {
     // A closed-out session is the one thing this feature promises to keep; a
     // permission-denied write must not drop it on the floor.
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(addFirestoreFocusSession).mockRejectedValueOnce(
       new Error("permission-denied"),
     );
@@ -208,7 +217,7 @@ describe("Now page", () => {
       "guest",
     );
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
 
     render(<NowPage />);
 

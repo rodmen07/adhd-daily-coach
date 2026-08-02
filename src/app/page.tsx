@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { loadFirebaseFirestore } from "@/lib/firebase";
 import { getUserAccount } from "@/lib/firestore-user";
 import { resolveEntitlement } from "@/lib/entitlement";
 import { getMonetizationEvents, summarizeMonetizationEvents, trackMonetizationEvent } from "@/lib/monetization";
@@ -192,22 +192,25 @@ export default function Home() {
       };
     }
 
-    const db = getFirebaseFirestore();
-    if (!db) {
-      return () => {
-        active = false;
-      };
-    }
-
-    getUserAccount(db, authUser.uid)
-      .then((account) => {
-        if (!active) {
+    // The SDK loads lazily (v0.19 PR3, D4): the client resolves inside the
+    // effect's async chain, so the entry chunk never carries Firestore. A null
+    // client (unconfigured deploy) leaves the lookup unset, exactly as the old
+    // synchronous probe's early return did.
+    loadFirebaseFirestore()
+      .then((db) => {
+        if (!db || !active) {
           return;
         }
-        setMembershipLookup({
-          uid: authUser.uid,
-          account,
-          fallbackTrial: false,
+
+        return getUserAccount(db, authUser.uid).then((account) => {
+          if (!active) {
+            return;
+          }
+          setMembershipLookup({
+            uid: authUser.uid,
+            account,
+            fallbackTrial: false,
+          });
         });
       })
       .catch(() => {

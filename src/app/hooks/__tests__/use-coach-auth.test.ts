@@ -20,11 +20,13 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 
-const mockGetFirebaseAuth = vi.fn();
-const mockGetFirebaseFirestore = vi.fn();
+const mockIsFirebaseConfigured = vi.fn();
+const mockLoadFirebaseAuth = vi.fn();
+const mockLoadFirebaseFirestore = vi.fn();
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseAuth: () => mockGetFirebaseAuth(),
-  getFirebaseFirestore: () => mockGetFirebaseFirestore(),
+  isFirebaseConfigured: () => mockIsFirebaseConfigured(),
+  loadFirebaseAuth: () => mockLoadFirebaseAuth(),
+  loadFirebaseFirestore: () => mockLoadFirebaseFirestore(),
 }));
 
 const mockUpsertUserAccount = vi.fn();
@@ -65,6 +67,16 @@ function firebaseUser(overrides: Record<string, unknown> = {}) {
 let authStateObserver: ((user: unknown) => void | Promise<void>) | null = null;
 let unsubscribe: ReturnType<typeof vi.fn>;
 
+/**
+ * Drain the effect's async setup (v0.19 PR3): the SDK now loads behind
+ * dynamic `import()`, so the auth subscription is registered a few microtasks
+ * after the first render instead of during it. Tests that talk to the
+ * observer flush first; nothing else about the assertions changes.
+ */
+async function flushAuthSetup() {
+  await act(async () => {});
+}
+
 /** A Firestore rejection, which carries a Firestore code, never an `auth/` one. */
 function firestoreFailure(code: string) {
   return Object.assign(new Error(`firestore: ${code}`), { code });
@@ -79,8 +91,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   authStateObserver = null;
 
-  mockGetFirebaseAuth.mockReturnValue(AUTH);
-  mockGetFirebaseFirestore.mockReturnValue(DB);
+  mockIsFirebaseConfigured.mockReturnValue(true);
+  mockLoadFirebaseAuth.mockResolvedValue(AUTH);
+  mockLoadFirebaseFirestore.mockResolvedValue(DB);
   mockGetRedirectResult.mockResolvedValue(null);
   mockUpsertUserAccount.mockResolvedValue(undefined);
   mockSignOut.mockResolvedValue(undefined);
@@ -98,12 +111,17 @@ afterEach(() => {
 
 describe("useCoachAuth when Firebase is not configured", () => {
   beforeEach(() => {
-    mockGetFirebaseAuth.mockReturnValue(null);
-    mockGetFirebaseFirestore.mockReturnValue(null);
+    mockIsFirebaseConfigured.mockReturnValue(false);
+    mockLoadFirebaseAuth.mockResolvedValue(null);
+    mockLoadFirebaseFirestore.mockResolvedValue(null);
   });
 
-  it("reports itself unconfigured and never subscribes to auth state", () => {
+  it("reports itself unconfigured and never subscribes to auth state", async () => {
     const { result } = renderHook(() => useCoachAuth());
+
+    // Flush the (would-be) async setup so "never subscribed" means it stayed
+    // unsubscribed, not that the check ran before the microtasks did.
+    await flushAuthSetup();
 
     expect(result.current.authConfigured).toBe(false);
     expect(result.current.authUser).toBeNull();
@@ -141,6 +159,7 @@ describe("useCoachAuth auth-state subscription", () => {
     const { result } = renderHook(() => useCoachAuth());
 
     expect(result.current.authConfigured).toBe(true);
+    await flushAuthSetup();
     expect(mockOnAuthStateChanged).toHaveBeenCalledWith(AUTH, expect.any(Function));
 
     const user = firebaseUser();
@@ -153,6 +172,7 @@ describe("useCoachAuth auth-state subscription", () => {
 
   it("records the account for a user who arrives already signed in", async () => {
     renderHook(() => useCoachAuth());
+    await flushAuthSetup();
 
     await act(async () => {
       await authStateObserver?.(firebaseUser());
@@ -168,6 +188,7 @@ describe("useCoachAuth auth-state subscription", () => {
 
   it("substitutes empty contact details rather than passing undefined through", async () => {
     renderHook(() => useCoachAuth());
+    await flushAuthSetup();
 
     await act(async () => {
       await authStateObserver?.(firebaseUser({ email: null, displayName: undefined }));
@@ -183,6 +204,7 @@ describe("useCoachAuth auth-state subscription", () => {
     mockUpsertUserAccount.mockRejectedValue(firestoreFailure("permission-denied"));
 
     const { result } = renderHook(() => useCoachAuth());
+    await flushAuthSetup();
     const user = firebaseUser();
 
     await act(async () => {
@@ -196,6 +218,7 @@ describe("useCoachAuth auth-state subscription", () => {
 
   it("clears the user when the observer reports a sign-out", async () => {
     const { result } = renderHook(() => useCoachAuth());
+    await flushAuthSetup();
 
     await act(async () => {
       await authStateObserver?.(firebaseUser());
@@ -209,8 +232,9 @@ describe("useCoachAuth auth-state subscription", () => {
     expect(mockUpsertUserAccount).toHaveBeenCalledTimes(1);
   });
 
-  it("unsubscribes on unmount so a stale observer cannot outlive the component", () => {
+  it("unsubscribes on unmount so a stale observer cannot outlive the component", async () => {
     const { unmount } = renderHook(() => useCoachAuth());
+    await flushAuthSetup();
 
     expect(unsubscribe).not.toHaveBeenCalled();
     unmount();
@@ -271,7 +295,7 @@ describe("useCoachAuth popup sign-in", () => {
   });
 
   it("does not call Firestore when there is no configured database", async () => {
-    mockGetFirebaseFirestore.mockReturnValue(null);
+    mockLoadFirebaseFirestore.mockResolvedValue(null);
     mockSignInWithPopup.mockResolvedValue({ user: firebaseUser() });
 
     const { result } = renderHook(() => useCoachAuth());

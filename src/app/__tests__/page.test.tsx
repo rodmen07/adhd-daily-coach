@@ -3,12 +3,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "@/app/page";
 import { getWeeklySummary } from "@/lib/browser-checkins";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { isFirebaseConfigured } from "@/lib/firebase";
 import { FOCUS_AREAS, type FocusArea } from "@/lib/plan";
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseAuth: vi.fn(() => null),
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
 
 const emptyByFocus: Record<FocusArea, { done: number; skipped: number }> = Object.fromEntries(
@@ -320,7 +321,7 @@ describe("Dashboard page", () => {
   });
 
   it("shows account mode and auth configuration warning when Firebase auth is unavailable", async () => {
-    vi.mocked(getFirebaseAuth).mockReturnValue(null);
+    vi.mocked(isFirebaseConfigured).mockReturnValue(false);
 
     render(<Home />);
 
@@ -345,7 +346,7 @@ describe("Dashboard page", () => {
     // it replaces: the message is produced by the REAL `useCoachAuth` hook
     // failing for a real reason (no Firebase config) rather than handed in by a
     // mock, so a hook that stopped reporting failures would fail this test too.
-    vi.mocked(getFirebaseAuth).mockReturnValue(null);
+    vi.mocked(isFirebaseConfigured).mockReturnValue(false);
 
     render(<Home />);
 

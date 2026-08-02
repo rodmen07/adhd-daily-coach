@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { loadFirebaseFirestore } from "@/lib/firebase";
 import { upsertUserAccount, type UserAccount } from "@/lib/firestore-user";
 import { blocksAccess, resolveEntitlement } from "@/lib/entitlement";
 import { isRoute } from "@/lib/route-path";
@@ -83,22 +83,31 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
       return;
     }
 
-    const db = getFirebaseFirestore();
-    if (!db) {
-      if (active) {
-        Promise.resolve().then(() => {
-          setLoading(false);
-        });
-      }
-      return;
-    }
+    // The SDK loads lazily (v0.19 PR3, D4): the client resolves inside the
+    // effect's async chain, so the entry chunk never carries Firestore. A null
+    // client (unconfigured deploy) ends the loading state exactly as the old
+    // synchronous probe did.
+    loadFirebaseFirestore()
+      .then((db) => {
+        if (!db) {
+          if (active) {
+            setLoading(false);
+          }
+          return null;
+        }
 
-    // Upsert (create-or-fetch) rather than read-only get. This guarantees the account
-    // record exists before we evaluate the trial, eliminating the first-login race where
-    // a read could resolve before the account was written and wrongly report no trial.
-    upsertUserAccount(db, authUser.uid, authUser.email ?? "", authUser.displayName ?? null)
+        // Upsert (create-or-fetch) rather than read-only get. This guarantees the account
+        // record exists before we evaluate the trial, eliminating the first-login race where
+        // a read could resolve before the account was written and wrongly report no trial.
+        return upsertUserAccount(
+          db,
+          authUser.uid,
+          authUser.email ?? "",
+          authUser.displayName ?? null,
+        );
+      })
       .then((acc) => {
-        if (active) {
+        if (acc && active) {
           setAccount(acc);
           setLoading(false);
         }
@@ -106,9 +115,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
       .catch((err) => {
         console.error("Error checking subscription user account:", err);
         if (active) {
-          Promise.resolve().then(() => {
-            setLoading(false);
-          });
+          setLoading(false);
         }
       });
 

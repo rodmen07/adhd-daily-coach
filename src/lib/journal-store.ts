@@ -42,7 +42,8 @@ import {
   saveJournalEntry as saveLocalJournalEntry,
   type JournalEntry,
 } from "@/lib/journal";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
+import type { Firestore } from "firebase/firestore";
 import {
   addFirestoreJournalEntry,
   listFirestoreJournalEntries,
@@ -92,14 +93,28 @@ function journalMigrationPlan(
   };
 }
 
+/**
+ * The Firestore client for a firestore-resolved adapter method (v0.19 PR3).
+ * Throws when the client cannot be produced - config vanished or the SDK
+ * chunk failed to load - so the caller's existing try/catch falls back to
+ * local storage exactly as it does for a failed Firestore call.
+ */
+async function requireFirestore(): Promise<Firestore> {
+  const db = await loadFirebaseFirestore();
+  if (!db) {
+    throw new Error("Firestore client unavailable");
+  }
+  return db;
+}
+
 export function createJournalStore(
   rawBackend?: string,
   context: JournalBackendContext = {},
 ): JournalStoreAdapter {
-  const db = getFirebaseFirestore();
+  const configured = context.firebaseConfigured ?? isFirebaseConfigured();
   const backend = resolveCheckinBackend(rawBackend, {
     ...context,
-    firebaseConfigured: context.firebaseConfigured ?? db !== null,
+    firebaseConfigured: configured,
   });
 
   const localStore: JournalStoreAdapter = {
@@ -120,7 +135,7 @@ export function createJournalStore(
   };
 
   if (backend === "firestore") {
-    if (!db) {
+    if (!configured) {
       return {
         ...localStore,
         backend: "firestore-fallback",
@@ -131,6 +146,7 @@ export function createJournalStore(
       backend: "firestore",
       listJournalEntries: async (scopeKey) => {
         try {
+          const db = await requireFirestore();
           return await listFirestoreJournalEntries(db, scopeKey);
         } catch {
           return listLocalJournalEntries(scopeKey);
@@ -138,12 +154,21 @@ export function createJournalStore(
       },
       saveJournalEntry: async (dateKey, text, scopeKey) => {
         try {
+          const db = await requireFirestore();
           return await addFirestoreJournalEntry(db, dateKey, text, scopeKey);
         } catch {
           return saveLocalJournalEntry(dateKey, text, scopeKey);
         }
       },
       migrateGuestJournalEntries: async (targetScopeKey) => {
+        // An unloadable client delegates to the local migration, exactly as a
+        // resolved-firestore adapter with no client behaved before the SDK
+        // loaded lazily.
+        const db = await loadFirebaseFirestore().catch(() => null);
+        if (!db) {
+          return localStore.migrateGuestJournalEntries(targetScopeKey);
+        }
+
         // Deliberately unguarded, mirroring migrateGuestCheckins: a thrown
         // Firestore read or write must surface as `error` so the local retry
         // runs, rather than being swallowed per record.

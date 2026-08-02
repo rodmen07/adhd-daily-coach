@@ -35,7 +35,8 @@ import {
   type BrowserCheckin,
   type WeeklySummary,
 } from "@/lib/browser-checkins";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
+import type { Firestore } from "firebase/firestore";
 import {
   addFirestoreCheckin,
   getFirestoreCheckinsInRange,
@@ -144,21 +145,36 @@ export function resolveCheckinBackend(
   }
 
   // Unset: default to cloud sync only when it can actually work right now.
-  const firebaseConfigured =
-    context.firebaseConfigured ?? getFirebaseFirestore() !== null;
+  // Config presence is the sync question; the SDK itself loads lazily inside
+  // the adapter methods (v0.19 PR3, D4), so resolution stays synchronous.
+  const firebaseConfigured = context.firebaseConfigured ?? isFirebaseConfigured();
   const signedIn = context.signedIn ?? false;
 
   return firebaseConfigured && signedIn ? "firestore" : "local";
+}
+
+/**
+ * The Firestore client for a firestore-resolved adapter method (v0.19 PR3).
+ * Throws when the client cannot be produced - config vanished or the SDK
+ * chunk failed to load - so the caller's existing try/catch falls back to
+ * local storage exactly as it does for a failed Firestore call.
+ */
+async function requireFirestore(): Promise<Firestore> {
+  const db = await loadFirebaseFirestore();
+  if (!db) {
+    throw new Error("Firestore client unavailable");
+  }
+  return db;
 }
 
 export function createCheckinStore(
   rawBackend?: string,
   context: CheckinBackendContext = {},
 ): CheckinStoreAdapter {
-  const db = getFirebaseFirestore();
+  const configured = context.firebaseConfigured ?? isFirebaseConfigured();
   const backend = resolveCheckinBackend(rawBackend, {
     ...context,
-    firebaseConfigured: context.firebaseConfigured ?? db !== null,
+    firebaseConfigured: configured,
   });
 
   const localStore: CheckinStoreAdapter = {
@@ -183,7 +199,7 @@ export function createCheckinStore(
   };
 
   if (backend === "firestore") {
-    if (!db) {
+    if (!configured) {
       return {
         ...localStore,
         backend: "firestore-fallback",
@@ -194,6 +210,7 @@ export function createCheckinStore(
       backend: "firestore",
       addCheckin: async (input, scopeKey) => {
         try {
+          const db = await requireFirestore();
           await addFirestoreCheckin(db, input, scopeKey);
         } catch {
           addBrowserCheckin(input, scopeKey);
@@ -201,6 +218,7 @@ export function createCheckinStore(
       },
       getWeeklySummary: async (endDateInput, scopeKey) => {
         try {
+          const db = await requireFirestore();
           return await getFirestoreWeeklySummary(db, endDateInput, scopeKey);
         } catch {
           return getBrowserWeeklySummary(endDateInput, scopeKey);
@@ -208,12 +226,21 @@ export function createCheckinStore(
       },
       getCheckinsInRange: async (days, endDateInput, scopeKey) => {
         try {
+          const db = await requireFirestore();
           return await getFirestoreCheckinsInRange(db, days, endDateInput, scopeKey);
         } catch {
           return listBrowserCheckinsInRange(days, endDateInput, scopeKey);
         }
       },
       migrateGuestCheckins: async (targetScopeKey) => {
+        // An unloadable client delegates to the local migration, exactly as a
+        // resolved-firestore adapter with no client behaved before the SDK
+        // loaded lazily.
+        const db = await loadFirebaseFirestore().catch(() => null);
+        if (!db) {
+          return localStore.migrateGuestCheckins(targetScopeKey);
+        }
+
         // Deliberately unguarded: a thrown Firestore write must surface as
         // `error` so the local retry below runs, rather than being swallowed
         // into a silent local write under the firestore marker.

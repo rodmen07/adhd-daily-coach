@@ -22,8 +22,9 @@ import type { UserAccount } from "@/lib/firestore-user";
  */
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseAuth: vi.fn(() => null),
-  getFirebaseFirestore: vi.fn(() => ({ type: "firestore" })),
+  isFirebaseConfigured: vi.fn(() => true),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => ({ type: "firestore" })),
 }));
 
 const signedInUser = { uid: "user-1", email: "me@example.com", displayName: "Me" };

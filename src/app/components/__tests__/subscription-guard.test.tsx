@@ -48,7 +48,11 @@ vi.mock("@/app/hooks/use-coach-auth", () => ({
 
 const mockGetFirebaseFirestore = vi.fn();
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseFirestore: () => mockGetFirebaseFirestore(),
+  // The guard awaits the lazily loaded client (v0.19 PR3); the sync mock value
+  // rides an async wrapper so each test still sets one return value.
+  isFirebaseConfigured: vi.fn(() => true),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: async () => mockGetFirebaseFirestore(),
 }));
 
 // The gate is route-aware as of v0.14 PR1. Mocked the same way `site-nav.test.tsx`

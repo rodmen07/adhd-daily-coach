@@ -5,7 +5,7 @@ import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
 import { listCheckins } from "@/lib/browser-checkins";
 import { getFirestoreCheckinsInRange } from "@/lib/firestore-checkins";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
 import type { Firestore } from "firebase/firestore";
 import type { BrowserCheckin } from "@/lib/browser-checkins";
 
@@ -24,8 +24,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
+
+/** One switch for both halves of the v0.19 PR3 surface: the sync config
+ * probe the store factory reads and the lazy client its adapters await. */
+function mockFirebase(db: Firestore | null) {
+  vi.mocked(isFirebaseConfigured).mockReturnValue(db !== null);
+  vi.mocked(loadFirebaseFirestore).mockResolvedValue(db);
+}
 
 // Wraps the real browser-checkins implementation instead of replacing it, so
 // the review page's own CheckinStoreAdapter still resolves check-in history
@@ -106,7 +115,7 @@ function firestoreCheckin(partial: Partial<BrowserCheckin>): BrowserCheckin {
 describe("Review page empty state", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    vi.mocked(getFirebaseFirestore).mockReturnValue(null);
+    mockFirebase(null);
   });
 
   afterEach(() => {
@@ -153,7 +162,7 @@ describe("Review page empty state", () => {
 describe("Review page check-in history source", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    vi.mocked(getFirebaseFirestore).mockReturnValue(null);
+    mockFirebase(null);
   });
 
   afterEach(() => {
@@ -172,7 +181,7 @@ describe("Review page check-in history source", () => {
     // page routes through the adapter (which resolves to the mocked Firestore
     // reader), never the direct local call.
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(useCoachPlanner).mockReturnValue({
       ...basePlannerMock,
       weeklySummary: {

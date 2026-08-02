@@ -89,13 +89,15 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Nine** guard tests now
+  **Ten** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
   `roadmap-milestone-status`, `onboarding-storage-contract`,
   `auth-message-contract` (PR #123), `lockfile-version-parity` (PR #127),
-  `lighthouse-baseline-contract` (PR #136), and `roadmap-guard-count` (PR #138).
+  `lighthouse-baseline-contract` (PR #136), `roadmap-guard-count` (PR #138),
+  and `firebase-on-demand` (v0.19 PR3, which keeps the SDK out of the
+  first-paint bundle structurally).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -972,16 +974,22 @@ Full audit, plan, and every overridable default:
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.18 have all landed and v0.19 is DEFINED and open above** (PR #138,
-2026-08-01), so the dev queue is not empty and the next dev slot is v0.19 PR1,
-not filler. This sentence is the part
+through v0.18 have all landed and v0.19 is OPEN above with PR1-PR3 shipped**
+(#139, #140, #141, all 2026-08-01): its CLS and script-transfer done-when
+lines are met, its LCP line is not (measured ~5.6 s against the 4.0 s
+target on PR #141's own run, unchanged by removing 665 KB of script), so the
+next dev slot is the remaining LCP gap in `docs/design/PERF_PASS.md`
+section 3, starting with attribution of the remaining render delay rather
+than another chunk removal. This sentence is the part
 `roadmap-milestone-status.test.ts` cannot
-mechanically check and therefore is most likely to go stale. (Corrected seven times, three on 2026-07-26; the 2026-08-01
+mechanically check and therefore is most likely to go stale. (Corrected eight times, three on 2026-07-26; the first 2026-08-01
 edition was written by the increment that SHIPPED v0.18, in the same PR as
 the heading flip, which is the pattern the 2026-07-27 note below asked for,
-and then rewritten hours later by the increment that DEFINED v0.19, because
+then rewritten hours later by the increment that DEFINED v0.19, because
 defining a milestone falsifies "no next milestone is defined yet" exactly as
-reliably as shipping one falsifies a heading.
+reliably as shipping one falsifies a heading, and rewritten again by v0.19
+PR3, which shipped its mechanism but measured its own done-when unmet and
+therefore did NOT flip the heading or bump the version.
 The 2026-07-27
 edition broke the recurring shape for once: the previous editions asked "the
 audit that closes v0.N" to fix this sentence and the closing dev increment
