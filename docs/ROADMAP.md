@@ -890,7 +890,7 @@ DONE:
 - The measured baseline is recorded in section 7 of the design doc, and every run prints its own calibrated floors to the job summary so recalibration is mechanical.
 - The check is non-blocking per D4: branch protection stays exactly `["lint-and-build"]`, the same precedent `security-audit.yml` and `e2e.yml` already set. Promoting it to required once the baseline proves stable is a filed follow-up, not an assumption.
 
-### v0.19 - Perf pass: the first screen arrives calm and stops moving (DONE)
+### v0.19 - Perf pass: the first screen arrives calm and stops moving (agent-doable now)
 
 Defined 2026-08-01 (product-role increment), the milestone after v0.18. This is
 the milestone v0.18 was built to make possible, and it closes the HIGH bug
@@ -974,18 +974,22 @@ Full audit, plan, and every overridable default:
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.19 have all landed and no next milestone is defined yet**
-(v0.19 completed 2026-08-01 by the PR that also rewrote this sentence), so
-the dev queue is empty and the next product slot defines v0.20 rather than
-letting a dev slot become filler. This sentence is the part
+through v0.18 have all landed and v0.19 is OPEN above with PR1-PR3 shipped**
+(#139, #140, #141, all 2026-08-01): its CLS and script-transfer done-when
+lines are met, its LCP line is not (measured ~5.6 s against the 4.0 s
+target on PR #141's own run, unchanged by removing 665 KB of script), so the
+next dev slot is the remaining LCP gap in `docs/design/PERF_PASS.md`
+section 3, starting with attribution of the remaining render delay rather
+than another chunk removal. This sentence is the part
 `roadmap-milestone-status.test.ts` cannot
 mechanically check and therefore is most likely to go stale. (Corrected eight times, three on 2026-07-26; the first 2026-08-01
 edition was written by the increment that SHIPPED v0.18, in the same PR as
 the heading flip, which is the pattern the 2026-07-27 note below asked for,
 then rewritten hours later by the increment that DEFINED v0.19, because
 defining a milestone falsifies "no next milestone is defined yet" exactly as
-reliably as shipping one falsifies a heading, and rewritten again by the
-increment that shipped v0.19 PR3 alongside its own heading flip.
+reliably as shipping one falsifies a heading, and rewritten again by v0.19
+PR3, which shipped its mechanism but measured its own done-when unmet and
+therefore did NOT flip the heading or bump the version.
 The 2026-07-27
 edition broke the recurring shape for once: the previous editions asked "the
 audit that closes v0.N" to fix this sentence and the closing dev increment

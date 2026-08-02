@@ -309,21 +309,52 @@ regression is the worse of the two risks by a distance.
   0.19.0 with a non-DONE v0.19 heading is a red `roadmap-milestone-status
   .test.ts` by construction. Same reasoning as v0.14 PR1 (PR #117).
 
-**PR3 - Firebase stops loading on first paint (D4). NEXT.**
+**PR3 - Firebase stops loading on first paint (D4). SHIPPED (PR #141,
+2026-08-01) - and its own measurement kept the milestone OPEN.**
 
-- Split `src/lib/firebase.ts` into a config probe with no SDK import (the
-  synchronous `isFirebaseConfigured()` that the store factories actually want)
-  and async `loadFirebaseAuth()` / `loadFirebaseFirestore()` behind dynamic
-  `import()`.
-- Move the `firebase/firestore` imports in `firestore-checkins.ts`,
-  `firestore-focus-sessions.ts`, `firestore-journal.ts` and `firestore-user.ts`
-  inside their already-async functions.
-- `use-coach-auth.ts`: `authConfigured` becomes a config read rather than
-  `getFirebaseAuth() !== null`, and the SDK loads inside the effect.
-- **Carries the `package.json` bump to 0.19.0 and flips the roadmap heading to
-  DONE in the same commit**, per the `roadmap-milestone-status.test.ts`
-  contract.
-- Re-derives the LCP ceiling again from its own run (D3).
+What shipped, as planned:
+
+- `src/lib/firebase.ts` split into the sync config probe
+  `isFirebaseConfigured()` (env read, zero SDK bytes) plus async
+  `loadFirebaseAuth()` / `loadFirebaseFirestore()` behind dynamic `import()`.
+- The `firebase/firestore` value imports in all four `firestore-*.ts` modules
+  moved inside their already-async functions; the three store factories read
+  the config probe synchronously and their adapter methods await the client.
+- `use-coach-auth.ts`: `authConfigured` is a config read; every auth flow
+  resolves the SDK through ONE shared `loadAuthSdk()` (sibling dynamic-import
+  expressions of one specifier resolved to DIFFERENT modules under vitest -
+  the first to the mock, a later one to the real SDK - so one shared
+  expression is also the only testable shape).
+- New guard `src/__tests__/firebase-on-demand.test.ts`: no shipped module may
+  value-import `firebase/*` at the top level, the loader keeps its dynamic
+  imports, blindness control anchored on named files.
+- Measured on the built export: the entry document's script set went
+  **1,389,779 B across 11 chunks -> 724,310 B across 11** (-665,469 B,
+  -47.9 %); the SDK is a 583,616 B chunk `out/index.html` references zero
+  times. On the gate's harness, script transfer **1,445,861 B -> 780,860 B**,
+  meeting the ≤ 1.0 MB done-when line.
+
+**What the measurement said, and why the version did NOT bump:** PR #141's own
+Lighthouse run (`30725072497`) reported LCP best-of-run **5556 ms** (samples
+5848 / 5556 / 5560, scores 0.15 / 0.18 / 0.18) - statistically unchanged from
+PR #140's 5403 / 5547 ms, despite 665 KB less script. The two named chunks
+were therefore NOT the binding constraint on LCP in this harness; the ~5.5 s
+render delay survives them both. The 4.0 s done-when line stays unmet, so the
+heading stays un-flipped and `package.json` stays 0.18.0, per the same
+contract that stopped PR #140 from bumping early. D3's re-derivation was run
+and CHANGED NOTHING: the measured pair (best 5556 ms / 0.18) sits within
+noise of the calibration PR #140 recorded (worst best-of-run 5547 ms -> floor
+0.13, ceiling 6500), and tightening on a single run is what section 7 of
+WEB_VITALS_BASELINE.md warns against.
+
+**PR4 - the remaining render delay. NEXT.** Attribution first, nothing else:
+find what actually gates LCP now that the two big chunks are gone (candidate
+suspects, in evidence order: the remaining 724 KB of entry script still parsed
+and executed before render; hydration cost of the dashboard tree; the D7
+harness divergence, which serves every byte uncompressed and inflates
+simulated fetch time ~3.5x). If attribution lands on the D7 divergence itself,
+the finding goes to the user's D7 decision rather than into code, because
+recalibrating the harness mid-milestone is the thing D7 explicitly deferred.
 
 ## 4. Done-when (checkable)
 
@@ -338,16 +369,18 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       (from 6.8 s).
       *(PR #140: 6757 ms → **5403 ms and 5547 ms** best-of-run across two
       independent runs (`30715170249`, `30715529983`), score 0.07 → 0.20/0.18.
-      Two fifths of the way; the gate now holds it at `minScore: 0.13` /
-      `≤ 6500 ms` so it cannot be given back. The rest is PR3's Firebase
-      chunk.)*
-- [ ] Script transfer for `/` on the gate's harness is **≤ 1.0 MB** (from
+      The gate holds it at `minScore: 0.13` / `≤ 6500 ms` so it cannot be
+      given back. **PR #141: 5556 ms best-of-run on run `30725072497` -
+      unchanged by removing the 670 KB Firebase chunk**, falsifying "the rest
+      is PR3's Firebase chunk": the remaining ~5.5 s render delay has another
+      owner, and finding it is PR4's whole job. STILL OPEN.)*
+- [x] Script transfer for `/` on the gate's harness is **≤ 1.0 MB** (from
       1.69 MB), verifiable from the same report JSON's `resource-summary`.
-      *(PR #140: **21 requests / 1,445,861 B** on run `30715170249`, from 22
-      requests / ~1.69 MB. Measured independently on the built `out/`, the
-      entry document's own script set went 1,672,898 B across 12 chunks →
-      1,389,779 B across 11. Not met yet and not expected to be until PR3: the
-      669,957 B Firebase chunk is most of the remaining gap.)*
+      *(PR #141: **21 requests / 780,860 B** on run `30725072497`, from
+      1,445,861 B after PR #140 and ~1.69 MB at baseline. On the built `out/`,
+      the entry document's own script set is 724,310 B across 11 chunks, down
+      from 1,672,898 B across 12 at baseline; the Firebase SDK is a 583,616 B
+      chunk the entry document references zero times.)*
 - [ ] `lighthouserc.cjs` and section 7 of
       [WEB_VITALS_BASELINE.md](WEB_VITALS_BASELINE.md) both carry the new
       numbers, and `src/__tests__/lighthouse-baseline-contract.test.ts` is green
@@ -365,6 +398,10 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       the first-run path this milestone moves).
 - [ ] `package.json` reads 0.19.0 and the roadmap's v0.19 heading reads DONE, in
       the same commit.
+      *(Deliberately NOT done by PR #141, which shipped D4's mechanism but
+      measured the LCP line above still unmet on its own run. The bump ships
+      with the PR that clears that line, or with a recorded user decision
+      re-scoping the target.)*
 
 ## 5. Overridable defaults summary
 
