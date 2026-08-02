@@ -44,8 +44,9 @@ import { Onboarding } from "@/app/components/onboarding";
 import { FOCUS_AREAS, type FocusArea } from "@/lib/plan";
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseAuth: vi.fn(() => null),
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
 
 const emptyByFocus: Record<FocusArea, { done: number; skipped: number }> = Object.fromEntries(

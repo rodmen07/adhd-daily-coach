@@ -1,13 +1,9 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  setDoc,
-  type Firestore,
-} from "firebase/firestore";
+// Value imports of `firebase/firestore` live INSIDE the async functions below
+// (v0.19 PR3, D4): this module is statically imported by journal-store.ts,
+// which /journal renders through, so a top-level value import here would drag
+// the whole Firestore SDK back into the entry chunk. The type import is
+// erased at compile time and costs nothing.
+import type { Firestore } from "firebase/firestore";
 import { JOURNAL_ENTRY_MAX_LENGTH, type JournalEntry } from "@/lib/journal";
 
 /**
@@ -23,7 +19,8 @@ import { JOURNAL_ENTRY_MAX_LENGTH, type JournalEntry } from "@/lib/journal";
  * server-side too, independent of any client bug.
  */
 
-function journalDocRef(db: Firestore, scopeKey: string, dateKey: string) {
+async function journalDocRef(db: Firestore, scopeKey: string, dateKey: string) {
+  const { doc } = await import("firebase/firestore");
   return doc(db, "users", scopeKey, "journal", dateKey);
 }
 
@@ -45,7 +42,8 @@ export async function addFirestoreJournalEntry(
     return null;
   }
 
-  const ref = journalDocRef(db, scopeKey, dateKey);
+  const { getDoc, setDoc } = await import("firebase/firestore");
+  const ref = await journalDocRef(db, scopeKey, dateKey);
   const existing = await getDoc(ref);
   const now = new Date().toISOString();
   const createdAt = existing.exists()
@@ -75,6 +73,10 @@ export async function listFirestoreJournalEntries(
   db: Firestore,
   scopeKey: string,
 ): Promise<JournalEntry[]> {
+  const { collection, getDocs, orderBy, query } = await import(
+    "firebase/firestore"
+  );
+
   const q = query(
     collection(db, "users", scopeKey, "journal"),
     orderBy("date", "desc"),

@@ -10,7 +10,7 @@ import {
   putFirestoreFocusSession,
 } from "@/lib/firestore-focus-sessions";
 import { FOCUS_SESSION_COPY } from "@/lib/focus-session-copy";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
 import { bucketCheckinsByWeek } from "@/lib/trend-insights";
 import type { Firestore } from "firebase/firestore";
 import type { BrowserCheckin } from "@/lib/browser-checkins";
@@ -20,8 +20,17 @@ vi.mock("@/app/hooks/use-coach-auth", () => ({
 }));
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
+
+/** One switch for both halves of the v0.19 PR3 surface: the sync config
+ * probe the store factory reads and the lazy client its adapters await. */
+function mockFirebase(db: Firestore | null) {
+  vi.mocked(isFirebaseConfigured).mockReturnValue(db !== null);
+  vi.mocked(loadFirebaseFirestore).mockResolvedValue(db);
+}
 
 // Wraps the real browser-checkins implementation instead of replacing it, so
 // the "renders with real local check-ins" tests below can seed history the
@@ -108,7 +117,7 @@ function firestoreFocusSession(partial: Partial<FocusSession>): FocusSession {
 describe("Trends page", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    vi.mocked(getFirebaseFirestore).mockReturnValue(null);
+    mockFirebase(null);
   });
 
   afterEach(() => {
@@ -259,7 +268,7 @@ describe("Trends page", () => {
     // regressed to reading listCheckins directly, this test would both see
     // the spy called AND see the empty state instead of real data.
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([
       firestoreCheckin({ id: "f1", date: utcDateKey(2), focus: "Deep Work", status: "done" }),
       firestoreCheckin({ id: "f2", date: utcDateKey(9), focus: "Fitness", status: "done" }),
@@ -382,7 +391,7 @@ describe("Trends page", () => {
   // empty because the page read local storage.
   it("reads a signed-in person's focus sessions from Firestore, not local storage", async () => {
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([
       firestoreCheckin({ id: "f1", date: utcDateKey(2), focus: "Deep Work", status: "done" }),
     ]);
@@ -421,7 +430,7 @@ describe("Trends page", () => {
     // permission-denied or offline read must degrade to what this browser
     // has, never to a blank card that reads as "you did nothing this week".
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([]);
     vi.mocked(listFirestoreFocusSessions).mockRejectedValueOnce(
       new Error("permission-denied"),
@@ -487,7 +496,7 @@ describe("Trends page", () => {
 
   it("copies guest sessions into Firestore for a synced person, then reads them back", async () => {
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([]);
     const guestSession = addFocusSession(
       { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },

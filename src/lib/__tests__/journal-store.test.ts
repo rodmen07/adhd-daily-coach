@@ -5,13 +5,21 @@ import {
   addFirestoreJournalEntry,
   listFirestoreJournalEntries,
 } from "@/lib/firestore-journal";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
 import type { Firestore } from "firebase/firestore";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
+
+/** One switch for both halves of the v0.19 PR3 surface: the sync config
+ * probe the factory reads and the lazy client the adapter methods await. */
+function mockFirebase(db: Firestore | null) {
+  vi.mocked(isFirebaseConfigured).mockReturnValue(db !== null);
+  vi.mocked(loadFirebaseFirestore).mockResolvedValue(db);
+}
 
 vi.mock("@/lib/journal", () => ({
   listJournalEntries: vi.fn(() => []),
@@ -46,7 +54,7 @@ vi.mock("@/lib/firestore-journal", () => ({
 describe("journal-store", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getFirebaseFirestore).mockReturnValue(null);
+    mockFirebase(null);
     window.localStorage.clear();
   });
 
@@ -64,7 +72,7 @@ describe("journal-store", () => {
   });
 
   it("pure firestore: resolves firestore when configured and signed in", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     const store = createJournalStore(undefined, { signedIn: true });
     expect(store.backend).toBe("firestore");
 
@@ -78,7 +86,7 @@ describe("journal-store", () => {
   });
 
   it("firestore-with-fallback-to-local: a thrown Firestore error falls back to local", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(addFirestoreJournalEntry).mockRejectedValueOnce(new Error("permission-denied"));
     vi.mocked(listFirestoreJournalEntries).mockRejectedValueOnce(new Error("permission-denied"));
     vi.mocked(listJournalEntries).mockReturnValueOnce([
@@ -120,8 +128,8 @@ describe("journal-store", () => {
 
   it("firestore-fallback: uses the local fallback adapter when firestore mode is requested but not configured", async () => {
     // Mirrors checkin-store.test.ts's "uses local fallback adapter when
-    // firestore mode is requested but not configured" (getFirebaseFirestore
-    // returns null here via the beforeEach default, i.e. misconfigured or
+    // firestore mode is requested but not configured" (isFirebaseConfigured
+    // reports false here via the beforeEach default, i.e. misconfigured or
     // offline, not a thrown-error case like the test above).
     const store = createJournalStore("firestore");
 
@@ -137,7 +145,7 @@ describe("journal-store", () => {
   });
 
   it("explicit override: an explicit local setting always wins regardless of config", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     const store = createJournalStore("local", { signedIn: true });
     expect(store.backend).toBe("local");
 
@@ -235,7 +243,7 @@ describe("journal-store", () => {
     });
 
     it("firestore: reads the account and writes the copy through Firestore", async () => {
-      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      mockFirebase({} as Firestore);
       vi.mocked(listJournalEntries).mockReturnValue(guestEntries);
       vi.mocked(listFirestoreJournalEntries).mockResolvedValue([]);
 
@@ -256,7 +264,7 @@ describe("journal-store", () => {
     });
 
     it("firestore: a thrown Firestore write retries the whole copy locally", async () => {
-      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      mockFirebase({} as Firestore);
       vi.mocked(listFirestoreJournalEntries).mockResolvedValue([]);
       vi.mocked(addFirestoreJournalEntry).mockRejectedValueOnce(
         new Error("permission-denied"),

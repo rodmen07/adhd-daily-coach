@@ -21,8 +21,9 @@ import FocusPage from "@/app/focus/page";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseAuth: vi.fn(() => null),
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
 
 vi.mock("@/app/hooks/use-coach-planner", () => ({

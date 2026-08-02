@@ -1,4 +1,9 @@
-import { doc, setDoc, getDoc, type Firestore } from "firebase/firestore";
+// Value imports of `firebase/firestore` live INSIDE the async functions below
+// (v0.19 PR3, D4): this module is statically imported by use-coach-auth.ts and
+// subscription-guard.tsx, which every route renders, so a top-level value
+// import here would drag the whole Firestore SDK back into the entry chunk.
+// The type import is erased at compile time and costs nothing.
+import type { Firestore } from "firebase/firestore";
 
 export interface UserAccount {
   uid: string;
@@ -17,6 +22,7 @@ export async function upsertUserAccount(
   email: string,
   displayName: string | null
 ): Promise<UserAccount> {
+  const { doc, getDoc, setDoc } = await import("firebase/firestore");
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
 
@@ -52,6 +58,7 @@ export async function upsertUserAccount(
  * Returns user account data from Firestore.
  */
 export async function getUserAccount(db: Firestore, uid: string): Promise<UserAccount | null> {
+  const { doc, getDoc } = await import("firebase/firestore");
   const userRef = doc(db, "users", uid);
   const userSnap = await getDoc(userRef);
   if (userSnap.exists()) {

@@ -54,7 +54,8 @@ import {
   type FocusSession,
   type FocusSessionInput,
 } from "@/lib/focus-session";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
+import type { Firestore } from "firebase/firestore";
 import {
   addFirestoreFocusSession,
   listFirestoreFocusSessions,
@@ -100,14 +101,28 @@ function focusSessionMigrationPlan(
   };
 }
 
+/**
+ * The Firestore client for a firestore-resolved adapter method (v0.19 PR3).
+ * Throws when the client cannot be produced - config vanished or the SDK
+ * chunk failed to load - so the caller's existing try/catch falls back to
+ * local storage exactly as it does for a failed Firestore call.
+ */
+async function requireFirestore(): Promise<Firestore> {
+  const db = await loadFirebaseFirestore();
+  if (!db) {
+    throw new Error("Firestore client unavailable");
+  }
+  return db;
+}
+
 export function createFocusSessionStore(
   rawBackend?: string,
   context: FocusSessionBackendContext = {},
 ): FocusSessionStoreAdapter {
-  const db = getFirebaseFirestore();
+  const configured = context.firebaseConfigured ?? isFirebaseConfigured();
   const backend = resolveCheckinBackend(rawBackend, {
     ...context,
-    firebaseConfigured: context.firebaseConfigured ?? db !== null,
+    firebaseConfigured: configured,
   });
 
   const localStore: FocusSessionStoreAdapter = {
@@ -127,7 +142,7 @@ export function createFocusSessionStore(
   };
 
   if (backend === "firestore") {
-    if (!db) {
+    if (!configured) {
       return {
         ...localStore,
         backend: "firestore-fallback",
@@ -138,6 +153,7 @@ export function createFocusSessionStore(
       backend: "firestore",
       listFocusSessions: async (scopeKey) => {
         try {
+          const db = await requireFirestore();
           return await listFirestoreFocusSessions(db, scopeKey);
         } catch {
           return listLocalFocusSessions(scopeKey);
@@ -145,12 +161,21 @@ export function createFocusSessionStore(
       },
       addFocusSession: async (input, scopeKey) => {
         try {
+          const db = await requireFirestore();
           return await addFirestoreFocusSession(db, input, scopeKey);
         } catch {
           return addLocalFocusSession(input, scopeKey);
         }
       },
       migrateGuestFocusSessions: async (targetScopeKey) => {
+        // An unloadable client delegates to the local migration, exactly as a
+        // resolved-firestore adapter with no client behaved before the SDK
+        // loaded lazily.
+        const db = await loadFirebaseFirestore().catch(() => null);
+        if (!db) {
+          return localStore.migrateGuestFocusSessions(targetScopeKey);
+        }
+
         // Deliberately unguarded, mirroring migrateGuestCheckins and
         // migrateGuestJournalEntries: a thrown Firestore write must surface as
         // `error` so the local retry below runs, rather than being swallowed

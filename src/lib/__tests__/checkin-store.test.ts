@@ -10,13 +10,21 @@ import {
   getFirestoreCheckinsInRange,
   getFirestoreWeeklySummary,
 } from "@/lib/firestore-checkins";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
 import type { Firestore } from "firebase/firestore";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
+
+/** One switch for both halves of the v0.19 PR3 surface: the sync config
+ * probe the factory reads and the lazy client the adapter methods await. */
+function mockFirebase(db: Firestore | null) {
+  vi.mocked(isFirebaseConfigured).mockReturnValue(db !== null);
+  vi.mocked(loadFirebaseFirestore).mockResolvedValue(db);
+}
 
 vi.mock("@/lib/browser-checkins", () => ({
   addCheckin: vi.fn(),
@@ -80,7 +88,7 @@ vi.mock("@/lib/firestore-checkins", () => ({
 describe("checkin-store", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getFirebaseFirestore).mockReturnValue(null);
+    mockFirebase(null);
     window.localStorage.clear();
   });
 
@@ -135,7 +143,7 @@ describe("checkin-store", () => {
     it("derives firebaseConfigured from the Firebase module when omitted", () => {
       expect(resolveCheckinBackend(undefined, { signedIn: true })).toBe("local");
 
-      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      mockFirebase({} as Firestore);
       expect(resolveCheckinBackend(undefined, { signedIn: true })).toBe("firestore");
     });
 
@@ -162,7 +170,7 @@ describe("checkin-store", () => {
   });
 
   it("creates the firestore adapter under the automatic default for a signed-in user", () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
 
     const store = createCheckinStore(undefined, { signedIn: true });
 
@@ -170,7 +178,7 @@ describe("checkin-store", () => {
   });
 
   it("creates the local adapter under the automatic default when signed out", () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
 
     const store = createCheckinStore(undefined, { signedIn: false });
 
@@ -210,7 +218,7 @@ describe("checkin-store", () => {
   });
 
   it("uses Firestore adapter when configured", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     const store = createCheckinStore("firestore");
 
     expect(store.backend).toBe("firestore");
@@ -232,7 +240,7 @@ describe("checkin-store", () => {
   });
 
   it("falls back to a local write when the Firestore write fails", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(addFirestoreCheckin).mockRejectedValueOnce(new Error("offline"));
 
     const store = createCheckinStore(undefined, { signedIn: true });
@@ -252,7 +260,7 @@ describe("checkin-store", () => {
   });
 
   it("falls back to the local weekly summary when the Firestore read fails", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(getFirestoreWeeklySummary).mockRejectedValueOnce(new Error("offline"));
 
     const store = createCheckinStore(undefined, { signedIn: true });
@@ -297,7 +305,7 @@ describe("checkin-store", () => {
     });
 
     it("reads the Firestore range function under the firestore backend", async () => {
-      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      mockFirebase({} as Firestore);
       vi.mocked(getFirestoreCheckinsInRange).mockResolvedValueOnce([fakeInRangeCheckin]);
 
       const store = createCheckinStore(undefined, { signedIn: true });
@@ -316,7 +324,7 @@ describe("checkin-store", () => {
     });
 
     it("falls back to the local range read when the Firestore range read throws", async () => {
-      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      mockFirebase({} as Firestore);
       vi.mocked(getFirestoreCheckinsInRange).mockRejectedValueOnce(new Error("offline"));
       vi.mocked(listCheckinsInRange).mockReturnValueOnce([fakeInRangeCheckin]);
 
@@ -330,7 +338,7 @@ describe("checkin-store", () => {
   });
 
   it("retries migration locally when the Firestore migration fails", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(addFirestoreCheckin).mockRejectedValueOnce(new Error("offline"));
     vi.mocked(listCheckins).mockReturnValue([
       {

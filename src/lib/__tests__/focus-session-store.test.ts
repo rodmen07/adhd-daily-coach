@@ -6,14 +6,22 @@ import {
   listFirestoreFocusSessions,
   putFirestoreFocusSession,
 } from "@/lib/firestore-focus-sessions";
-import { getFirebaseFirestore } from "@/lib/firebase";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
 import type { Firestore } from "firebase/firestore";
 import type { FocusSession } from "@/lib/focus-session";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
+
+/** One switch for both halves of the v0.19 PR3 surface: the sync config
+ * probe the factory reads and the lazy client the adapter methods await. */
+function mockFirebase(db: Firestore | null) {
+  vi.mocked(isFirebaseConfigured).mockReturnValue(db !== null);
+  vi.mocked(loadFirebaseFirestore).mockResolvedValue(db);
+}
 
 function session(partial: Partial<FocusSession> = {}): FocusSession {
   return {
@@ -81,7 +89,7 @@ describe("focus-session-store", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getFirebaseFirestore).mockReturnValue(null);
+    mockFirebase(null);
     window.localStorage.clear();
   });
 
@@ -99,7 +107,7 @@ describe("focus-session-store", () => {
   });
 
   it("pure firestore: resolves firestore when configured and signed in", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     const store = createFocusSessionStore(undefined, { signedIn: true });
     expect(store.backend).toBe("firestore");
 
@@ -113,7 +121,7 @@ describe("focus-session-store", () => {
   });
 
   it("firestore-with-fallback-to-local: a thrown Firestore error falls back to local", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     vi.mocked(addFirestoreFocusSession).mockRejectedValueOnce(
       new Error("permission-denied"),
     );
@@ -143,7 +151,7 @@ describe("focus-session-store", () => {
   });
 
   it("firestore-fallback: uses the local fallback adapter when firestore mode is requested but not configured", async () => {
-    // getFirebaseFirestore returns null via the beforeEach default here, i.e.
+    // isFirebaseConfigured reports false via the beforeEach default here, i.e.
     // misconfigured or offline, not a thrown-error case like the test above.
     const store = createFocusSessionStore("firestore");
 
@@ -159,7 +167,7 @@ describe("focus-session-store", () => {
   });
 
   it("explicit override: an explicit local setting always wins regardless of config", async () => {
-    vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+    mockFirebase({} as Firestore);
     const store = createFocusSessionStore("local", { signedIn: true });
     expect(store.backend).toBe("local");
 
@@ -260,7 +268,7 @@ describe("focus-session-store", () => {
     });
 
     it("firestore: writes each copy to its own document id, keeping the record intact", async () => {
-      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      mockFirebase({} as Firestore);
       seedGuest();
 
       const store = createFocusSessionStore(undefined, { signedIn: true });
@@ -284,7 +292,7 @@ describe("focus-session-store", () => {
     });
 
     it("firestore: a thrown Firestore write retries the whole copy locally", async () => {
-      vi.mocked(getFirebaseFirestore).mockReturnValue({} as Firestore);
+      mockFirebase({} as Firestore);
       vi.mocked(putFirestoreFocusSession).mockRejectedValueOnce(
         new Error("permission-denied"),
       );

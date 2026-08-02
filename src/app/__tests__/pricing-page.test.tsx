@@ -6,8 +6,9 @@ import PricingPage from "@/app/pricing/page";
 // hook failing for a real reason (no Firebase configuration) rather than from a
 // mock agreeing with the assertion. Only the config read is stubbed.
 vi.mock("@/lib/firebase", () => ({
-  getFirebaseAuth: vi.fn(() => null),
-  getFirebaseFirestore: vi.fn(() => null),
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseAuth: vi.fn(async () => null),
+  loadFirebaseFirestore: vi.fn(async () => null),
 }));
 
 afterEach(() => {

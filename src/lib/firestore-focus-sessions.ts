@@ -1,12 +1,9 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  setDoc,
-  type Firestore,
-} from "firebase/firestore";
+// Value imports of `firebase/firestore` live INSIDE the async functions below
+// (v0.19 PR3, D4): this module is statically imported by
+// focus-session-store.ts, which /now renders through, so a top-level value
+// import here would drag the whole Firestore SDK back into the entry chunk.
+// The type import is erased at compile time and costs nothing.
+import type { Firestore } from "firebase/firestore";
 import {
   buildFocusSession,
   type FocusSession,
@@ -31,7 +28,12 @@ import {
  * same stamper the local writer uses, so the two backends cannot drift.
  */
 
-function focusSessionDocRef(db: Firestore, scopeKey: string, sessionId: string) {
+async function focusSessionDocRef(
+  db: Firestore,
+  scopeKey: string,
+  sessionId: string,
+) {
+  const { doc } = await import("firebase/firestore");
   return doc(db, "users", scopeKey, "focusSessions", sessionId);
 }
 
@@ -54,7 +56,8 @@ export async function putFirestoreFocusSession(
   session: FocusSession,
   scopeKey: string,
 ): Promise<FocusSession> {
-  await setDoc(focusSessionDocRef(db, scopeKey, session.id), session);
+  const { setDoc } = await import("firebase/firestore");
+  await setDoc(await focusSessionDocRef(db, scopeKey, session.id), session);
   return session;
 }
 
@@ -89,6 +92,10 @@ export async function listFirestoreFocusSessions(
   db: Firestore,
   scopeKey: string,
 ): Promise<FocusSession[]> {
+  const { collection, getDocs, orderBy, query } = await import(
+    "firebase/firestore"
+  );
+
   const q = query(
     collection(db, "users", scopeKey, "focusSessions"),
     orderBy("createdAt", "asc"),

@@ -1,11 +1,9 @@
-import {
-  addDoc,
-  collection,
-  getDocs,
-  query,
-  where,
-  type Firestore,
-} from "firebase/firestore";
+// Value imports of `firebase/firestore` live INSIDE the async functions below
+// (v0.19 PR3, D4): this module is statically imported by checkin-store.ts,
+// which page.tsx imports at render time, so a top-level value import here
+// would drag the whole Firestore SDK back into the entry chunk. The type
+// import is erased at compile time and costs nothing.
+import type { Firestore } from "firebase/firestore";
 import { FOCUS_AREAS, type FocusArea } from "@/lib/plan";
 import type { CheckinInput } from "@/lib/checkin-store";
 import type { BrowserCheckin, WeeklySummary } from "@/lib/browser-checkins";
@@ -42,6 +40,8 @@ export async function addFirestoreCheckin(
   input: CheckinInput,
   scopeKey: string,
 ) {
+  const { addDoc, collection } = await import("firebase/firestore");
+
   const payload: FirestoreCheckinDoc = {
     ...input,
     date: toDateOnly(input.date),
@@ -56,6 +56,10 @@ export async function getFirestoreWeeklySummary(
   endDateInput: string | undefined,
   scopeKey: string,
 ): Promise<WeeklySummary> {
+  const { collection, getDocs, query, where } = await import(
+    "firebase/firestore"
+  );
+
   const endDate = new Date(toDateOnly(endDateInput));
   const startDate = new Date(endDate);
   startDate.setDate(endDate.getDate() - 6);
@@ -121,6 +125,10 @@ export async function getFirestoreCheckinsInRange(
   endDateInput: string | undefined,
   scopeKey: string,
 ): Promise<BrowserCheckin[]> {
+  const { collection, getDocs, query, where } = await import(
+    "firebase/firestore"
+  );
+
   const endDate = new Date(toDateOnly(endDateInput));
   const startDate = new Date(endDate);
   startDate.setDate(endDate.getDate() - (days - 1));
