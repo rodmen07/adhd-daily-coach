@@ -347,14 +347,59 @@ noise of the calibration PR #140 recorded (worst best-of-run 5547 ms -> floor
 0.13, ceiling 6500), and tightening on a single run is what section 7 of
 WEB_VITALS_BASELINE.md warns against.
 
-**PR4 - the remaining render delay. NEXT.** Attribution first, nothing else:
-find what actually gates LCP now that the two big chunks are gone (candidate
-suspects, in evidence order: the remaining 724 KB of entry script still parsed
-and executed before render; hydration cost of the dashboard tree; the D7
-harness divergence, which serves every byte uncompressed and inflates
-simulated fetch time ~3.5x). If attribution lands on the D7 divergence itself,
-the finding goes to the user's D7 decision rather than into code, because
-recalibrating the harness mid-milestone is the thing D7 explicitly deferred.
+**PR4 - the remaining render delay. ATTRIBUTED (PR #143, 2026-08-04): the
+delay is the harness's, not the app's.** The plan said attribution first,
+nothing else, with three suspects in evidence order (remaining entry script
+parse/execute; hydration cost of the dashboard tree; the D7 harness
+divergence). It landed on the third, and each step below is a measurement,
+not an inference:
+
+1. **The app already paints its LCP at first paint.** In every one of PR
+   #141's three CI runs (`30725072497`), `observedLargestContentfulPaint`
+   equals `observedFirstContentfulPaint` EXACTLY (1209/1209, 107/107,
+   114/114 ms) - the LCP paragraph ("Start with one clear action...") is in
+   the prerendered HTML and there is no late repaint, no hydration-gated
+   render, no font-swap re-candidate. The 5.5 s number exists only inside
+   Lighthouse's lantern simulation: simulated FCP 1207 ms vs simulated LCP
+   5556-5848 ms, a gap the real browser never exhibits.
+2. **CPU is not the owner.** Suspects 1 and 2 predict main-thread cost;
+   the same reports measure `bootup-time` at 693-1017 ms total and TBT at
+   48-114 ms. Nothing there can account for a 4.6 s gap.
+3. **Production serves ~3.4x fewer bytes than the harness.** GitHub Pages
+   gzips every entry chunk (probed live 2026-08-04: the six chunks
+   `index.html` references total 145,599 B gzip vs 491,409 B identity,
+   ratio 3.38x). `e2e/serve.mjs` sends identity bytes with no
+   `Content-Encoding` support at all - the D7 divergence, quantified.
+4. **The controlled A/B: compression alone halves simulated LCP.** Same
+   built `out/`, same machine, same attached Chrome, same lighthouse 12.6.1
+   (the version inside the pinned `@lhci/cli@0.15.1`, lighthouse.yml line
+   75), three runs each, minutes apart. Stock harness: sim LCP
+   **5516/5527/5536 ms** (score 0.18-0.19) - reproducing CI's 5556 almost
+   exactly. Gzip-wrapped harness (only change: text assets served
+   `Content-Encoding: gzip` the way Pages serves them): sim LCP
+   **2685/2690/2700 ms** (score 0.85-0.86), sim FCP 1207 -> 758 ms, script
+   transfer 780 KB -> ~362 KB, performance category 0.79 -> 0.94-0.96.
+   Zero app change, LCP -51%, comfortably under the 4.0 s target.
+
+So lantern is charging uncompressed script fetch into the LCP graph of a
+page whose LCP does not depend on scripts at all, and every remaining
+second of "render delay" belongs to the D7 serving divergence. Per this
+plan's own routing rule, the finding goes to the user's D7 decision rather
+than into code: the app-side work of this milestone is done, and no code
+change short of halving the shipped bytes again could clear the gate's
+harness - exactly the speculative chunk surgery this PR was told not to do.
+The milestone-completion question moves to the open product item
+(backlog, D1-D7 confirmation) with this evidence attached; the options are
+recorded there (align the harness with production serving, re-scope the
+target for an uncompressed harness, or accept the heading staying open).
+
+*(Local method note: `lhci collect` cannot run on this machine -
+chrome-launcher's temp-profile teardown hits a Windows EPERM race and kills
+the collect. The A/B attached Lighthouse to a self-launched headless Chrome
+via `--port` instead, which skips chrome-launcher; throttling stays the
+default simulate, the same mode CI runs. Experiment scripts lived in the
+session scratchpad and are deliberately not committed - the numbers, method
+and this paragraph are the reproducible record.)*
 
 ## 4. Done-when (checkable)
 
@@ -373,7 +418,14 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       given back. **PR #141: 5556 ms best-of-run on run `30725072497` -
       unchanged by removing the 670 KB Firebase chunk**, falsifying "the rest
       is PR3's Firebase chunk": the remaining ~5.5 s render delay has another
-      owner, and finding it is PR4's whole job. STILL OPEN.)*
+      owner, and finding it is PR4's whole job. **PR #143 found it: the D7
+      harness divergence.** Observed LCP == observed FCP in every run (the
+      page paints its LCP at first paint); the gap is lantern charging
+      uncompressed script fetch into the LCP graph, and the same artifact
+      measures **2685-2700 ms** under production-shaped gzip serving - under
+      the target with zero app change. STILL OPEN in the gate's harness;
+      clears via the user's D7 decision (see the PR4 section), not via more
+      code.)*
 - [x] Script transfer for `/` on the gate's harness is **≤ 1.0 MB** (from
       1.69 MB), verifiable from the same report JSON's `resource-summary`.
       *(PR #141: **21 requests / 780,860 B** on run `30725072497`, from
