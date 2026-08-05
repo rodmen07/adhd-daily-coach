@@ -173,6 +173,38 @@ describe("Dashboard page", () => {
     });
   });
 
+  // Onboarding has no trigger element to restore focus to (unlike
+  // KeyboardHelp's "?" button): it is raised by a deferred effect on a first
+  // visit, so without an explicit target the browser drops focus back to
+  // `document.body` when the dialog unmounts, silently costing a keyboard or
+  // screen-reader visitor their place. Both close paths (Skip and complete)
+  // must hand focus somewhere deliberate instead.
+  it("moves focus to the dashboard heading when onboarding is skipped, instead of dropping it on the body", async () => {
+    window.localStorage.clear();
+
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("onboarding-container")).toBeNull();
+    });
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+  });
+
+  it("moves focus to the dashboard heading when onboarding completes, instead of dropping it on the body", async () => {
+    window.localStorage.clear();
+
+    render(<Home />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Quick start now" }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("onboarding-container")).toBeNull();
+    });
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+  });
+
   it("shows onboarding health conversion status from local funnel events", async () => {
     window.localStorage.setItem(
       "calm-daily-coach:onboarding",
