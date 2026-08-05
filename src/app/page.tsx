@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
 import { loadFirebaseFirestore } from "@/lib/firebase";
@@ -131,6 +131,16 @@ export default function Home() {
     fallbackTrial: boolean;
   } | null>(null);
 
+  // Where a keyboard or screen-reader visitor lands once the first-run dialog
+  // closes. Onboarding has no trigger element to restore focus to (unlike
+  // KeyboardHelp) - it is raised by a deferred effect on a first visit, so the
+  // previously focused element is `document.body`. Without this, the panel's
+  // unmount drops focus back to the body: a keyboard visitor loses their place
+  // and nothing is announced. The dashboard heading is always in the DOM
+  // (Onboarding renders as a sibling overlay, not a wrapper), so focusing it
+  // here is safe regardless of render order.
+  const dashboardHeadingRef = useRef<HTMLHeadingElement>(null);
+
   // "Have they been through onboarding?" is asked of the validated reader, not
   // of the raw string. A bare truthiness check counted any leftover value as a
   // finished onboarding, so a corrupt record hid the flow forever while the
@@ -169,6 +179,7 @@ export default function Home() {
       document.documentElement.dataset.theme = prefs.defaultTheme;
       localStorage.setItem("calm-daily-coach:theme", prefs.defaultTheme);
     }
+    dashboardHeadingRef.current?.focus();
   };
 
   const handleOnboardingSkip = () => {
@@ -181,6 +192,7 @@ export default function Home() {
       defaultDose: "light",
       defaultTheme: "dark",
     });
+    dashboardHeadingRef.current?.focus();
   };
 
   useEffect(() => {
@@ -418,7 +430,11 @@ export default function Home() {
 
         <section className="panel mb-5">
           <p className="eyebrow">Dashboard</p>
-          <h1 className="mb-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1
+            ref={dashboardHeadingRef}
+            tabIndex={-1}
+            className="mb-2 text-3xl font-semibold tracking-tight sm:text-4xl"
+          >
             Today-first coaching
           </h1>
           <p className="mb-3 text-sm leading-6 text-slate-700 sm:text-base">
