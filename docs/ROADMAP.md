@@ -890,7 +890,7 @@ DONE:
 - The measured baseline is recorded in section 7 of the design doc, and every run prints its own calibrated floors to the job summary so recalibration is mechanical.
 - The check is non-blocking per D4: branch protection stays exactly `["lint-and-build"]`, the same precedent `security-audit.yml` and `e2e.yml` already set. Promoting it to required once the baseline proves stable is a filed follow-up, not an assumption.
 
-### v0.19 - Perf pass: the first screen arrives calm and stops moving (agent-doable now)
+### v0.19 - Perf pass: the first screen arrives calm and stops moving (DONE)
 
 Defined 2026-08-01 (product-role increment), the milestone after v0.18. This is
 the milestone v0.18 was built to make possible, and it closes the HIGH bug
@@ -965,40 +965,36 @@ Full audit, plan, and every overridable default:
   otherwise.
 - Done when: the checklist in
   [docs/design/PERF_PASS.md section 4](design/PERF_PASS.md#4-done-when-checkable)
-  is met - CLS ≤ 0.10 and LCP ≤ 4.0 s reported by the gate's own job, script
-  transfer ≤ 1.0 MB, `lighthouserc.cjs` and WEB_VITALS_BASELINE.md section 7
-  carrying the new numbers with the contract test green, and the five pinned
-  gate commands plus the `e2e` job green on both PRs.
+  is met - CLS ≤ 0.10 and script transfer ≤ 1.0 MB reported by the gate's own
+  job (both met), LCP ≤ 4.0 s **under production-shaped serving** (measured
+  2.7 s, PR4's controlled A/B; **re-scoped 2026-08-05 by user decision D7-(b)**,
+  since the gate's own uncompressed harness stays at ~5.5 s by design and that
+  is a fact about the harness, not the shipped app - see section 2 of the
+  design doc), `lighthouserc.cjs` and WEB_VITALS_BASELINE.md section 7 carrying
+  the new numbers with the contract test green, and the five pinned gate
+  commands plus the `e2e` job green on both PRs.
 
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.18 have all landed and v0.19 is OPEN above with PR1-PR3 shipped**
-(#139, #140, #141, all 2026-08-01): its CLS and script-transfer done-when
-lines are met, its LCP line is not (measured ~5.6 s against the 4.0 s
-target on PR #141's own run, unchanged by removing 665 KB of script), so the
-next dev slot is the remaining LCP gap in `docs/design/PERF_PASS.md`
-section 3, starting with attribution of the remaining render delay rather
-than another chunk removal. This sentence is the part
-`roadmap-milestone-status.test.ts` cannot
-mechanically check and therefore is most likely to go stale. (Corrected eight times, three on 2026-07-26; the first 2026-08-01
-edition was written by the increment that SHIPPED v0.18, in the same PR as
-the heading flip, which is the pattern the 2026-07-27 note below asked for,
-then rewritten hours later by the increment that DEFINED v0.19, because
-defining a milestone falsifies "no next milestone is defined yet" exactly as
-reliably as shipping one falsifies a heading, and rewritten again by v0.19
-PR3, which shipped its mechanism but measured its own done-when unmet and
-therefore did NOT flip the heading or bump the version.
-The 2026-07-27
-edition broke the recurring shape for once: the previous editions asked "the
-audit that closes v0.N" to fix this sentence and the closing dev increment
-never did, so the fix always arrived one increment late via the next product
-pass - this time the PR that shipped v0.17 PR2 edited it alongside the
-heading flip it already owed under the drift-guard contract.
-`roadmap-milestone-status.test.ts` guards the milestone HEADINGS mechanically
-but cannot read this sentence, which is why it is the half that keeps going
-stale.)
+through v0.19 have all landed and no next milestone is defined yet.** v0.19
+closed 2026-08-05 on its re-scoped LCP target (**LCP ≤ 4.0 s under
+production-shaped serving, measured 2.7 s**; the gate's own uncompressed
+harness still reports ~5.5 s by design, per user decision D7-(b) in
+`docs/design/PERF_PASS.md` section 2) after PR4's attribution found the
+remaining render delay belonged to the harness, not the app. This sentence is
+the part `roadmap-milestone-status.test.ts` cannot mechanically check and
+therefore is most likely to go stale. (Corrected nine times now, three on
+2026-07-26; the first 2026-08-01 edition was written by the increment that
+SHIPPED v0.18, in the same PR as the heading flip, then rewritten hours later
+by the increment that DEFINED v0.19, rewritten again by v0.19 PR3 (which
+shipped its mechanism but measured its own done-when unmet and therefore did
+NOT flip the heading), and this ninth edition is written by the completion PR
+that DOES flip the heading, alongside the flip, closing the "one increment
+late" gap the 2026-07-27 note above first asked for. `roadmap-milestone-status.test.ts`
+guards the milestone HEADINGS mechanically but cannot read this sentence,
+which is why it is the half that keeps going stale.)
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a

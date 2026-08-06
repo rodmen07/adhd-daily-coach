@@ -1,7 +1,10 @@
 # Perf pass: the first screen arrives calm and stops moving
 
-Status: **DESIGN, awaiting user sign-off on D1 through D7.** Every decision below
-carries an overridable default, so the whole set can be accepted with one word.
+Status: **SHIPPED 2026-08-05 (v0.19 PR1-PR4 + completion).** User confirmed
+D1-D6 on their existing defaults 2026-08-05, no overrides named; D7 = option
+(b) - re-scope the LCP target for the uncompressed harness rather than change
+the harness or leave the milestone open. See section 2's D7 note and section 4
+for the closing state of every done-when line.
 
 This milestone is the one v0.18 was built to make possible. v0.18 shipped
 measurement only and deliberately fixed nothing
@@ -251,6 +254,20 @@ The alternative, worth taking if the user prefers absolute realism over a stable
 baseline, is to do both as a v0.20 measurement-accuracy pass with a clean
 recalibration and no other change in the same PR.
 
+**RESOLVED 2026-08-05 (user decision, direct): D7 = option (b), the
+alternative above, not the default.** Re-scope the LCP target for the
+uncompressed harness rather than change it: the done-when line reads **"LCP ≤
+4.0 s under production-shaped serving"**, met at a **measured 2.7 s** (PR4's
+controlled A/B, `docs/design/PERF_PASS.md`'s own PR4 section below, zero app
+change). **The gate's own number is a separate fact and stays stated
+alongside it, not silently dropped:** `lighthouserc.cjs` and the `lighthouse`
+job keep reporting **~5.5 s** on `/`, because `e2e/serve.mjs` serves
+uncompressed by design and that is what this section already documented
+before the decision. Nothing about the harness or the gate's thresholds
+changed in this decision - only which sentence in this document and in
+`docs/ROADMAP.md` gets to call the milestone done. D1-D6 were confirmed on
+their existing defaults in the same walkthrough, no overrides named.
+
 ## 3. Technical plan
 
 ### PR1: stop the shift — SHIPPED (PR #139, 2026-08-01)
@@ -388,10 +405,10 @@ plan's own routing rule, the finding goes to the user's D7 decision rather
 than into code: the app-side work of this milestone is done, and no code
 change short of halving the shipped bytes again could clear the gate's
 harness - exactly the speculative chunk surgery this PR was told not to do.
-The milestone-completion question moves to the open product item
-(backlog, D1-D7 confirmation) with this evidence attached; the options are
-recorded there (align the harness with production serving, re-scope the
-target for an uncompressed harness, or accept the heading staying open).
+The milestone-completion question moved to the open product item (backlog,
+D1-D7 confirmation) with this evidence attached, and was **RESOLVED
+2026-08-05**: option (b), re-scope the target for the uncompressed harness.
+See section 2's D7 note above for the closing form of both numbers.
 
 *(Local method note: `lhci collect` cannot run on this machine -
 chrome-launcher's temp-profile teardown hits a Windows EPERM race and kills
@@ -410,8 +427,9 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       *(PR #139: 0.000 in all three runs of run `30713366106`, zero shift
       entries. The gate now holds it at `minScore: 0.95` / `≤ 0.1`, so PR2
       cannot silently give it back.)*
-- [ ] The Lighthouse job on the final PR reports **LCP ≤ 4.0 s** on `/`
-      (from 6.8 s).
+- [x] **LCP ≤ 4.0 s under production-shaped serving** (re-scoped 2026-08-05,
+      user decision D7-(b), from the original "reported by the gate's own
+      job" framing).
       *(PR #140: 6757 ms → **5403 ms and 5547 ms** best-of-run across two
       independent runs (`30715170249`, `30715529983`), score 0.07 → 0.20/0.18.
       The gate holds it at `minScore: 0.13` / `≤ 6500 ms` so it cannot be
@@ -423,9 +441,14 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       page paints its LCP at first paint); the gap is lantern charging
       uncompressed script fetch into the LCP graph, and the same artifact
       measures **2685-2700 ms** under production-shaped gzip serving - under
-      the target with zero app change. STILL OPEN in the gate's harness;
-      clears via the user's D7 decision (see the PR4 section), not via more
-      code.)*
+      the target with zero app change. **RESOLVED 2026-08-05:** the user chose
+      to re-scope the target rather than change the harness or leave the
+      heading open. **Both numbers, stated together on purpose (L-033 - an
+      existence check on this line is not the done-when, the sentence's own
+      honesty is): measured 2.7 s under production-shaped serving (met); the
+      `lighthouse` job's own number stays ~5.5 s on its uncompressed harness
+      by design and always will, unless a future v0.20 measurement-accuracy
+      pass changes `e2e/serve.mjs` itself.**)*
 - [x] Script transfer for `/` on the gate's harness is **≤ 1.0 MB** (from
       1.69 MB), verifiable from the same report JSON's `resource-summary`.
       *(PR #141: **21 requests / 780,860 B** on run `30725072497`, from
@@ -433,27 +456,40 @@ Every line below is checkable by a command or by a CI run, not by opinion.
       the entry document's own script set is 724,310 B across 11 chunks, down
       from 1,672,898 B across 12 at baseline; the Firebase SDK is a 583,616 B
       chunk the entry document references zero times.)*
-- [ ] `lighthouserc.cjs` and section 7 of
+- [x] `lighthouserc.cjs` and section 7 of
       [WEB_VITALS_BASELINE.md](WEB_VITALS_BASELINE.md) both carry the new
       numbers, and `src/__tests__/lighthouse-baseline-contract.test.ts` is green
       (it fails if they disagree).
-- [ ] `keeps the onboarding overlay out of the first render pass, so it matches
+      *(Both have carried the identical PR #141-ratcheted pair - LCP
+      `minScore: 0.13` / `≤ 6500 ms`, CLS `minScore: 0.95` / `≤ 0.1`, TBT
+      `≤ 500 ms` no score floor - since 2026-08-01; D7's re-scope changes which
+      sentence calls the milestone done, not the gate's own numbers, so no
+      recalibration was needed here. Re-verified green by this completion PR.)*
+- [x] `keeps the onboarding overlay out of the first render pass, so it matches
       the prerender` passes unchanged, and does not appear in either PR's diff.
+      *(True since PR #139/PR #141; this completion PR is docs + version only
+      and does not touch `src/app/page.tsx` or its test file, so the receipt
+      still holds.)*
 - [x] If zod was removed: `npm ls zod` reports it absent from `dependencies`,
       and `src/__tests__/static-export-surface.test.ts` stays green (it fails on
       an unimported production dependency).
       *(PR #140: `npm ls zod` now reports it only under
       `eslint-config-next > eslint-plugin-react-hooks > zod-validation-error`,
       i.e. a dev-tooling transitive, and `grep -n zod package.json` is empty.)*
-- [ ] The five pinned gate commands from `.github/workflows/ci.yml` are green on
+- [x] The five pinned gate commands from `.github/workflows/ci.yml` are green on
       both PRs, and the `e2e` job is green (the four Playwright journeys walk
       the first-run path this milestone moves).
-- [ ] `package.json` reads 0.19.0 and the roadmap's v0.19 heading reads DONE, in
+      *(Verified across PR #139/#140/#141/#142/#143 and re-verified locally by
+      this completion PR: lint, typecheck, build, audit, test:coverage all
+      green.)*
+- [x] `package.json` reads 0.19.0 and the roadmap's v0.19 heading reads DONE, in
       the same commit.
       *(Deliberately NOT done by PR #141, which shipped D4's mechanism but
-      measured the LCP line above still unmet on its own run. The bump ships
-      with the PR that clears that line, or with a recorded user decision
-      re-scoping the target.)*
+      measured the LCP line above still unmet on its own run. Not done by PR
+      #143 either, which attributed the gap but left the completion question
+      for the user. **Shipped by this completion PR, 2026-08-05**, in the same
+      commit as this checklist and the roadmap heading flip, per the recorded
+      D7-(b) decision above.)*
 
 ## 5. Overridable defaults summary
 
