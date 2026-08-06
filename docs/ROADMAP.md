@@ -974,25 +974,127 @@ Full audit, plan, and every overridable default:
   the new numbers with the contract test green, and the five pinned gate
   commands plus the `e2e` job green on both PRs.
 
+### v0.20 - Measurement accuracy: the gate asserts what a visitor is served (agent-doable now)
+
+Defined 2026-08-06 (product-role increment), the milestone after v0.19, and the
+follow-up D7's own text named as "worth taking if the user prefers absolute
+realism over a stable baseline" (docs/design/PERF_PASS.md section 2). v0.19
+closed on user decision D7-(b), which re-scoped the LCP sentence rather than
+fixing the harness, so this file and the design doc now state two numbers for
+one page: LCP 2.7 s as served (gzip, PR #143's controlled A/B) and ~5.5 s as
+measured by the gate, because `e2e/serve.mjs` serves identity bytes while
+GitHub Pages serves gzip. Every reader of the gate's output has to hold that
+caveat in mind to read it correctly. This milestone retires the caveat by
+making the harness serve what GitHub Pages serves, then recalibrating every
+floor so the gate defends the real number.
+
+The measured basis is already recorded, not re-derived here: the 13 assets the
+deployed entry document references total 1,751,261 bytes uncompressed and
+494,416 bytes gzipped (PERF_PASS.md section 2, measured on the live site), and
+Lighthouse's simulated throttling derives its timings from transfer size,
+which is why the uncompressed harness roughly doubles LCP.
+
+Two PRs, in dependency order:
+
+- **PR1: the harness compresses, and the gate is recalibrated in the same
+  commit.** `e2e/serve.mjs` learns gzip content negotiation via `node:zlib`
+  (the stdlib-only rule from E2E_SMOKE.md stands: no new dependency), with a
+  behavior-difference test that requests the entry document with and without
+  `Accept-Encoding: gzip` and asserts the `content-encoding` header and the
+  byte counts differ between the two responses; the test must be run once
+  against origin/main's server and observed failing there, with the red quoted
+  in the PR body. Then every assertion in `lighthouserc.cjs` is recalibrated
+  from that PR's own runs by the established method (worst best-of-run across
+  two independent three-run invocations; score floors at measured minus D1's
+  five points where the score has room to fall, raw-value ceilings where it
+  does not): the LCP pair must TIGHTEN to defend the compressed number (a
+  6500 ms ceiling over a ~2.7 s page defends nothing, and D3 says a win the
+  gate does not defend decays back), the CLS pair should hold (transfer size
+  does not move layout; confirm rather than assume), and TBT's 500 ms ceiling
+  is re-derived from measurement (TBT is CPU-bound, so compression should
+  barely move it; if it does, that is a finding to file). Section 7 of
+  WEB_VITALS_BASELINE.md carries the new numbers in the same commit with
+  `lighthouse-baseline-contract.test.ts` green, and the two-numbers caveat is
+  retired everywhere it is written: v0.19's done-when note above, the Later
+  preamble below, and PERF_PASS.md section 2's D7 paragraphs are updated to
+  record the serving divergence as closed, history preserved.
+- **PR2: the gate widens to the revenue route.** `/pricing/` is measured
+  alongside `/` with per-URL thresholds via `assertMatrix`, calibrated from
+  that PR's own runs by the same method, and the contract test's doc-parity
+  check extends to every measured URL, so a URL the gate measures without
+  documented numbers fails the suite. This is the already-filed follow-up
+  (2026-08-01, filed by PR #136) scheduled into a milestone rather than new
+  scope. Carries the package.json bump to 0.20.0 and flips this heading to
+  DONE in the same commit, per the `roadmap-milestone-status.test.ts`
+  contract.
+
+Explicitly NOT in scope, each an overridable default:
+
+- **The second D7 divergence stays open.** The measured build still has no
+  `NEXT_PUBLIC_FIREBASE_*` values, so it skips runtime auth resolution the
+  deployed build pays for. Passing repo secrets into a `pull_request`-triggered
+  workflow on a public repository is a supply-chain decision, not a
+  measurement one (PERF_PASS.md section 2 records why), and it does not ride
+  along with a milestone the user has not looked at.
+- **Promoting the `lighthouse` context to required** keeps its own clearing
+  condition (observed stability on main, backlog item of 2026-08-01) and is
+  not decided by this milestone either way.
+- **No app-code or user-facing change of any kind.** This milestone touches
+  the harness, the gate config, the contract test, and the docs. If
+  recalibration turns up an app regression, it is filed as a bug, never
+  absorbed into a looser floor.
+- **No URLs beyond `/` and `/pricing/`.** Each extra URL costs three
+  Lighthouse runs per PR; `/journal/` and `/trends/` stay in the follow-up
+  queue until a regression risk there is worth that price.
+
+Done when, each clause checkable by CI rather than by opinion:
+
+1. The serve-level compression test is green, and PR1's body quotes it
+   failing against the pre-change server.
+2. The `lighthouse` job is green on both PRs with the recalibrated
+   `lighthouserc.cjs`, and the LCP ceiling it asserts for `/` is at most
+   4000 ms. If calibration cannot support a ceiling at or below 4.0 s, the
+   D7 attribution was wrong, and that finding goes back to the user rather
+   than into a looser number.
+3. `lighthouse-baseline-contract.test.ts` is green with WEB_VITALS_BASELINE.md
+   section 7 carrying the same values for every measured URL, and it fails
+   when a measured URL has no documented numbers.
+4. The five pinned gate commands plus the `e2e` job are green on both PRs,
+   package.json reads 0.20.0, and this heading reads DONE only in PR2's
+   commit.
+
+Chosen over, with the trail: the two product-gated HIGH bugs the 2026-08-05
+backlog note still described as "needing a user product decision first" turned
+out to be a stale premise, not candidates. Re-verified at source this pass
+rather than inherited: the guest-mode wall was FIXED in PR #121 (2026-07-26)
+and the paywall dead-end in PR #117 (2026-07-25), both MERGED (confirmed via
+`gh pr view` on 2026-08-06) and both verified on the deployed artifact at the
+time, so the backlog entry is corrected rather than repeated. Also chosen over
+FCM push (USER-ONLY console gates), the `StatusMessage` consolidation, the
+`defaultTheme` LOW, and the D1/D2-wording doc edit (still awaiting the user's
+confirmation, unchanged by this pass).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.19 have all landed and no next milestone is defined yet.** v0.19
+through v0.19 have all landed and v0.20 above is the next milestone (defined
+2026-08-06, not started).** v0.19
 closed 2026-08-05 on its re-scoped LCP target (**LCP ≤ 4.0 s under
 production-shaped serving, measured 2.7 s**; the gate's own uncompressed
 harness still reports ~5.5 s by design, per user decision D7-(b) in
 `docs/design/PERF_PASS.md` section 2) after PR4's attribution found the
 remaining render delay belonged to the harness, not the app. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected nine times now, three on
+therefore is most likely to go stale. (Corrected ten times now, three on
 2026-07-26; the first 2026-08-01 edition was written by the increment that
 SHIPPED v0.18, in the same PR as the heading flip, then rewritten hours later
 by the increment that DEFINED v0.19, rewritten again by v0.19 PR3 (which
 shipped its mechanism but measured its own done-when unmet and therefore did
-NOT flip the heading), and this ninth edition is written by the completion PR
-that DOES flip the heading, alongside the flip, closing the "one increment
-late" gap the 2026-07-27 note above first asked for. `roadmap-milestone-status.test.ts`
+NOT flip the heading), the ninth edition by the completion PR that DOES flip
+the heading, alongside the flip, closing the "one increment late" gap the
+2026-07-27 note above first asked for, and this tenth by the increment that
+defined v0.20 the next day. `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale.)
 
