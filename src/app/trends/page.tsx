@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { CalmEmptyState } from "@/app/components/empty-state";
+import { StatusMessage } from "@/app/components/status-message";
 import type { AsyncStatus } from "@/lib/async-status";
 import { createCheckinStore, type CheckinStoreAdapter } from "@/lib/checkin-store";
 import type { BrowserCheckin } from "@/lib/browser-checkins";
@@ -77,8 +78,13 @@ export default function TrendsPage() {
       // Same calm rule as /now (GUEST_DATA_MIGRATION.md D5), and the marker is
       // what keeps the line to ONCE across both pages: whichever loads first
       // does the copy, the other sees "already-migrated" and stays silent.
+      // The error branch mirrors /now's exactly (v0.21 PR2,
+      // STATUS_VOCABULARY.md D4) - and the marker is NOT written on error, so
+      // the next load genuinely retries rather than reporting a stale failure.
       if (migration.status === "migrated" && migration.migratedCount > 0) {
         setMigrationStatus({ type: "ok", message: FOCUS_SESSION_COPY.migrationNote });
+      } else if (migration.status === "error") {
+        setMigrationStatus({ type: "error", message: FOCUS_SESSION_COPY.migrationErrorNote });
       }
       setLoaded(true);
     }
@@ -140,15 +146,18 @@ export default function TrendsPage() {
             week never looks like the whole story.
           </p>
 
-          {migrationStatus.type === "ok" ? (
-            <p
-              className="mb-4 text-sm text-emerald-700"
-              aria-live="polite"
-              data-testid="focus-migration-note"
-            >
-              {migrationStatus.message}
-            </p>
-          ) : null}
+          <StatusMessage
+            tone="success"
+            className="mb-4"
+            data-testid="focus-migration-note"
+            message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+          />
+          <StatusMessage
+            tone="error"
+            className="mb-4"
+            data-testid="focus-migration-error"
+            message={migrationStatus.type === "error" ? migrationStatus.message : null}
+          />
 
           {!loaded || !hasAnyCheckins ? (
             <section aria-label="No trends yet">

@@ -1,8 +1,11 @@
 # v0.21 - One calm status vocabulary: transient status speaks through one accessible primitive
 
-Status: DEFINED 2026-08-07 (product-role increment). Every decision below is an
-overridable default: the user can veto or reshape any of them with one line,
-and silence ships the defaults, per the pattern v0.15 through v0.20 followed.
+Status: **SHIPPED 2026-08-07** (PR #152 = PR1, PR #153 = PR2), defined the same
+day by the product-role increment. Every decision below was an overridable
+default: the user could veto or reshape any of them with one line, and silence
+shipped the defaults, per the pattern v0.15 through v0.20 followed. All of D1
+through D7 shipped on their defaults, with one correction D4 made to itself
+while being implemented, recorded under D4 rather than only in a PR body.
 
 ## 1. Premise, verified at source
 
@@ -130,6 +133,19 @@ dependency, no Firestore surface.
   asserting a failed migration is rendered and announced assertively, run
   against origin/main first and observed failing there (no error branch
   exists to find), red quoted in the PR body.
+  **Corrected while implementing (PR #153), two ways.** (a) This clause read
+  as if the gap were purely in the MARKUP. It was not: both effects also only
+  ever called `setMigrationStatus({ type: "ok", ... })`, so shipping the
+  render branch alone would have added a branch nothing could reach - the
+  "shipped surface that silently does nothing" class this repo files as a
+  defect. Both halves landed. (b) The obvious failure to inject, a rejected
+  Firestore write, does NOT reach the branch: `focus-session-store.ts`'s
+  firestore `migrateGuestFocusSessions` deliberately falls back to the LOCAL
+  migration when the copy throws, and that fallback succeeds and reports
+  `migrated`. The reachable trigger is the LOCAL write failing (a full or
+  disabled `localStorage`), which is precisely the case where the sessions
+  really are not where the person expects, and it is what both regression
+  tests inject.
 - **D5 - Scope boundary: page-level transient status only.** Out of scope,
   each for a stated reason: `reminder-settings.tsx` (form-field hints and
   per-field validation - a field-level concern with six sites of its own,

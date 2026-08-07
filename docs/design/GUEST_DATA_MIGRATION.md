@@ -169,6 +169,20 @@ Every line here is a default the user can flip without changing the rest.
   `migrationStatus` channel, not a new toast or modal, and failure is silent
   rather than an error banner. *Alternative: a dismissible banner with a retry
   action.*
+  **Status 2026-08-07: the "failure is silent" half is SUPERSEDED by
+  [STATUS_VOCABULARY.md](STATUS_VOCABULARY.md) D4 (v0.21 PR2); the rest of D5
+  stands.** It was never true repo-wide even when written: `/` has reported
+  its own check-in migration failure through this very channel since v0.4
+  (`planner-session.ts:41`, "Could not migrate guest check-ins to your
+  account."), so silence was the `/now`+`/trends` behaviour only, and the two
+  surfaces disagreed. Silence there is also indistinguishable from "there was
+  nothing to bring across", which makes the one outcome where the sessions
+  are NOT where the person expects the only one they cannot tell apart. Both
+  pages now render the failure through `StatusMessage tone="error"`. What
+  survives from D5 unchanged: still ONE line, still the existing
+  `migrationStatus` channel, still no toast, no modal, and no retry ask - the
+  idempotency marker is not written on error, so the next load retries by
+  itself.
 - **D6 - No new surface area.** No new env var, no new Firestore collection, no
   new security rule, no new dependency, no new console gate. *Alternative: a
   dedicated "your data" settings page, which is a separate milestone.*

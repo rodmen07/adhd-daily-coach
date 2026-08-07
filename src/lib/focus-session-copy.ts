@@ -29,9 +29,17 @@ export const FOCUS_SESSION_COPY = {
   // v0.13 (docs/design/GUEST_DATA_MIGRATION.md D5): the one calm line, shown
   // once, on whichever page happened to run the copy. It reports that the
   // sessions arrived and nothing else - no count, because a count here would
-  // invite comparing it to something, and no retry ask, because a failed copy
-  // is silent and leaves the local sessions exactly where they were.
+  // invite comparing it to something.
   migrationNote: "Your earlier focus sessions are here now.",
+  // v0.21 PR2 (docs/design/STATUS_VOCABULARY.md D4). GUEST_DATA_MIGRATION.md
+  // D5 originally said a failed copy stays silent; that half was superseded
+  // (see the status note on D5) because silence is indistinguishable from
+  // "nothing to bring across", and `/` has announced its own migration
+  // failures since v0.4. The line still asks for nothing: the copy is
+  // retried on the next load - the idempotency marker is not written on
+  // error - and it says plainly that the sessions are safe where they are.
+  migrationErrorNote:
+    "Your earlier focus sessions could not be copied to your account yet. They are still saved in this browser.",
 } as const;
 
 /**

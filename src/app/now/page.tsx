@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
+import { StatusMessage } from "@/app/components/status-message";
 import type { AsyncStatus } from "@/lib/async-status";
 import { REDUCED_MOTION_QUERY, prefersReducedMotion } from "@/lib/reduced-motion";
 import {
@@ -97,12 +98,20 @@ export default function NowPage() {
 
       setSessions(stored);
       // Calm and one-directional (GUEST_DATA_MIGRATION.md D5): only a copy
-      // that actually moved something says anything. "skipped",
-      // "already-migrated" and "error" all stay silent, because a person who
-      // never used the app signed out should never be told about a migration,
-      // and a failure changed nothing they can see or need to retry.
+      // that actually moved something says anything. "skipped" and
+      // "already-migrated" stay silent, because a person who never used the
+      // app signed out should never be told about a migration.
+      //
+      // "error" no longer stays silent (v0.21 PR2, STATUS_VOCABULARY.md D4).
+      // Silence there is indistinguishable from "there was nothing to bring
+      // across", so the one outcome where sessions are NOT where the person
+      // expects them was the only one they could not tell apart. `/` has
+      // announced its own migration failures since v0.4; this closes the gap
+      // on the two pages that never did.
       if (migration.status === "migrated" && migration.migratedCount > 0) {
         setMigrationStatus({ type: "ok", message: C.migrationNote });
+      } else if (migration.status === "error") {
+        setMigrationStatus({ type: "error", message: C.migrationErrorNote });
       }
     }
 
@@ -188,15 +197,18 @@ export default function NowPage() {
         </Link>
       </div>
 
-      {migrationStatus.type === "ok" ? (
-        <p
-          className="mb-4 text-sm text-emerald-700"
-          aria-live="polite"
-          data-testid="focus-migration-note"
-        >
-          {migrationStatus.message}
-        </p>
-      ) : null}
+      <StatusMessage
+        tone="success"
+        className="mb-4"
+        data-testid="focus-migration-note"
+        message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+      />
+      <StatusMessage
+        tone="error"
+        className="mb-4"
+        data-testid="focus-migration-error"
+        message={migrationStatus.type === "error" ? migrationStatus.message : null}
+      />
 
       {phase === "setup" && (
         <div className="rounded-2xl border border-[--line] bg-[--panel] p-6 shadow-xl">

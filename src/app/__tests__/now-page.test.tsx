@@ -50,6 +50,29 @@ vi.mock("@/lib/reminder-notifications", () => ({
   showNotification: vi.fn(),
 }));
 
+/** The account-scoped key `putFocusSession` writes a copied session to. */
+const ACCOUNT_SESSIONS_KEY = "calm-daily-coach-focus-sessions:user-123";
+
+let storageWriteSpy: { mockRestore: () => void } | null = null;
+
+/**
+ * Make ONE localStorage key unwritable, the way a full quota or a browser with
+ * storage turned off does. Every other key keeps working, so the only thing
+ * that fails is the write under test - a broad `setItem` stub would also break
+ * the idempotency marker and the page's own state and prove far less.
+ */
+function failWritesTo(key: string) {
+  const real = Storage.prototype.setItem;
+  storageWriteSpy = vi
+    .spyOn(Storage.prototype, "setItem")
+    .mockImplementation(function (this: Storage, writtenKey: string, value: string) {
+      if (writtenKey === key) {
+        throw new DOMException("exceeded the quota", "QuotaExceededError");
+      }
+      real.call(this, writtenKey, value);
+    });
+}
+
 const guestAuthMock = {
   authUser: null,
   authMessage: "",
@@ -86,6 +109,10 @@ describe("Now page", () => {
   });
 
   afterEach(() => {
+    // Restore before cleanup so a test that threw mid-way never leaks a
+    // storage stub into the next one.
+    storageWriteSpy?.mockRestore();
+    storageWriteSpy = null;
     cleanup();
     vi.clearAllMocks();
   });
@@ -232,6 +259,43 @@ describe("Now page", () => {
     expect(scope).toBe("user-123");
     // addFirestoreFocusSession would have restamped the record.
     expect(vi.mocked(addFirestoreFocusSession)).not.toHaveBeenCalled();
+  });
+
+  // v0.21 PR2 (docs/design/STATUS_VOCABULARY.md D4). Before this, the page
+  // rendered ONLY `migrationStatus.type === "ok"` and the effect only ever SET
+  // "ok", so a copy that could not be made left the person with nothing on
+  // screen and nothing announced - the same silent shape the /focus +
+  // /pricing sign-in bug had. Both halves matter: setting the state and
+  // rendering it. Observed failing against origin/main before the fix landed.
+  //
+  // The failure injected here is the storage write, NOT a Firestore
+  // rejection, because a rejected Firestore write does not reach this branch:
+  // `focus-session-store.ts:192` deliberately falls back to the LOCAL
+  // migration on `error`, which then succeeds and reports "migrated". The
+  // only way `migrateGuestFocusSessions` returns `error` is the local write
+  // failing too - a full or disabled localStorage - which is exactly the
+  // condition where the sessions really are not where the person expects.
+  it("tells a signed-in person, assertively, when the copy could not be made", async () => {
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    failWritesTo(ACCOUNT_SESSIONS_KEY);
+
+    render(<NowPage />);
+
+    const note = await screen.findByTestId("focus-migration-error");
+    expect(note.textContent).toBe(C.migrationErrorNote);
+    // A failed copy is the one migration outcome a person may need to act on,
+    // so it interrupts rather than waiting for a pause in the reading order.
+    expect(note.getAttribute("role")).toBe("alert");
+    expect(note.getAttribute("aria-live")).toBe("assertive");
+    // The success line never appears alongside it.
+    expect(screen.queryByTestId("focus-migration-note")).toBeNull();
+    // Nothing was lost: the guest copy is still exactly where it was, which is
+    // what the copy promises the person.
+    expect(listFocusSessions("guest")).toHaveLength(1);
   });
 
   it("never records a session that was only abandoned, not closed out", async () => {

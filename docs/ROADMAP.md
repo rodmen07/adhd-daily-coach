@@ -1088,7 +1088,7 @@ v0.21 definition pass, in the same PR that ships the doc edit itself:
 `docs/design/WEB_VITALS_BASELINE.md` sections 6-7 now record the confirmation
 instead of an open question.)
 
-### v0.21 - One calm status vocabulary: transient status speaks through one accessible primitive (agent-doable now)
+### v0.21 - One calm status vocabulary: transient status speaks through one accessible primitive (DONE)
 
 Defined 2026-08-07 (product-role increment), the milestone after v0.20. It
 promotes the design call PR #123 filed for itself when it extracted
@@ -1123,6 +1123,18 @@ Two PRs, in dependency order (see the design doc's D7 for the full slices):
   error branch, with regression tests observed failing against origin/main
   first; carries the 0.21.0 bump and flips this heading to DONE in the same
   commit, per the `roadmap-milestone-status.test.ts` contract.
+
+**Shipped 2026-08-07** (PR #152 = PR1, PR #153 = PR2). One correction the
+milestone made to its own design while implementing it, recorded here rather
+than left in a PR body: D4 assumed the error branch was purely a RENDER gap,
+but `/now` and `/trends` also never SET `{ type: "error" }`, so adding the
+markup alone would have shipped a branch nothing can reach. Both halves
+landed. The failure the regression tests inject is therefore the local
+storage write, not a Firestore rejection: `focus-session-store.ts` falls back
+to the local migration when the Firestore copy throws, and that fallback
+succeeds and reports `migrated`, so a rejected cloud write never reaches the
+error branch at all. A full or disabled localStorage does, and that is
+exactly the case where the sessions really are not where the person expects.
 
 Done when (checkable by CI; the design doc section 4 carries the full
 clauses): the tone-to-politeness behavior tests are green with their
