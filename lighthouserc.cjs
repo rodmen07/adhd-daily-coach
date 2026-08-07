@@ -283,20 +283,35 @@ module.exports = {
         },
         {
           // The revenue route `/pricing/` (v0.20 PR2): where a person who
-          // decides to pay actually lands. PROVISIONAL: the thresholds below
-          // are the entry route's calibrated values carried over as the
-          // starting point so this PR's own Web Vitals runs can measure the
-          // route; the calibration commit on this same PR replaces this
-          // comment and the numbers with values derived by the established
-          // method (worst best-of-run across two independent three-run
-          // invocations, named by run id) before merge. The doc-parity
-          // contract test holds section 7 of WEB_VITALS_BASELINE.md to these
-          // exact values at every commit either way.
+          // decides to pay actually lands. Calibrated on THIS PR's own runs
+          // by the established method - worst best-of-run across two
+          // independent three-run invocations of the same pinned lighthouse
+          // (run 31171279112, attempts 1 and 2):
+          //
+          //   attempt 1:  LCP 2660, 2673, 2690 ms -> best 2660 (score 0.86)
+          //               TBT 52, 65, 80 ms       -> best 52
+          //   attempt 2:  LCP 2721, 2701, 2717 ms -> best 2701 (score 0.85)
+          //               TBT 110, 90, 105 ms     -> best 90
+          //   CLS 0.000 with score 1.00 in all six samples.
+          //
+          // LCP floor: worst best-of-run 0.85 minus D1's five points = 0.80.
+          // LCP ceiling: worst best-of-run 2701 ms + ~18.5% headroom =
+          // 3200 ms, the same margin discipline every ceiling in this file
+          // has carried (and the same number as the entry route, which is
+          // expected: both pages are dominated by the shared first-load JS,
+          // not by their markup). CLS holds the entry route's 0.95 / 0.10 -
+          // confirmed by measurement, not copied. TBT gets no score floor
+          // (see above) and keeps the 500 ms ceiling: this metric's
+          // best-of-run on UNCHANGED artifacts has ranged 44-204 ms on this
+          // infrastructure, so deriving ~2.5x from today's two low samples
+          // (52, 90) would sit inside that documented spread and cry wolf -
+          // the exact mistake the entry route's TBT comment records
+          // declining twice.
           matchingUrlPattern: `${BASE_PATH_PATTERN}/pricing/$`,
           assertions: {
             "largest-contentful-paint": [
               "error",
-              { minScore: 0.81, maxNumericValue: 3200 },
+              { minScore: 0.8, maxNumericValue: 3200 },
             ],
             "cumulative-layout-shift": [
               "error",

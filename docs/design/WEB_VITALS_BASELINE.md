@@ -219,14 +219,9 @@ best of the three runs must clear this*.
 | Largest Contentful Paint | `/` | `largest-contentful-paint` | 0.81 | 3200 | 0.86, 0.86 | 2683 ms, 2683 ms |
 | Cumulative Layout Shift | `/` | `cumulative-layout-shift` | 0.95 | 0.1 | 1.00 | 0.000 |
 | Total Blocking Time | `/` | `total-blocking-time` | — | 500 | 0.99, 0.99 | 72 ms, 70 ms |
-| Largest Contentful Paint | `/pricing/` | `largest-contentful-paint` | 0.81 | 3200 | provisional | provisional |
-| Cumulative Layout Shift | `/pricing/` | `cumulative-layout-shift` | 0.95 | 0.1 | provisional | provisional |
-| Total Blocking Time | `/pricing/` | `total-blocking-time` | — | 500 | provisional | provisional |
-
-The `/pricing/` rows marked *provisional* carry the entry route's calibrated
-values as the starting point; the calibration commit on v0.20 PR2 replaces
-them with measured best-of-run numbers before merge (see *Widened by v0.20
-PR2* below).
+| Largest Contentful Paint | `/pricing/` | `largest-contentful-paint` | 0.80 | 3200 | 0.86, 0.85 | 2660 ms, 2701 ms |
+| Cumulative Layout Shift | `/pricing/` | `cumulative-layout-shift` | 0.95 | 0.1 | 1.00 | 0.000 |
+| Total Blocking Time | `/pricing/` | `total-blocking-time` | — | 500 | 1.00, 0.99 | 52 ms, 90 ms |
 
 Performance category: **0.52** at the identity-harness baseline; **0.96**
 best-of-run as of v0.20 PR1. Accessibility 0.96, best practices 1.00,
@@ -249,9 +244,35 @@ thresholds via `assertMatrix`; the routing was verified against
 asserted by nothing, which is why the contract test proves every measured
 URL matches exactly one entry and every entry exactly one URL).
 
-Calibration runs and per-sample values are recorded here by the calibration
-commit on that PR; until then the `/pricing/` thresholds are the entry
-route's carried over as provisional.
+Calibrated on that PR's own runs by the established method - worst
+best-of-run across two independent three-run invocations of the same pinned
+Lighthouse (run `31171279112`, attempts 1 and 2):
+
+| `/pricing/` | Attempt 1 | Attempt 2 |
+| --- | --- | --- |
+| LCP samples | 2660, 2673, 2690 ms | 2721, 2701, 2717 ms |
+| LCP best-of-run | **2660 ms (score 0.86)** | **2701 ms (score 0.85)** |
+| CLS | 0.000 / 1.00 in all three | 0.000 / 1.00 in all three |
+| TBT samples | 52, 65, 80 ms | 110, 90, 105 ms |
+| TBT best-of-run | **52 ms** | **90 ms** |
+| Performance category (best of run) | 0.97 | 0.96 |
+
+**LCP:** floor 0.85 − 0.05 = **0.80** (D1's five-point form); ceiling
+2701 ms + ~18.5% headroom = **3200 ms**, the same margin discipline every
+ceiling in this file has carried. That it lands on the entry route's number
+is expected, not copied: both pages are dominated by the shared first-load
+JS, not by their markup (the same runs measured `/` at best-of-run 2656 and
+2703 ms).
+
+**CLS:** 0.000 / 1.00 in all six samples, so the entry route's 0.95 / 0.10
+pair holds - confirmed by measurement.
+
+**TBT:** no score floor (the shared-runner noise finding above applies
+unchanged) and the **500 ms** ceiling kept: best-of-run on unchanged
+artifacts has ranged 44-204 ms on this infrastructure, so deriving ~2.5x
+from today's two low samples (52, 90 ms) would sit inside that documented
+spread and cry wolf - the exact mistake the entry route's TBT derivation
+records declining twice.
 
 ### Recalibrated by v0.20 PR1
 
