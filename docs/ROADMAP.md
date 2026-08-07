@@ -89,7 +89,7 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Eleven** guard tests now
+  **Twelve** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -97,9 +97,12 @@ is written next to.
   `auth-message-contract` (PR #123), `lockfile-version-parity` (PR #127),
   `lighthouse-baseline-contract` (PR #136), `roadmap-guard-count` (PR #138),
   `firebase-on-demand` (v0.19 PR3, which keeps the SDK out of the
-  first-paint bundle structurally), and `serve-compression` (v0.20 PR1, which
+  first-paint bundle structurally), `serve-compression` (v0.20 PR1, which
   spawns the real `e2e/serve.mjs` and proves it negotiates gzip the way GitHub
-  Pages does, so the Web Vitals gate measures what a visitor is served).
+  Pages does, so the Web Vitals gate measures what a visitor is served), and
+  `status-message-guard` (v0.21 PR1, which fails when a `page.tsx` spells an
+  error alert inline instead of delegating to the shared `StatusMessage`
+  vocabulary).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition

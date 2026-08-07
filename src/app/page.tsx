@@ -13,6 +13,7 @@ import { deriveTodayLoopPercent } from "@/lib/planner-derivations";
 import { prefersReducedMotion } from "@/lib/reduced-motion";
 import { Onboarding } from "@/app/components/onboarding";
 import { AuthMessage } from "@/app/components/auth-message";
+import { StatusMessage } from "@/app/components/status-message";
 import { AffirmationCard } from "@/app/components/AffirmationCard";
 import ProgressRing from "@/app/components/ProgressRing";
 import { ReminderSettingsPanel } from "@/app/components/reminder-settings";
@@ -752,22 +753,26 @@ export default function Home() {
             )}
           </div>
 
-          {!authConfigured ? (
-            <p className="mt-3 text-sm text-amber-700">
-              Google login is not configured yet. Add Firebase environment variables to enable it.
-            </p>
-          ) : null}
+          <StatusMessage
+            tone="notice"
+            className="mt-3"
+            message={
+              authConfigured
+                ? null
+                : "Google login is not configured yet. Add Firebase environment variables to enable it."
+            }
+          />
           <AuthMessage message={authMessage} />
-          {migrationStatus.type === "ok" ? (
-            <p className="mt-3 text-sm text-emerald-700" aria-live="polite">
-              {migrationStatus.message}
-            </p>
-          ) : null}
-          {migrationStatus.type === "error" ? (
-            <p className="mt-3 text-sm text-rose-700" role="alert" aria-live="assertive">
-              {migrationStatus.message}
-            </p>
-          ) : null}
+          <StatusMessage
+            tone="success"
+            className="mt-3"
+            message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+          />
+          <StatusMessage
+            tone="error"
+            className="mt-3"
+            message={migrationStatus.type === "error" ? migrationStatus.message : null}
+          />
         </section>
 
         {weeklySummary ? (
