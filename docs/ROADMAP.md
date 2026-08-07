@@ -1,6 +1,6 @@
 # ADHD Daily Coach - Product Roadmap
 
-Canonical forward roadmap, last audited against real git/gh state 2026-08-01. This
+Canonical forward roadmap, last audited against real git/gh state 2026-08-07. This
 document supersedes the forward-looking sections of docs/FRONTEND_FUNCTIONALITY_PLAN.md,
 docs/AUTONOMOUS_IMPLEMENTATION_PLAN.md, and docs/MONETIZATION_PLAN.md; those files remain
 as historical records with status banners.
@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-08-01)
+## Current state (2026-08-07)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
@@ -133,7 +133,7 @@ is written next to.
   insights, plan editor, browser reminders, offline/sync status) are complete as of
   2026-07-18.
 - New surfaces since the 2026-07-18 snapshot above (this bullet last extended
-  2026-08-01): `/trends`, a 4-week
+  2026-08-07): `/trends`, a 4-week
   check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
   calm focus-session timer (NF-6, PR #104) backed by a local-first
   `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
@@ -153,10 +153,20 @@ is written next to.
   guest-to-account migration to slicer task history and to today's plan, so
   signing in no longer empties the workspace a guest built. v0.18 (PR #136,
   2026-08-01) added the repo's first performance measurement, a Lighthouse CI
-  job with its own non-required `lighthouse` context. **package.json reads
-  0.18.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale;
+  job with its own non-required `lighthouse` context. v0.19 (PR #139, #140,
+  #141, #143, #145, 2026-08-01 to 2026-08-05) took the entry route from CLS
+  0.752 to 0.000 and entry script transfer from 1.69 MB to 780,860 B. v0.20
+  (PR #148 + PR #149, 2026-08-07) made the Web Vitals gate measure what a
+  visitor is actually served, gzip and all, and widened it to `/pricing/`.
+  v0.21 (PR #152 + PR #153, 2026-08-07) added no page either: it put every
+  page-level transient status behind one `StatusMessage` primitive whose
+  politeness is derived from its tone, and gave `/now` and `/trends` the
+  migration error branch they never had. **package.json reads
+  0.21.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  then "0.18.0" until 2026-08-07, three milestones stale;
   it is the one claim in this bullet that the milestone-status guard already
-  checks from the other direction, via the headings).
+  checks from the other direction, via the headings, which is why the headings
+  were right the whole time this sentence was wrong).
 - Access (corrected 2026-07-26 by v0.14): **the app is open to a signed-out
   person on every route.** Until v0.14 it was not - `subscription-guard.tsx`
   answered `!authUser` with a full-screen "Sign in required" wall via
@@ -1161,26 +1171,120 @@ versions 5.1.x/4.0.x of an 0.20.0 app, and the dead four-secret injection on
 not a milestone), FCM push (console-gated, unchanged), the D7 second measurement
 divergence (user decision), the `lighthouse` required-context promotion (own
 clearing condition), and `/journal/`+`/trends/` gate widening (v0.20's cost
-reasoning stands).
+reasoning stands). **Update 2026-08-07:** the security-hardening remainder in
+that list SHIPPED the same day as PR #154 (a truthful SECURITY.md naming no
+version at all, so it cannot go stale at a bump, plus the dead four-secret
+`env:` block deleted), exactly as one DevSecOps cadence increment. The clause
+above is kept for the record of why v0.21 passed over it, not as a live claim.
+
+### v0.22 - One route vocabulary: every shipped surface is reachable, and nothing internal is in the front door (agent-doable now)
+
+Defined 2026-08-07 (product-role increment), the milestone after v0.21. Design
+doc: [docs/design/ROUTE_VOCABULARY.md](design/ROUTE_VOCABULARY.md), every
+premise read out of the working tree at `43fa2da` rather than inherited, with
+line citations. Every decision an overridable default.
+
+It applies v0.21's move to routes. The app ships **13** routes
+(`find src/app -name page.tsx`), and **four independent hardcoded lists**
+decide where a person can go, with no test comparing any of them to the routes
+that exist: `NAV_LINKS` (`site-nav.tsx:12-25`, 12 entries, rendered on every
+page via `layout.tsx:68`), `GO_TO_TARGETS` (`keyboard-help.tsx:16-23`, the 6
+chords `router.push` actually reads), `SHORTCUT_ROWS`
+(`keyboard-help.tsx:36-55`, whose six "Go to X" rows restate the chord table in
+prose under a comment that says "Keep this table honest when shortcuts
+change"), and the dashboard action rail (`page.tsx:346,358,369,377`).
+
+What it fixes for a person, both verified at source and both fallout of having
+four lists instead of one:
+
+- **`/now` is in no navigation surface.** It is absent from `NAV_LINKS` and
+  from `GO_TO_TARGETS`, reachable only from the dashboard rail
+  (`page.tsx:377`), so the calm single-task timer that v0.12 built a `/trends`
+  card around is invisible from every other page.
+- **`/monetization` sits in the primary nav** (`site-nav.tsx:24`) although the
+  page describes itself as an internal analytics view for the developer
+  ("so you can validate monetization UX before backend analytics is wired",
+  `monetization/page.tsx:45`). A first-time visitor meets a nav item named
+  after the business model, one slot after Pricing.
+
+Two PRs, in dependency order (design doc D8):
+
+- **PR1:** `src/lib/routes.ts`, the registry (`path`, `label`,
+  `inPrimaryNav`, `goToKey?`, `audience`); `site-nav.tsx` rendering from it
+  instead of its own array; the D3/D4 changes (`/monetization` out of the
+  primary nav and marked internal, its page and its dashboard "View analytics"
+  link untouched; `/now` in, labelled "Now"); and the new
+  `route-registry-guard` suite. No version bump in PR1, per the
+  `roadmap-milestone-status.test.ts` contract v0.14 PR1 proved.
+- **PR2:** `keyboard-help.tsx` deriving BOTH its chord table and its dialog
+  rows from the registry (D5 adds `g n` for `/now`, D6 generates the six "Go
+  to X" rows), then the 0.22.0 bump in `package.json` and both
+  `package-lock.json` copies, this heading flipped to DONE, and the
+  Current-state guard-count sentence taken from **Fourteen to Fifteen** naming
+  `route-registry-guard`, all in the same commit.
+
+Done when, each clause checkable by CI rather than by opinion, and none of them
+an existence grep:
+
+1. `src/app/__tests__/route-registry-guard.test.ts` glob-discovers every
+   `src/app/**/page.tsx` with a zero-match hard failure, a floor of at least 13
+   routes, and two named anchors (`/` and `/monetization`), then fails when a
+   discovered route is missing from the registry or a registry `path` has no
+   page file. The blinded-discovery control is part of the suite, not just the
+   PR body.
+2. Rendering `<SiteNav />` produces exactly the links the registry marks
+   `inPrimaryNav`, in registry order, asserted from the rendered DOM: adding a
+   link by hand to the component fails.
+3. The rendered nav contains a link to `/now` and contains no link to
+   `/monetization`, while `/monetization` is still a registry entry with
+   `audience: "internal"` and `src/app/monetization/page.tsx` still exists, so
+   "removed from the front door" and "deleted" cannot be confused.
+4. Rendering the keyboard dialog produces exactly one "Go to X" row per
+   registry entry carrying a `goToKey`, using the registry's label, and
+   pressing `g` then that key routes to that path. A chord added without a row,
+   or a row without a chord, fails.
+5. Every behavioral clause above is proven by a negative control whose
+   perturbation is confirmed applied and whose red output is quoted, with the
+   implementation committed before the first perturbation.
+6. The pinned CI gate is green on both PRs (`npm run lint`, `npm run
+   typecheck`, `npm run test:coverage`, `npm run build`, `npm audit
+   --audit-level=high`, Node 24 per `.github/workflows/ci.yml`), and the
+   non-required `e2e` and `lighthouse` contexts stay green.
+7. After PR2: `package.json` reads `0.22.0` with both lockfile copies matching
+   (`lockfile-version-parity`), this heading reads DONE
+   (`roadmap-milestone-status`), and the guard-count sentence reads Fifteen and
+   names the new suite (`roadmap-guard-count`).
+
+Chosen over, with the trail (full reasoning in the design doc section 5): a nav
+grouping or visual redesign (a redesign mixed into a data-layer extraction is
+unreviewable, and the registry is what makes a later `group` field cheap), the
+still-open silent-migration product question filed by PR #153 (needs a decision
+about whether a successful-but-local-only copy deserves any notice, and it is
+not a routing question), workspace cloud sync (still deepens the unpublished
+Firestore rules obligation), FCM push (console-gated, re-checked and
+unchanged), the D7 second measurement divergence (user decision), the
+`lighthouse` required-context promotion (own clearing condition), and
+`/journal/`+`/trends/` gate widening (v0.20's cost reasoning stands).
 
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.20 have all landed, v0.21 is defined above (agent-doable now, not
-yet started), and no milestone is defined above v0.21, so the product pass
-after it ships defines v0.22.** v0.20
-completed 2026-08-07 (PR #148 harness gzip + recalibration, PR #149 the gate
-widened to `/pricing/`), so the gate now measures what a visitor is served
-and defends it per URL. This sentence is
+through v0.21 have all landed, v0.22 is defined above (agent-doable now, not
+yet started), and no milestone is defined above v0.22, so the product pass
+after it ships defines v0.23.** v0.21
+completed 2026-08-07 (PR #152 the `StatusMessage` primitive, PR #153 the
+`/now` and `/trends` error branch), so page-level transient status now speaks
+through one accessible vocabulary. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected twelve times now, three on
+therefore is most likely to go stale. (Corrected thirteen times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
-defined v0.20 the next day, the eleventh by v0.20 PR1, which retired the
-two-numbers caveat, and this twelfth by the 2026-08-07 product pass that
-defined v0.21. `roadmap-milestone-status.test.ts`
+defined v0.20 one day later, the eleventh by v0.20 PR1, which retired the
+two-numbers caveat, the twelfth by the 2026-08-07 product pass that
+defined v0.21, and this thirteenth by the 2026-08-07 product pass that
+defined v0.22 hours after v0.21 shipped. `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale.)
 
