@@ -64,6 +64,18 @@ const { SITE_BASE_PATH } = require("./site-base-path.mjs");
  *  can never be pointed at different ports. */
 const PORT = Number(process.env.E2E_PORT ?? 4173);
 
+/**
+ * The basePath escaped for use inside a RegExp source string. Lighthouse CI
+ * routes each collected report to an `assertMatrix` entry via
+ * `new RegExp(matchingUrlPattern).test(lhr.finalUrl)` (verified in
+ * `@lhci/utils@0.15.1` `src/assertions.js`, not inferred from docs), so the
+ * patterns below are regexes, and a basePath containing a regex
+ * metacharacter would silently change what they match. Derived from
+ * SITE_BASE_PATH for the same reason the URLs are: a hardcoded slug here
+ * would have broken on the 2026-07-29 repo rename.
+ */
+const BASE_PATH_PATTERN = SITE_BASE_PATH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 module.exports = {
   ci: {
     collect: {
@@ -75,7 +87,17 @@ module.exports = {
       // Without this the collect step waits out its timeout against a server
       // that has been up the whole time.
       startServerReadyPattern: "\\[e2e serve\\] serving",
-      url: [`http://127.0.0.1:${PORT}${SITE_BASE_PATH}/`],
+      // The entry route and the revenue route (v0.20 PR2). `/pricing/` is
+      // where a person who decides to pay actually lands, and before this a
+      // regression isolated to it was invisible to the gate. Each extra URL
+      // costs three Lighthouse runs per PR, which is why the roadmap scopes
+      // this list to exactly these two; `/journal/` and `/trends/` stay in
+      // the follow-up queue until a regression risk there is worth that
+      // price.
+      url: [
+        `http://127.0.0.1:${PORT}${SITE_BASE_PATH}/`,
+        `http://127.0.0.1:${PORT}${SITE_BASE_PATH}/pricing/`,
+      ],
       // Three runs, median asserted. See the note on run-to-run noise above.
       numberOfRuns: 3,
       settings: {
@@ -95,17 +117,16 @@ module.exports = {
       // belong to the QA stream's own passes, and the resulting red would say
       // "something in this repo is imperfect" rather than "this PR regressed
       // performance", which is the only question this gate exists to answer.
-      // Calibrated from runs 30707333707 and 30707624249 on this PR - two
-      // independent runs of three, on ubuntu-latest, against the real export.
       // Every number below is measured, none is aspirational, and section 7 of
-      // the design doc holds the same values (the contract test fails if the
-      // two ever disagree).
+      // the design doc holds the same values for every measured URL (the
+      // contract test fails if the two ever disagree, or if a measured URL
+      // has no documented numbers).
       //
       // Lighthouse CI aggregates with `optimistic` by default, so each
       // assertion is really "the BEST of the three runs must clear this".
       // That is the right default for browser timings, and the thresholds
-      // below are set against the worst BEST-OF-RUN seen across both runs,
-      // not against a single median.
+      // below are set against the worst BEST-OF-RUN seen across two
+      // independent three-run invocations, not against a single median.
       //
       // WHY TWO OF THESE CARRY A NUMERIC CEILING AS WELL AS A SCORE FLOOR
       // ----------------------------------------------------------------
@@ -120,11 +141,11 @@ module.exports = {
       //
       // Lighthouse scores are a saturating curve over the raw value: once a
       // metric is deep in the red, a large real regression barely moves the
-      // score. So for the two saturated metrics the regression signal is the
-      // RAW VALUE, and the ceilings below sit just above the worst of the
-      // three measured runs. `minScore` is kept alongside them because it is
-      // D1's approved form and it starts biting again the moment these
-      // metrics improve - which is what v0.19's perf pass is for.
+      // score. So for a saturated metric the regression signal is the
+      // RAW VALUE, and its ceiling sits just above the worst measured run.
+      // `minScore` is kept alongside where it is live because it is D1's
+      // approved form and it starts biting again the moment the metric
+      // improves - which is what v0.19's perf pass was for.
       //
       // AND WHY TOTAL BLOCKING TIME GETS NO SCORE FLOOR AT ALL
       // ------------------------------------------------------
@@ -146,100 +167,160 @@ module.exports = {
       // five-point form is simply not viable for this metric on this
       // infrastructure; that is a finding about the runner, not a softening of
       // the decision, and it is filed for the user in the backlog.
-      assertions: {
-        // RECALIBRATED by v0.20 PR1 (docs/ROADMAP.md v0.20), which made
-        // `e2e/serve.mjs` serve gzip the way GitHub Pages does. Was
-        // `{ minScore: 0.13, maxNumericValue: 6500 }`, calibrated against the
-        // identity-serving harness (worst best-of-run 5547 ms) - a ceiling
-        // that would have defended nothing over the ~2.7 s page a visitor is
-        // actually served. Measured on THIS PR's own runs by the established
-        // method, two independent three-run invocations of the same pinned
-        // lighthouse (run 31167698390, attempts 1 and 2):
-        //
-        //   attempt 1:  3122, 2683, 2733 ms  -> best 2683 (score 0.86)
-        //   attempt 2:  3438, 2710, 2683 ms  -> best 2683 (score 0.86)
-        //
-        // The first sample of each is the usual cold-start outlier that
-        // `optimistic` aggregation absorbs; the four warm samples span 50 ms.
-        // This matches PR #143's controlled A/B (2685-2700 ms gzip-served)
-        // within noise, which is the receipt that the D7 attribution was
-        // right. Floor: worst best-of-run 0.86 minus D1's five points = 0.81.
-        // Ceiling: worst best-of-run 2683 ms plus ~19% headroom = 3200 ms,
-        // the same margin discipline the 6500 (over 5547) and 8000 (over
-        // 6757) ceilings carried, and comfortably under the 4000 ms bound
-        // the v0.20 done-when demands. Both halves TIGHTEN; nothing loosened.
-        //
-        // The superseded v0.19 PR2 calibration below is kept as history.
-        // RATCHETED by v0.19 PR2 (docs/design/PERF_PASS.md D3). Was
-        // `{ minScore: 0.02, maxNumericValue: 8000 }`, calibrated against a
-        // best-of-run 6757 ms measured in both baseline runs.
-        //
-        // PR #140 took zod off the entry route. Calibrated the same way the
-        // original baseline was — against the WORST best-of-run across two
-        // independent runs on this PR, not against one flattering sample:
-        //
-        //   run 30715170249:  11851, 5403, 5535 ms  -> best 5403 (score 0.20)
-        //   run 30715529983:   8984, 5558, 5547 ms  -> best 5547 (score 0.18)
-        //
-        // The first sample of each is a cold-start outlier of the kind
-        // `optimistic` aggregation exists to absorb; the warm samples sit
-        // within 155 ms of each other across both runs.
-        //
-        // LCP has left the saturated region, so D1's five-point floor does real
-        // work again: worst best-of-run 0.18 - 0.05 = 0.13, and that is the
-        // BINDING half. A floor of 0.15 was measured first (0.20 - 0.05, from
-        // the first run alone) and DELIBERATELY LOOSENED to 0.13 before merge
-        // when the second run came in at 0.18: three points of headroom on a
-        // browser timing is inside the noise this file already documents for
-        // TBT, and a gate that cries wolf is worse than no gate.
-        //
-        // The ceiling drops 8000 -> 6500: the worst best-of-run 5547 plus ~17%
-        // headroom, close to the ~18% the old 8000 carried over 6757. It is the
-        // looser half, kept as the backstop for an upstream scoring-curve
-        // change. If this floor still proves noisy the remedy is
-        // `numberOfRuns: 5`, never a looser threshold.
-        "largest-contentful-paint": [
-          "error",
-          { minScore: 0.81, maxNumericValue: 3200 },
-        ],
-        // CONFIRMED (not assumed) by v0.20 PR1's recalibration: CLS measured
-        // 0.000 with score 1.00 in all six samples across both invocations of
-        // run 31167698390 under the gzip-serving harness - transfer encoding
-        // does not move layout, so both halves hold unchanged.
-        // RATCHETED by v0.19 PR1 (docs/design/PERF_PASS.md D3: a win the gate
-        // does not defend decays back). Was `{ minScore: 0, maxNumericValue:
-        // 0.8 }`, calibrated against 0.752 measured in all six baseline runs.
-        // PR #139 took the first-run panel out of normal flow and CLS measured
-        // 0.000 with score 1.00 in ALL THREE runs of run 30713366106, with
-        // `layout-shifts` reporting zero shift entries - not a smaller shift, no
-        // shift.
-        //
-        // So the score floor is live again for the first time: 1.00 minus D1's
-        // five points is 0.95, which is roughly a raw CLS of 0.05 and is now
-        // the binding half of this assertion. The ceiling stays at D2's target
-        // of 0.10, the Core Web Vitals "good" boundary, as the backstop for the
-        // case a future Lighthouse moves the scoring curve under us. A ceiling
-        // of exactly 0.0 was rejected: it would fail an honest PR over a 0.001
-        // shift, and this gate's credibility is why TBT lost its score floor.
-        "cumulative-layout-shift": [
-          "error",
-          { minScore: 0.95, maxNumericValue: 0.1 },
-        ],
-        // Best-of-run 128 ms then 204 ms. Ceiling at 500 ms: ~2.5x the worse
-        // of the two, which still catches a real regression while sitting well
-        // clear of the observed noise. No `minScore` on purpose - see above.
-        //
-        // RE-DERIVED (and deliberately kept at 500) by v0.20 PR1: the gzip
-        // runs measured best-of-run 72 ms then 70 ms - compression barely
-        // moved the CPU work, as expected - but this metric's own history on
-        // an unchanged artifact spans best-of-run 70 to 204 ms, so a ceiling
-        // derived from today's two low samples (~2.5x 72 = 180 ms) would sit
-        // inside the documented cross-run spread and cry wolf. 500 ms remains
-        // ~2.5x the WORST best-of-run ever observed here (204 ms), which is
-        // the derivation that respects the noise record rather than the lucky
-        // day. If it ever proves loose, the remedy is `numberOfRuns: 5`.
-        "total-blocking-time": ["error", { maxNumericValue: 500 }],
-      },
+      //
+      // WHY assertMatrix RATHER THAN A SINGLE assertions BLOCK (v0.20 PR2)
+      // ------------------------------------------------------------------
+      // With two URLs measured, one shared assertions block would hold both
+      // routes to one set of numbers, so the tighter route's calibration
+      // would either fail the other or be loosened to cover it. assertMatrix
+      // gives each URL its own measured thresholds. Two facts about how the
+      // tool routes reports, both verified in `@lhci/utils@0.15.1` source
+      // rather than assumed: `assertMatrix` cannot coexist with a top-level
+      // `assertions` block (the tool throws), and a report whose URL matches
+      // NO entry is asserted by NOTHING, silently - which is why the
+      // contract test proves every measured URL matches exactly one entry
+      // and every entry exactly one URL.
+      assertMatrix: [
+        {
+          // The entry route `/`. Anchored on the basePath so it cannot also
+          // match `/pricing/` (a pattern is a regex over the full URL, and
+          // an unanchored one matches every route under the site).
+          matchingUrlPattern: `${BASE_PATH_PATTERN}/$`,
+          assertions: {
+            // RECALIBRATED by v0.20 PR1 (docs/ROADMAP.md v0.20), which made
+            // `e2e/serve.mjs` serve gzip the way GitHub Pages does. Was
+            // `{ minScore: 0.13, maxNumericValue: 6500 }`, calibrated against the
+            // identity-serving harness (worst best-of-run 5547 ms) - a ceiling
+            // that would have defended nothing over the ~2.7 s page a visitor is
+            // actually served. Measured on THIS PR's own runs by the established
+            // method, two independent three-run invocations of the same pinned
+            // lighthouse (run 31167698390, attempts 1 and 2):
+            //
+            //   attempt 1:  3122, 2683, 2733 ms  -> best 2683 (score 0.86)
+            //   attempt 2:  3438, 2710, 2683 ms  -> best 2683 (score 0.86)
+            //
+            // The first sample of each is the usual cold-start outlier that
+            // `optimistic` aggregation absorbs; the four warm samples span 50 ms.
+            // This matches PR #143's controlled A/B (2685-2700 ms gzip-served)
+            // within noise, which is the receipt that the D7 attribution was
+            // right. Floor: worst best-of-run 0.86 minus D1's five points = 0.81.
+            // Ceiling: worst best-of-run 2683 ms plus ~19% headroom = 3200 ms,
+            // the same margin discipline the 6500 (over 5547) and 8000 (over
+            // 6757) ceilings carried, and comfortably under the 4000 ms bound
+            // the v0.20 done-when demands. Both halves TIGHTEN; nothing loosened.
+            //
+            // The superseded v0.19 PR2 calibration below is kept as history.
+            // RATCHETED by v0.19 PR2 (docs/design/PERF_PASS.md D3). Was
+            // `{ minScore: 0.02, maxNumericValue: 8000 }`, calibrated against a
+            // best-of-run 6757 ms measured in both baseline runs.
+            //
+            // PR #140 took zod off the entry route. Calibrated the same way the
+            // original baseline was — against the WORST best-of-run across two
+            // independent runs on this PR, not against one flattering sample:
+            //
+            //   run 30715170249:  11851, 5403, 5535 ms  -> best 5403 (score 0.20)
+            //   run 30715529983:   8984, 5558, 5547 ms  -> best 5547 (score 0.18)
+            //
+            // The first sample of each is a cold-start outlier of the kind
+            // `optimistic` aggregation exists to absorb; the warm samples sit
+            // within 155 ms of each other across both runs.
+            //
+            // LCP has left the saturated region, so D1's five-point floor does real
+            // work again: worst best-of-run 0.18 - 0.05 = 0.13, and that is the
+            // BINDING half. A floor of 0.15 was measured first (0.20 - 0.05, from
+            // the first run alone) and DELIBERATELY LOOSENED to 0.13 before merge
+            // when the second run came in at 0.18: three points of headroom on a
+            // browser timing is inside the noise this file already documents for
+            // TBT, and a gate that cries wolf is worse than no gate.
+            //
+            // The ceiling drops 8000 -> 6500: the worst best-of-run 5547 plus ~17%
+            // headroom, close to the ~18% the old 8000 carried over 6757. It is the
+            // looser half, kept as the backstop for an upstream scoring-curve
+            // change. If this floor still proves noisy the remedy is
+            // `numberOfRuns: 5`, never a looser threshold.
+            "largest-contentful-paint": [
+              "error",
+              { minScore: 0.81, maxNumericValue: 3200 },
+            ],
+            // CONFIRMED (not assumed) by v0.20 PR1's recalibration: CLS measured
+            // 0.000 with score 1.00 in all six samples across both invocations of
+            // run 31167698390 under the gzip-serving harness - transfer encoding
+            // does not move layout, so both halves hold unchanged.
+            // RATCHETED by v0.19 PR1 (docs/design/PERF_PASS.md D3: a win the gate
+            // does not defend decays back). Was `{ minScore: 0, maxNumericValue:
+            // 0.8 }`, calibrated against 0.752 measured in all six baseline runs.
+            // PR #139 took the first-run panel out of normal flow and CLS measured
+            // 0.000 with score 1.00 in ALL THREE runs of run 30713366106, with
+            // `layout-shifts` reporting zero shift entries - not a smaller shift, no
+            // shift.
+            //
+            // So the score floor is live again for the first time: 1.00 minus D1's
+            // five points is 0.95, which is roughly a raw CLS of 0.05 and is now
+            // the binding half of this assertion. The ceiling stays at D2's target
+            // of 0.10, the Core Web Vitals "good" boundary, as the backstop for the
+            // case a future Lighthouse moves the scoring curve under us. A ceiling
+            // of exactly 0.0 was rejected: it would fail an honest PR over a 0.001
+            // shift, and this gate's credibility is why TBT lost its score floor.
+            "cumulative-layout-shift": [
+              "error",
+              { minScore: 0.95, maxNumericValue: 0.1 },
+            ],
+            // Best-of-run 128 ms then 204 ms. Ceiling at 500 ms: ~2.5x the worse
+            // of the two, which still catches a real regression while sitting well
+            // clear of the observed noise. No `minScore` on purpose - see above.
+            //
+            // RE-DERIVED (and deliberately kept at 500) by v0.20 PR1: the gzip
+            // runs measured best-of-run 72 ms then 70 ms - compression barely
+            // moved the CPU work, as expected - but this metric's own history on
+            // an unchanged artifact spans best-of-run 70 to 204 ms, so a ceiling
+            // derived from today's two low samples (~2.5x 72 = 180 ms) would sit
+            // inside the documented cross-run spread and cry wolf. 500 ms remains
+            // ~2.5x the WORST best-of-run ever observed here (204 ms), which is
+            // the derivation that respects the noise record rather than the lucky
+            // day. If it ever proves loose, the remedy is `numberOfRuns: 5`.
+            "total-blocking-time": ["error", { maxNumericValue: 500 }],
+          },
+        },
+        {
+          // The revenue route `/pricing/` (v0.20 PR2): where a person who
+          // decides to pay actually lands. Calibrated on THIS PR's own runs
+          // by the established method - worst best-of-run across two
+          // independent three-run invocations of the same pinned lighthouse
+          // (run 31171279112, attempts 1 and 2):
+          //
+          //   attempt 1:  LCP 2660, 2673, 2690 ms -> best 2660 (score 0.86)
+          //               TBT 52, 65, 80 ms       -> best 52
+          //   attempt 2:  LCP 2721, 2701, 2717 ms -> best 2701 (score 0.85)
+          //               TBT 110, 90, 105 ms     -> best 90
+          //   CLS 0.000 with score 1.00 in all six samples.
+          //
+          // LCP floor: worst best-of-run 0.85 minus D1's five points = 0.80.
+          // LCP ceiling: worst best-of-run 2701 ms + ~18.5% headroom =
+          // 3200 ms, the same margin discipline every ceiling in this file
+          // has carried (and the same number as the entry route, which is
+          // expected: both pages are dominated by the shared first-load JS,
+          // not by their markup). CLS holds the entry route's 0.95 / 0.10 -
+          // confirmed by measurement, not copied. TBT gets no score floor
+          // (see above) and keeps the 500 ms ceiling: this metric's
+          // best-of-run on UNCHANGED artifacts has ranged 44-204 ms on this
+          // infrastructure, so deriving ~2.5x from today's two low samples
+          // (52, 90) would sit inside that documented spread and cry wolf -
+          // the exact mistake the entry route's TBT comment records
+          // declining twice.
+          matchingUrlPattern: `${BASE_PATH_PATTERN}/pricing/$`,
+          assertions: {
+            "largest-contentful-paint": [
+              "error",
+              { minScore: 0.8, maxNumericValue: 3200 },
+            ],
+            "cumulative-layout-shift": [
+              "error",
+              { minScore: 0.95, maxNumericValue: 0.1 },
+            ],
+            "total-blocking-time": ["error", { maxNumericValue: 500 }],
+          },
+        },
+      ],
     },
     upload: {
       // `temporary-public-storage`, the Lighthouse CI default, POSTs the full
