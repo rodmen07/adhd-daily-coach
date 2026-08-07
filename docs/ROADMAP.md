@@ -979,7 +979,7 @@ Full audit, plan, and every overridable default:
   gate now measures ~2.7 s directly (run `31167698390`), so the two-numbers
   reading of this paragraph is history, not current guidance.
 
-### v0.20 - Measurement accuracy: the gate asserts what a visitor is served (agent-doable now)
+### v0.20 - Measurement accuracy: the gate asserts what a visitor is served (DONE)
 
 Defined 2026-08-06 (product-role increment), the milestone after v0.19, and the
 follow-up D7's own text named as "worth taking if the user prefers absolute
@@ -1001,8 +1001,8 @@ which is why the uncompressed harness roughly doubles LCP.
 
 Two PRs, in dependency order:
 
-- **PR1: the harness compresses, and the gate is recalibrated in the same
-  commit.** `e2e/serve.mjs` learns gzip content negotiation via `node:zlib`
+- **PR1 (done, PR #148): the harness compresses, and the gate is recalibrated
+  in the same commit.** `e2e/serve.mjs` learns gzip content negotiation via `node:zlib`
   (the stdlib-only rule from E2E_SMOKE.md stands: no new dependency), with a
   behavior-difference test that requests the entry document with and without
   `Accept-Encoding: gzip` and asserts the `content-encoding` header and the
@@ -1023,7 +1023,8 @@ Two PRs, in dependency order:
   retired everywhere it is written: v0.19's done-when note above, the Later
   preamble below, and PERF_PASS.md section 2's D7 paragraphs are updated to
   record the serving divergence as closed, history preserved.
-- **PR2: the gate widens to the revenue route.** `/pricing/` is measured
+- **PR2 (done, this PR): the gate widens to the revenue route.** `/pricing/`
+  is measured
   alongside `/` with per-URL thresholds via `assertMatrix`, calibrated from
   that PR's own runs by the same method, and the contract test's doc-parity
   check extends to every measured URL, so a URL the gate measures without
@@ -1083,8 +1084,8 @@ confirmation, unchanged by this pass).
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.19 have all landed and v0.20 above is the next milestone (PR1
-shipped; PR2 carries the bump and the heading flip).** v0.19
+through v0.20 have all landed and no milestone is defined above them, so the
+next product pass defines v0.21.** v0.19
 closed 2026-08-05 on its re-scoped LCP target (**LCP ≤ 4.0 s under
 production-shaped serving, measured 2.7 s**, per user decision D7-(b) in
 `docs/design/PERF_PASS.md` section 2) after PR4's attribution found the

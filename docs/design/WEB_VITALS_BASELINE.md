@@ -196,23 +196,37 @@ basePath. **Numbers from a CI runner, not a developer machine**: the floors
 have to sit under the noise of the environment that will actually enforce
 them.
 
-URL: `http://127.0.0.1:4173/adhd-daily-coach/` (the `/` route)
+URLs measured (v0.20 PR2 widened the gate from `/` alone): the entry route
+`http://127.0.0.1:4173/adhd-daily-coach/` and the revenue route
+`http://127.0.0.1:4173/adhd-daily-coach/pricing/`, each with its own
+thresholds via `assertMatrix`. The contract test holds this table to the
+enforced numbers **per URL**: a measured URL with no documented row fails it.
 
-Originally captured from runs `30707333707` and `30707624249`, Lighthouse
-12.6.1, mobile emulation with simulated throttling (the Lighthouse default,
-and the conservative side of the measurement); recalibrated by v0.20 PR1 from
-run `31167698390` (attempts 1 and 2, same pinned Lighthouse) after
-`e2e/serve.mjs` learned gzip. Always two independent runs of three, so the
-thresholds are set against observed cross-run variance rather than one sample.
+The `/` row set was originally captured from runs `30707333707` and
+`30707624249`, Lighthouse 12.6.1, mobile emulation with simulated throttling
+(the Lighthouse default, and the conservative side of the measurement);
+recalibrated by v0.20 PR1 from run `31167698390` (attempts 1 and 2, same
+pinned Lighthouse) after `e2e/serve.mjs` learned gzip. The `/pricing/` row
+set is v0.20 PR2's, calibrated on that PR's own runs. Always two independent
+runs of three, so the thresholds are set against observed cross-run variance
+rather than one sample.
 
 Lighthouse CI aggregates with `optimistic`, so each threshold is really *the
 best of the three runs must clear this*.
 
-| Metric | Audit id | Score floor | Numeric ceiling | Best-of-run score | Best-of-run value |
-| --- | --- | --- | --- | --- | --- |
-| Largest Contentful Paint | `largest-contentful-paint` | 0.81 | 3200 | 0.86, 0.86 | 2683 ms, 2683 ms |
-| Cumulative Layout Shift | `cumulative-layout-shift` | 0.95 | 0.1 | 1.00 | 0.000 |
-| Total Blocking Time | `total-blocking-time` | — | 500 | 0.99, 0.99 | 72 ms, 70 ms |
+| Metric | Route | Audit id | Score floor | Numeric ceiling | Best-of-run score | Best-of-run value |
+| --- | --- | --- | --- | --- | --- | --- |
+| Largest Contentful Paint | `/` | `largest-contentful-paint` | 0.81 | 3200 | 0.86, 0.86 | 2683 ms, 2683 ms |
+| Cumulative Layout Shift | `/` | `cumulative-layout-shift` | 0.95 | 0.1 | 1.00 | 0.000 |
+| Total Blocking Time | `/` | `total-blocking-time` | — | 500 | 0.99, 0.99 | 72 ms, 70 ms |
+| Largest Contentful Paint | `/pricing/` | `largest-contentful-paint` | 0.81 | 3200 | provisional | provisional |
+| Cumulative Layout Shift | `/pricing/` | `cumulative-layout-shift` | 0.95 | 0.1 | provisional | provisional |
+| Total Blocking Time | `/pricing/` | `total-blocking-time` | — | 500 | provisional | provisional |
+
+The `/pricing/` rows marked *provisional* carry the entry route's calibrated
+values as the starting point; the calibration commit on v0.20 PR2 replaces
+them with measured best-of-run numbers before merge (see *Widened by v0.20
+PR2* below).
 
 Performance category: **0.52** at the identity-harness baseline; **0.96**
 best-of-run as of v0.20 PR1. Accessibility 0.96, best practices 1.00,
@@ -224,6 +238,20 @@ original baseline runs `30707333707`/`30707624249` and the v0.19 ratchets —
 is preserved in the subsections below; those numbers describe a heavier
 transfer than any visitor was ever served and must not be compared against
 the current table directly. See *Recalibrated by v0.20 PR1* below.
+
+### Widened by v0.20 PR2
+
+v0.20 PR2 added `/pricing/` to the measured set - the page a person who
+decides to pay actually lands on, and until now a route on which a
+performance regression was invisible to the gate. Each URL owns its
+thresholds via `assertMatrix`; the routing was verified against
+`@lhci/utils@0.15.1` source (a report matched by no entry is silently
+asserted by nothing, which is why the contract test proves every measured
+URL matches exactly one entry and every entry exactly one URL).
+
+Calibration runs and per-sample values are recorded here by the calibration
+commit on that PR; until then the `/pricing/` thresholds are the entry
+route's carried over as provisional.
 
 ### Recalibrated by v0.20 PR1
 
