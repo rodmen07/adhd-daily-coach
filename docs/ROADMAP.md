@@ -89,7 +89,7 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Twelve** guard tests now
+  **Fourteen** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -102,7 +102,11 @@ is written next to.
   Pages does, so the Web Vitals gate measures what a visitor is served), and
   `status-message-guard` (v0.21 PR1, which fails when a `page.tsx` spells an
   error alert inline instead of delegating to the shared `StatusMessage`
-  vocabulary).
+  vocabulary), `security-policy-truth` (which reads SECURITY.md against
+  package.json and fails when the published security policy claims a version
+  the app does not ship), and `workflow-secret-usage` (which reads every
+  workflow and fails when a step whose body runs nothing is handed a secret
+  anyway).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
