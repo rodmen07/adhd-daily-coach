@@ -188,8 +188,8 @@ describe("Dashboard page", () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId("onboarding-container")).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
     });
-    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
   });
 
   it("moves focus to the dashboard heading when onboarding completes, instead of dropping it on the body", async () => {
@@ -201,8 +201,55 @@ describe("Dashboard page", () => {
 
     await waitFor(() => {
       expect(screen.queryByTestId("onboarding-container")).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
     });
-    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+  });
+
+  // The two tests above say WHERE focus lands. This one says WHEN, and that is
+  // the half that was wrong: restoring focus from inside the close handler put
+  // the move BEFORE the overlay's unmount, so anything the overlay still had
+  // pending could take it straight back. Onboarding does have something
+  // pending - a mount effect that focuses its own panel - and React only
+  // guarantees that effect has flushed before the NEXT render. A close landing
+  // in that one-macrotask window ran `focus(heading)` -> `focus(overlay)` ->
+  // overlay unmounts -> `document.body`, permanently, and that is what reded
+  // the post-merge Quality Gate on `e11271d` (a docs-only commit) plus three
+  // earlier PR/local runs, always on the assertion above and never
+  // reproducibly.
+  //
+  // So assert the ordering invariant that makes the window unreachable: by the
+  // time the heading is focused, the overlay is already out of the document.
+  // A restore that runs inline in the handler cannot satisfy this, whatever
+  // the machine's timing does.
+  it("restores focus only after the onboarding overlay has left the DOM, so the overlay cannot take it back", async () => {
+    window.localStorage.clear();
+
+    const focusCalls: { tag: string; overlayStillInDocument: boolean }[] = [];
+    const realFocus = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function recordFocus(this: HTMLElement, ...args: unknown[]) {
+      focusCalls.push({
+        tag: this.tagName,
+        overlayStillInDocument: document.querySelector('[data-testid="onboarding-container"]') !== null,
+      });
+      return (realFocus as (...rest: unknown[]) => void).apply(this, args);
+    } as typeof HTMLElement.prototype.focus;
+
+    try {
+      render(<Home />);
+
+      fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("onboarding-container")).toBeNull();
+        expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+      });
+
+      const headingFocus = focusCalls.filter((call) => call.tag === "H1");
+      expect(headingFocus).toHaveLength(1);
+      expect(headingFocus[0].overlayStillInDocument).toBe(false);
+    } finally {
+      HTMLElement.prototype.focus = realFocus;
+    }
   });
 
   it("shows onboarding health conversion status from local funnel events", async () => {

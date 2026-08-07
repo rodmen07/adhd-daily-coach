@@ -156,6 +156,32 @@ export default function Home() {
   // at 0.
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Raised by the two close handlers and consumed by the effect below, so the
+  // focus move happens in a passive effect AFTER the overlay has left the DOM
+  // rather than inline in the click handler.
+  //
+  // Doing it inline looked equivalent and was not. Onboarding focuses its own
+  // panel from a mount effect, and passive effects are only guaranteed to have
+  // flushed before the NEXT render - so a close that arrives in the window
+  // between the overlay's commit and that effect ran in the order
+  // `focus(heading)` -> `focus(overlay panel)` -> overlay unmounts -> focus
+  // falls to `document.body`, which is exactly the state this restore exists
+  // to prevent, and it never recovered. That window is unreachable by a human
+  // (it is one macrotask wide) but a loaded test runner hits it, which is how
+  // it reached `main`: the post-merge Quality Gate on `e11271d` went red on a
+  // docs-only commit. Restoring from an effect makes the order total - React
+  // flushes the overlay's pending mount effect before rendering its removal,
+  // so this always runs last.
+  const restoreFocusAfterOnboarding = useRef(false);
+
+  useEffect(() => {
+    if (showOnboarding || !restoreFocusAfterOnboarding.current) {
+      return;
+    }
+    restoreFocusAfterOnboarding.current = false;
+    dashboardHeadingRef.current?.focus();
+  }, [showOnboarding]);
+
   useEffect(() => {
     // Settled in a deferred callback rather than synchronously in the effect
     // body - the same settle AnimatedCounter's reduced-motion branch uses
@@ -179,7 +205,7 @@ export default function Home() {
       document.documentElement.dataset.theme = prefs.defaultTheme;
       localStorage.setItem("calm-daily-coach:theme", prefs.defaultTheme);
     }
-    dashboardHeadingRef.current?.focus();
+    restoreFocusAfterOnboarding.current = true;
   };
 
   const handleOnboardingSkip = () => {
@@ -192,7 +218,7 @@ export default function Home() {
       defaultDose: "light",
       defaultTheme: "dark",
     });
-    dashboardHeadingRef.current?.focus();
+    restoreFocusAfterOnboarding.current = true;
   };
 
   useEffect(() => {
