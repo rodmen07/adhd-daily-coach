@@ -1076,34 +1076,92 @@ rather than inherited: the guest-mode wall was FIXED in PR #121 (2026-07-26)
 and the paywall dead-end in PR #117 (2026-07-25), both MERGED (confirmed via
 `gh pr view` on 2026-08-06) and both verified on the deployed artifact at the
 time, so the backlog entry is corrected rather than repeated. Also chosen over
-FCM push (USER-ONLY console gates), the `StatusMessage` consolidation, the
-`defaultTheme` LOW, and the D1/D2-wording doc edit (still awaiting the user's
-confirmation, unchanged by this pass).
+FCM push (USER-ONLY console gates), the `StatusMessage` consolidation (since
+promoted into v0.21 below), the `defaultTheme` LOW, and the D1/D2-wording doc
+edit. (This sentence originally called that doc edit "still awaiting the
+user's confirmation" - stale when written: the user had confirmed both
+defaults directly ("defaults ok") on 2026-08-05. Corrected 2026-08-07 by the
+v0.21 definition pass, in the same PR that ships the doc edit itself:
+`docs/design/WEB_VITALS_BASELINE.md` sections 6-7 now record the confirmation
+instead of an open question.)
+
+### v0.21 - One calm status vocabulary: transient status speaks through one accessible primitive (agent-doable now)
+
+Defined 2026-08-07 (product-role increment), the milestone after v0.20. It
+promotes the design call PR #123 filed for itself when it extracted
+`AuthMessage`: whether this app wants one generic `StatusMessage` primitive
+owning the markup, tone classes, and politeness semantics for page-level
+transient status, instead of the four page files (`/`, `/execute`, `/now`,
+`/trends`) that currently spell it inline in two diverging vocabularies.
+Design doc: [docs/design/STATUS_VOCABULARY.md](design/STATUS_VOCABULARY.md),
+every premise re-read at source 2026-08-07 and three inherited claims
+corrected there rather than repeated (the bug entry's `/journal` surface does
+not exist, the guard-count sentence reads Eleven not Nine, and `/execute`'s
+third banner is a neutral `text-slate-800` whose tone mapping is now its own
+overridable sub-decision, D2a). Every decision an overridable default.
+
+What it fixes, beyond consistency: `/now` and `/trends` render only the
+migration "ok" branch, so a failed migration there is silent (the same shape
+as the `/focus`/`/pricing` sign-in bug PR #123 closed, on the migration
+concern); the "Google login is not configured yet" notice on `/` has no live
+region at all; and `/execute` has grown a parallel `-800`-shade tone system.
+
+Two PRs, in dependency order (see the design doc's D7 for the full slices):
+
+- **PR1:** the `StatusMessage` primitive with tone-derived politeness
+  (`error` = `role="alert"` assertive; `success`/`notice` polite), adopted by
+  `/` (four statuses) and `/execute` (its banners, celebrate preserved, the
+  advice line per D2a); `AuthMessage` becomes a thin delegate with its
+  contract test passing UNCHANGED; a new guard suite fails when any
+  `src/app/**/page.tsx` spells a literal `role="alert"`, observed red against
+  the unmigrated pages first; the Current-state guard-count sentence goes
+  **Eleven -> Twelve** and names the new suite, in the same PR.
+- **PR2:** `/now` and `/trends` adopt the primitive and gain the missing
+  error branch, with regression tests observed failing against origin/main
+  first; carries the 0.21.0 bump and flips this heading to DONE in the same
+  commit, per the `roadmap-milestone-status.test.ts` contract.
+
+Done when (checkable by CI; the design doc section 4 carries the full
+clauses): the tone-to-politeness behavior tests are green with their
+perturbations quoted; the guard suite is red-then-green across PR1 with
+`roadmap-guard-count` green; the `/now`/`/trends` error-branch tests fail on
+origin/main and pass after PR2; `auth-message-contract.test.ts` is unchanged
+and green in both PRs; all tier-1 gates plus `e2e` and `lighthouse` are green
+on both PRs; package.json reads 0.21.0 with the heading flip only in PR2.
+
+Chosen over, with the trail (full reasoning in the design doc section 5):
+workspace cloud sync (would add a third unpublished Firestore rules block
+while the v0.9 and v0.12 blocks still await the console publish - deepening a
+pending USER-ONLY obligation), the security-hardening remainder (re-verified
+live 2026-08-07 through `gh api`: secret scanning, push protection, private
+vulnerability reporting, and dependabot security updates are all already
+ENABLED and all six workflows carry a `permissions:` block, so what remains -
+a truthful SECURITY.md in place of the GitHub boilerplate advertising
+versions 5.1.x/4.0.x of an 0.20.0 app, and the dead four-secret injection on
+`dev-agent-runner.yml`'s echo-only step - is one DevSecOps cadence increment,
+not a milestone), FCM push (console-gated, unchanged), the D7 second measurement
+divergence (user decision), the `lighthouse` required-context promotion (own
+clearing condition), and `/journal/`+`/trends/` gate widening (v0.20's cost
+reasoning stands).
 
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.20 have all landed and no milestone is defined above them, so the
-next product pass defines v0.21.** v0.19
-closed 2026-08-05 on its re-scoped LCP target (**LCP ≤ 4.0 s under
-production-shaped serving, measured 2.7 s**, per user decision D7-(b) in
-`docs/design/PERF_PASS.md` section 2) after PR4's attribution found the
-remaining render delay belonged to the harness, not the app; v0.20 PR1 then
-retired that caveat for good - the harness serves gzip and the gate itself
-now measures ~2.7 s (run `31167698390`), so no reader has to hold two numbers
-for one page anymore. This sentence is
+through v0.20 have all landed, v0.21 is defined above (agent-doable now, not
+yet started), and no milestone is defined above v0.21, so the product pass
+after it ships defines v0.22.** v0.20
+completed 2026-08-07 (PR #148 harness gzip + recalibration, PR #149 the gate
+widened to `/pricing/`), so the gate now measures what a visitor is served
+and defends it per URL. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected eleven times now, three on
-2026-07-26; the first 2026-08-01 edition was written by the increment that
-SHIPPED v0.18, in the same PR as the heading flip, then rewritten hours later
-by the increment that DEFINED v0.19, rewritten again by v0.19 PR3 (which
-shipped its mechanism but measured its own done-when unmet and therefore did
-NOT flip the heading), the ninth edition by the completion PR that DOES flip
-the heading, alongside the flip, closing the "one increment late" gap the
+therefore is most likely to go stale. (Corrected twelve times now, three on
+2026-07-26; the ninth edition by the v0.19 completion PR that flips the
+heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
-defined v0.20 the next day, and this eleventh by v0.20 PR1, which retired
-the two-numbers caveat. `roadmap-milestone-status.test.ts`
+defined v0.20 the next day, the eleventh by v0.20 PR1, which retired the
+two-numbers caveat, and this twelfth by the 2026-08-07 product pass that
+defined v0.21. `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale.)
 
