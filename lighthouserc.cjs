@@ -147,6 +147,29 @@ module.exports = {
       // infrastructure; that is a finding about the runner, not a softening of
       // the decision, and it is filed for the user in the backlog.
       assertions: {
+        // RECALIBRATED by v0.20 PR1 (docs/ROADMAP.md v0.20), which made
+        // `e2e/serve.mjs` serve gzip the way GitHub Pages does. Was
+        // `{ minScore: 0.13, maxNumericValue: 6500 }`, calibrated against the
+        // identity-serving harness (worst best-of-run 5547 ms) - a ceiling
+        // that would have defended nothing over the ~2.7 s page a visitor is
+        // actually served. Measured on THIS PR's own runs by the established
+        // method, two independent three-run invocations of the same pinned
+        // lighthouse (run 31167698390, attempts 1 and 2):
+        //
+        //   attempt 1:  3122, 2683, 2733 ms  -> best 2683 (score 0.86)
+        //   attempt 2:  3438, 2710, 2683 ms  -> best 2683 (score 0.86)
+        //
+        // The first sample of each is the usual cold-start outlier that
+        // `optimistic` aggregation absorbs; the four warm samples span 50 ms.
+        // This matches PR #143's controlled A/B (2685-2700 ms gzip-served)
+        // within noise, which is the receipt that the D7 attribution was
+        // right. Floor: worst best-of-run 0.86 minus D1's five points = 0.81.
+        // Ceiling: worst best-of-run 2683 ms plus ~19% headroom = 3200 ms,
+        // the same margin discipline the 6500 (over 5547) and 8000 (over
+        // 6757) ceilings carried, and comfortably under the 4000 ms bound
+        // the v0.20 done-when demands. Both halves TIGHTEN; nothing loosened.
+        //
+        // The superseded v0.19 PR2 calibration below is kept as history.
         // RATCHETED by v0.19 PR2 (docs/design/PERF_PASS.md D3). Was
         // `{ minScore: 0.02, maxNumericValue: 8000 }`, calibrated against a
         // best-of-run 6757 ms measured in both baseline runs.
@@ -177,8 +200,12 @@ module.exports = {
         // `numberOfRuns: 5`, never a looser threshold.
         "largest-contentful-paint": [
           "error",
-          { minScore: 0.13, maxNumericValue: 6500 },
+          { minScore: 0.81, maxNumericValue: 3200 },
         ],
+        // CONFIRMED (not assumed) by v0.20 PR1's recalibration: CLS measured
+        // 0.000 with score 1.00 in all six samples across both invocations of
+        // run 31167698390 under the gzip-serving harness - transfer encoding
+        // does not move layout, so both halves hold unchanged.
         // RATCHETED by v0.19 PR1 (docs/design/PERF_PASS.md D3: a win the gate
         // does not defend decays back). Was `{ minScore: 0, maxNumericValue:
         // 0.8 }`, calibrated against 0.752 measured in all six baseline runs.
@@ -201,6 +228,16 @@ module.exports = {
         // Best-of-run 128 ms then 204 ms. Ceiling at 500 ms: ~2.5x the worse
         // of the two, which still catches a real regression while sitting well
         // clear of the observed noise. No `minScore` on purpose - see above.
+        //
+        // RE-DERIVED (and deliberately kept at 500) by v0.20 PR1: the gzip
+        // runs measured best-of-run 72 ms then 70 ms - compression barely
+        // moved the CPU work, as expected - but this metric's own history on
+        // an unchanged artifact spans best-of-run 70 to 204 ms, so a ceiling
+        // derived from today's two low samples (~2.5x 72 = 180 ms) would sit
+        // inside the documented cross-run spread and cry wolf. 500 ms remains
+        // ~2.5x the WORST best-of-run ever observed here (204 ms), which is
+        // the derivation that respects the noise record rather than the lucky
+        // day. If it ever proves loose, the remedy is `numberOfRuns: 5`.
         "total-blocking-time": ["error", { maxNumericValue: 500 }],
       },
     },

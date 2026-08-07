@@ -89,15 +89,17 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Ten** guard tests now
+  **Eleven** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
   `roadmap-milestone-status`, `onboarding-storage-contract`,
   `auth-message-contract` (PR #123), `lockfile-version-parity` (PR #127),
   `lighthouse-baseline-contract` (PR #136), `roadmap-guard-count` (PR #138),
-  and `firebase-on-demand` (v0.19 PR3, which keeps the SDK out of the
-  first-paint bundle structurally).
+  `firebase-on-demand` (v0.19 PR3, which keeps the SDK out of the
+  first-paint bundle structurally), and `serve-compression` (v0.20 PR1, which
+  spawns the real `e2e/serve.mjs` and proves it negotiates gzip the way GitHub
+  Pages does, so the Web Vitals gate measures what a visitor is served).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -968,11 +970,14 @@ Full audit, plan, and every overridable default:
   is met - CLS ≤ 0.10 and script transfer ≤ 1.0 MB reported by the gate's own
   job (both met), LCP ≤ 4.0 s **under production-shaped serving** (measured
   2.7 s, PR4's controlled A/B; **re-scoped 2026-08-05 by user decision D7-(b)**,
-  since the gate's own uncompressed harness stays at ~5.5 s by design and that
-  is a fact about the harness, not the shipped app - see section 2 of the
+  since the gate's own harness served uncompressed by design at the time and
+  that was a fact about the harness, not the shipped app - see section 2 of the
   design doc), `lighthouserc.cjs` and WEB_VITALS_BASELINE.md section 7 carrying
   the new numbers with the contract test green, and the five pinned gate
-  commands plus the `e2e` job green on both PRs.
+  commands plus the `e2e` job green on both PRs. **The harness caveat retired
+  itself one milestone later:** v0.20 PR1 taught `e2e/serve.mjs` gzip, and the
+  gate now measures ~2.7 s directly (run `31167698390`), so the two-numbers
+  reading of this paragraph is history, not current guidance.
 
 ### v0.20 - Measurement accuracy: the gate asserts what a visitor is served (agent-doable now)
 
@@ -1078,23 +1083,26 @@ confirmation, unchanged by this pass).
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.19 have all landed and v0.20 above is the next milestone (defined
-2026-08-06, not started).** v0.19
+through v0.19 have all landed and v0.20 above is the next milestone (PR1
+shipped; PR2 carries the bump and the heading flip).** v0.19
 closed 2026-08-05 on its re-scoped LCP target (**LCP ≤ 4.0 s under
-production-shaped serving, measured 2.7 s**; the gate's own uncompressed
-harness still reports ~5.5 s by design, per user decision D7-(b) in
+production-shaped serving, measured 2.7 s**, per user decision D7-(b) in
 `docs/design/PERF_PASS.md` section 2) after PR4's attribution found the
-remaining render delay belonged to the harness, not the app. This sentence is
+remaining render delay belonged to the harness, not the app; v0.20 PR1 then
+retired that caveat for good - the harness serves gzip and the gate itself
+now measures ~2.7 s (run `31167698390`), so no reader has to hold two numbers
+for one page anymore. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected ten times now, three on
+therefore is most likely to go stale. (Corrected eleven times now, three on
 2026-07-26; the first 2026-08-01 edition was written by the increment that
 SHIPPED v0.18, in the same PR as the heading flip, then rewritten hours later
 by the increment that DEFINED v0.19, rewritten again by v0.19 PR3 (which
 shipped its mechanism but measured its own done-when unmet and therefore did
 NOT flip the heading), the ninth edition by the completion PR that DOES flip
 the heading, alongside the flip, closing the "one increment late" gap the
-2026-07-27 note above first asked for, and this tenth by the increment that
-defined v0.20 the next day. `roadmap-milestone-status.test.ts`
+2026-07-27 note above first asked for, the tenth by the increment that
+defined v0.20 the next day, and this eleventh by v0.20 PR1, which retired
+the two-numbers caveat. `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale.)
 

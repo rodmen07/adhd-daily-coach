@@ -17,6 +17,7 @@ import { createServer } from "node:http";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createGzip } from "node:zlib";
 
 import { SITE_BASE_PATH } from "../site-base-path.mjs";
 
@@ -43,16 +44,77 @@ const MIME = {
   ".webmanifest": "application/manifest+json",
 };
 
+/**
+ * Gzip content negotiation (v0.20 PR1, docs/ROADMAP.md): GitHub Pages serves
+ * every text asset gzip-compressed, and Lighthouse's simulated throttling
+ * derives its timings from transfer size, so an identity-only harness
+ * measured a page ~3.5x heavier than what a visitor is served (measured live
+ * in docs/design/PERF_PASS.md section 2: 1,751,261 B identity vs 494,416 B
+ * gzip across the entry document's assets). Text types are negotiated;
+ * already-compressed binaries (woff2, png, jpg, ico) are served as-is, which
+ * is also what Pages does.
+ */
+const COMPRESSIBLE = new Set([
+  ".html",
+  ".js",
+  ".css",
+  ".json",
+  ".svg",
+  ".txt",
+  ".webmanifest",
+]);
+
+/**
+ * True when the request's Accept-Encoding accepts gzip: the token is present
+ * (or `*`) and not refused with `q=0` (RFC 9110 12.5.3). No header means no
+ * preference stated, and the conservative answer is identity.
+ */
+function acceptsGzip(req) {
+  const header = req.headers["accept-encoding"];
+  if (typeof header !== "string" || header.trim() === "") return false;
+  for (const part of header.split(",")) {
+    const [codingRaw, ...params] = part.split(";");
+    const coding = codingRaw.trim().toLowerCase();
+    if (coding !== "gzip" && coding !== "x-gzip" && coding !== "*") continue;
+    const q = params
+      .map((p) => p.trim().toLowerCase())
+      .find((p) => p.startsWith("q="));
+    if (q !== undefined && Number.parseFloat(q.slice(2)) === 0) continue;
+    return true;
+  }
+  return false;
+}
+
+/** Every file response funnels through here so the 200 path and the 404 page
+ *  negotiate identically - two copies of this logic could drift, and then
+ *  the gate would measure a different encoding than the smoke suite sees. */
+function sendFile(req, res, status, filePath) {
+  const contentType = MIME[path.extname(filePath)] ?? "application/octet-stream";
+  const headers = { "content-type": contentType };
+  if (COMPRESSIBLE.has(path.extname(filePath))) {
+    // The representation depends on Accept-Encoding either way, so caches
+    // must be told even when this particular response is identity.
+    headers.vary = "Accept-Encoding";
+    if (acceptsGzip(req)) {
+      headers["content-encoding"] = "gzip";
+      res.writeHead(status, headers);
+      createReadStream(filePath).pipe(createGzip()).pipe(res);
+      return;
+    }
+  }
+  res.writeHead(status, headers);
+  createReadStream(filePath).pipe(res);
+}
+
 if (!existsSync(path.join(OUT_DIR, "index.html"))) {
   console.error(`[e2e serve] ${OUT_DIR} has no index.html - run \`npm run build\` first.`);
   process.exit(1);
 }
 
-function notFound(res) {
+function notFound(req, res) {
   const notFoundPage = path.join(OUT_DIR, "404.html");
   if (existsSync(notFoundPage)) {
-    res.writeHead(404, { "content-type": "text/html; charset=utf-8" });
-    createReadStream(notFoundPage).pipe(res);
+    sendFile(req, res, 404, notFoundPage);
     return;
   }
   res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
@@ -71,7 +133,7 @@ const server = createServer((req, res) => {
   }
 
   if (!rawPath.startsWith(`${BASE_PATH}/`)) {
-    notFound(res);
+    notFound(req, res);
     return;
   }
 
@@ -79,7 +141,7 @@ const server = createServer((req, res) => {
   const fsPath = path.normalize(path.join(OUT_DIR, rel));
   // Path-traversal guard: everything served must resolve inside out/.
   if (fsPath !== OUT_DIR && !fsPath.startsWith(OUT_DIR + path.sep)) {
-    notFound(res);
+    notFound(req, res);
     return;
   }
 
@@ -115,14 +177,11 @@ const server = createServer((req, res) => {
   }
 
   if (!filePath || !existsSync(filePath)) {
-    notFound(res);
+    notFound(req, res);
     return;
   }
 
-  res.writeHead(200, {
-    "content-type": MIME[path.extname(filePath)] ?? "application/octet-stream",
-  });
-  createReadStream(filePath).pipe(res);
+  sendFile(req, res, 200, filePath);
 });
 
 server.listen(PORT, "127.0.0.1", () => {
