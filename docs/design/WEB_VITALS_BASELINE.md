@@ -181,12 +181,14 @@ category — TBT *is* Lighthouse's lab stand-in for responsiveness.
 reconciling the gate against D2's literal wording cannot quietly reintroduce
 the dead assertion.
 
-**Open for the user:** confirm TBT as the standing third metric, or ask for
-real INP, which is a different and larger piece of work — it needs field data
-(a `web-vitals` beacon and somewhere to send it, i.e. a backend this app
-deliberately does not have) or Lighthouse user-flow timespan runs that script
-the interactions. Filed in the backlog; the gate works either way in the
-meantime.
+**USER DECISION (2026-08-05): TBT stands as the third metric.** The user
+confirmed both open defaults directly ("defaults ok"), settling the question
+this section originally filed after PR #136 shipped the substitution. Real
+INP remains a different and larger piece of work if it is ever wanted - it
+needs field data (a `web-vitals` beacon and somewhere to send it, i.e. a
+backend this app deliberately does not have) or Lighthouse user-flow timespan
+runs that script the interactions - but it is no longer an open question
+gating this gate. (Doc edit shipped 2026-08-07 by the v0.21 definition pass.)
 
 ## 7. Measured baseline
 
@@ -413,7 +415,9 @@ with real headroom (500 ms, ≈2.5× the worse of the two observed bests) instea
 
 D1's five-point form is not viable for this metric on this infrastructure. That
 is a finding about the runner, not a softening of the decision — LCP and CLS
-keep their score floors — and it is filed for user confirmation in the backlog.
+keep their score floors. **USER DECISION (2026-08-05): confirmed** ("defaults
+ok"), alongside the TBT-for-INP substitution in section 6, so the raw-value
+gating for TBT is the settled shape rather than a divergence awaiting review.
 
 ### Why two metrics also carry a numeric ceiling
 
