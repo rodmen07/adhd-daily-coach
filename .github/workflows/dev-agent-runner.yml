@@ -47,12 +47,17 @@ jobs:
         run: |
           npm ci
 
+      # This step deliberately carries no `env:` block. It used to inject
+      # OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY and GITHUB_TOKEN into
+      # a body whose only command is `echo`, which cannot read any of them:
+      # step-level `env:` is scoped to its own step and never reaches the next
+      # one, so those four secrets were decrypted into a runner environment that
+      # had no use for them. The runner step below declares the three keys it
+      # actually needs. GITHUB_TOKEN was never needed at all -- nothing under
+      # `agents/dev-agent/` reads it.
+      # `src/__tests__/workflow-secret-usage.test.ts` fails the quality gate if
+      # a no-op step is handed a secret again.
       - name: Configure environment
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Environment configured"
 
