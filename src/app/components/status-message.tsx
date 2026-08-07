@@ -54,9 +54,22 @@ type StatusMessageProps = {
   celebrate?: boolean;
   /** Spacing and layout only (`mt-3`, `status-banner mt-2`). Never a tone. */
   className?: string;
+  /**
+   * D1's optional test hook, added in v0.21 PR2 for the first call sites that
+   * needed one: `/now` and `/trends` already had suites querying their
+   * migration line by `data-testid`, and those assertions are what keep the
+   * two branches distinguishable when both render the same markup.
+   */
+  "data-testid"?: string;
 };
 
-export function StatusMessage({ tone, message, celebrate = false, className }: StatusMessageProps) {
+export function StatusMessage({
+  tone,
+  message,
+  celebrate = false,
+  className,
+  "data-testid": testId,
+}: StatusMessageProps) {
   if (!message) {
     return null;
   }
@@ -70,6 +83,7 @@ export function StatusMessage({ tone, message, celebrate = false, className }: S
         .join(" ")}
       role={role}
       aria-live={politeness}
+      data-testid={testId}
     >
       {message}
     </p>
