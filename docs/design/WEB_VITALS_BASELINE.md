@@ -198,9 +198,11 @@ them.
 
 URL: `http://127.0.0.1:4173/adhd-daily-coach/` (the `/` route)
 
-Captured from runs `30707333707` and `30707624249`, Lighthouse 12.6.1, mobile
-emulation with simulated throttling (the Lighthouse default, and the
-conservative side of the measurement). Two independent runs of three, so the
+Originally captured from runs `30707333707` and `30707624249`, Lighthouse
+12.6.1, mobile emulation with simulated throttling (the Lighthouse default,
+and the conservative side of the measurement); recalibrated by v0.20 PR1 from
+run `31167698390` (attempts 1 and 2, same pinned Lighthouse) after
+`e2e/serve.mjs` learned gzip. Always two independent runs of three, so the
 thresholds are set against observed cross-run variance rather than one sample.
 
 Lighthouse CI aggregates with `optimistic`, so each threshold is really *the
@@ -208,17 +210,62 @@ best of the three runs must clear this*.
 
 | Metric | Audit id | Score floor | Numeric ceiling | Best-of-run score | Best-of-run value |
 | --- | --- | --- | --- | --- | --- |
-| Largest Contentful Paint | `largest-contentful-paint` | 0.13 | 6500 | 0.20, 0.18 | 5403 ms, 5547 ms |
+| Largest Contentful Paint | `largest-contentful-paint` | 0.81 | 3200 | 0.86, 0.86 | 2683 ms, 2683 ms |
 | Cumulative Layout Shift | `cumulative-layout-shift` | 0.95 | 0.1 | 1.00 | 0.000 |
-| Total Blocking Time | `total-blocking-time` | — | 500 | 0.96, 0.89 | 128 ms, 204 ms |
+| Total Blocking Time | `total-blocking-time` | — | 500 | 0.99, 0.99 | 72 ms, 70 ms |
 
-Performance category: **0.52** at baseline; **0.77** best-of-run as of v0.19
-PR2. Accessibility 0.96, best practices 1.00, SEO 1.00.
+Performance category: **0.52** at the identity-harness baseline; **0.96**
+best-of-run as of v0.20 PR1. Accessibility 0.96, best practices 1.00,
+SEO 1.00.
 
-**Two of these rows are no longer baseline rows — they are ratchets.** CLS comes
-from run `30713366106` (PR #139, v0.19 PR1) and LCP from run `30715170249`
-(PR #140, v0.19 PR2); only the TBT row is still the original calibration. See
-*Ratcheted by v0.19 PR1* and *Ratcheted by v0.19 PR2* below.
+**Every row above is now calibrated against the gzip-serving harness** (v0.20
+PR1, run `31167698390` attempts 1 and 2). The identity-harness history — the
+original baseline runs `30707333707`/`30707624249` and the v0.19 ratchets —
+is preserved in the subsections below; those numbers describe a heavier
+transfer than any visitor was ever served and must not be compared against
+the current table directly. See *Recalibrated by v0.20 PR1* below.
+
+### Recalibrated by v0.20 PR1
+
+v0.20 PR1 made `e2e/serve.mjs` negotiate gzip the way GitHub Pages does
+(guarded by `src/__tests__/serve-compression.test.ts`), so the gate stopped
+measuring a transfer ~3.5x heavier than what a visitor is served. Every
+threshold was then recalibrated from that PR's own runs by the established
+method — worst best-of-run across two independent three-run invocations of
+the same pinned Lighthouse (run `31167698390`, attempts 1 and 2):
+
+| | Attempt 1 | Attempt 2 |
+| --- | --- | --- |
+| LCP samples | 3122, 2683, 2733 ms | 3438, 2710, 2683 ms |
+| LCP best-of-run | **2683 ms (score 0.86)** | **2683 ms (score 0.86)** |
+| CLS | 0.000 / 1.00 in all three | 0.000 / 1.00 in all three |
+| TBT samples | 874, 72, 117 ms | 811, 98, 70 ms |
+| TBT best-of-run | **72 ms** | **70 ms** |
+| Performance category (best of run) | 0.96 | 0.96 |
+
+The first sample of each invocation is the usual cold-start outlier that
+`optimistic` aggregation absorbs; the four warm LCP samples span 50 ms. The
+~2.7 s LCP matches PR #143's controlled A/B (2685–2700 ms gzip-served) within
+noise — the receipt that D7's attribution of the residual ~5.5 s to the
+identity harness was correct.
+
+**LCP:** floor 0.86 − 0.05 = **0.81** (D1's five-point form); ceiling
+2683 ms + ~19% headroom = **3200 ms**, the same margin discipline the 6500
+(over 5547) and 8000 (over 6757) ceilings carried, and under the 4000 ms
+bound the v0.20 done-when demands. Both halves tighten; nothing loosened.
+
+**CLS:** confirmed, not assumed — 0.000 / 1.00 in all six samples. Transfer
+encoding does not move layout, and both halves hold unchanged at 0.95 / 0.10.
+
+**TBT:** re-derived and deliberately kept at **500 ms**. The gzip runs
+measured best-of-run 72 and 70 ms — compression barely moved the CPU work,
+as the milestone predicted — but this metric's history on an unchanged
+artifact spans best-of-run 70–204 ms, so a ceiling derived from today's two
+low samples (~2.5x 72 = 180 ms) would sit inside the documented cross-run
+spread and cry wolf. 500 ms remains ~2.5x the worst best-of-run ever
+observed here (204 ms): the derivation that respects the noise record rather
+than the lucky day. If it ever proves loose, the remedy is `numberOfRuns: 5`,
+never a looser threshold.
 
 ### Ratcheted by v0.19 PR1
 

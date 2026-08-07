@@ -268,6 +268,22 @@ changed in this decision - only which sentence in this document and in
 `docs/ROADMAP.md` gets to call the milestone done. D1-D6 were confirmed on
 their existing defaults in the same walkthrough, no overrides named.
 
+**CLOSED (compression half) 2026-08-07 by v0.20 PR1:** the serving
+divergence this section measured is gone. `e2e/serve.mjs` now negotiates
+gzip the way GitHub Pages does (guarded by
+`src/__tests__/serve-compression.test.ts`, which spawns the real server and
+asserts the wire bytes), and the `lighthouse` job measures the ~2.7 s this
+section predicted: best-of-run LCP 2683 ms in both invocations of run
+`31167698390`, matching the controlled A/B below within noise. Every
+`lighthouserc.cjs` threshold was recalibrated from those runs
+(WEB_VITALS_BASELINE.md section 7, *Recalibrated by v0.20 PR1*), so the gate
+now defends the number a visitor experiences and the two-numbers caveat is
+retired everywhere it was written. The paragraphs above stay in their
+original tense as the audit trail. **The second divergence - the measured
+build receives no `NEXT_PUBLIC_FIREBASE_*` values - remains open by design**
+(a supply-chain decision, not a measurement one; see the v0.20 scope notes
+in `docs/ROADMAP.md`).
+
 ## 3. Technical plan
 
 ### PR1: stop the shift — SHIPPED (PR #139, 2026-08-01)
