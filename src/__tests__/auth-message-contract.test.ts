@@ -23,6 +23,13 @@
  *   (`role="alert"` + `aria-live="assertive"`) cannot be dropped from the one
  *   component every sign-in surface now depends on.
  *
+ * v0.21 moved that markup one level down, into the shared `StatusMessage`
+ * primitive, so the contract test below follows it rather than keeping a
+ * literal grep that would pass over an empty delegate. It now reads the
+ * delegation from `auth-message.tsx` AND the semantics from
+ * `status-message.tsx`, which is strictly more than the single-file grep it
+ * replaces: dropping the alert role from EITHER file fails here.
+ *
  * Test files are excluded: a test legitimately renders the alert's markup
  * inline to assert against it.
  */
@@ -31,6 +38,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { shippedSourceFiles, withoutComments } from "@/__tests__/helpers/source-scan";
+import { StatusMessage } from "@/app/components/status-message";
 
 const ROOT = process.cwd();
 const APP_DIR = path.join(ROOT, "src", "app");
@@ -38,6 +46,7 @@ const APP_DIR = path.join(ROOT, "src", "app");
 const AUTH_HOOK = "src/app/hooks/use-coach-auth.ts";
 const ALERT_COMPONENT = "src/app/components/auth-message.tsx";
 const ALERT_IMPORT = "@/app/components/auth-message";
+const STATUS_PRIMITIVE_IMPORT = "@/app/components/status-message";
 const SIGN_IN_METHOD = "signInWithGoogle";
 const MESSAGE_FIELD = "authMessage";
 
@@ -99,14 +108,36 @@ describe("sign-in surfaces announce their own failures", () => {
 
     const code = withoutComments(component!.source);
     expect(code.includes("export function AuthMessage"), "the component's export was renamed").toBe(true);
+
+    // Half one: the delegation is really there. A rewrite that dropped the
+    // `tone="error"` would keep this file compiling and silently downgrade
+    // every sign-in failure in the app to a polite note.
     expect(
-      code.includes('role="alert"'),
-      "the shared alert lost role=\"alert\", so two pages stop announcing sign-in failures at once",
+      code.includes(`from "${STATUS_PRIMITIVE_IMPORT}"`),
+      `${ALERT_COMPONENT} no longer delegates to the shared status primitive`,
     ).toBe(true);
     expect(
-      code.includes('aria-live="assertive"'),
+      /<StatusMessage[^>]*tone="error"/.test(code),
+      `${ALERT_COMPONENT} renders the primitive at some tone other than "error", so a sign-in failure is no longer announced as one`,
+    ).toBe(true);
+
+    // Half two: what it delegates TO still carries the contract. Called
+    // directly rather than grepped, so a refactor of the primitive's internals
+    // is judged on behaviour.
+    const alert = StatusMessage({ tone: "error", message: "Could not sign in right now." });
+    expect(alert, "the shared primitive rendered nothing for a real failure message").not.toBeNull();
+    expect(
+      alert!.props.role,
+      "the shared alert lost role=\"alert\", so three pages stop announcing sign-in failures at once",
+    ).toBe("alert");
+    expect(
+      alert!.props["aria-live"],
       "the shared alert lost aria-live=\"assertive\", which is how the failure reaches a screen reader",
-    ).toBe(true);
+    ).toBe("assertive");
+    expect(
+      String(alert!.props.className),
+      "the shared alert lost text-rose-700, the class globals.css hangs its dark-theme override on",
+    ).toContain("text-rose-700");
   });
 
   it("reaches every corner of src/app before judging it (blindness control)", () => {

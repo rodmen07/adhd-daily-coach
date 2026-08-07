@@ -9,17 +9,21 @@
  * the redirect fallback therefore produced, on those two pages, nothing at all
  * - no text, and nothing announced.
  *
- * The markup below is `/`'s paragraph moved verbatim, class string included:
- * `text-rose-700` is not decorative, it is the class `globals.css` hangs the
- * dark-theme override `html[data-theme="dark"] .text-rose-700` on, so changing
- * it here would silently drop that override on every consumer at once.
+ * Since v0.21 the markup itself lives one level down, in `StatusMessage`: this
+ * component is a thin delegate that fixes the tone at `error` and the spacing
+ * at `mt-3`, so the auth surface keeps a name of its own (which is what the
+ * contract guard scans for) while the paragraph, its `text-rose-700` dark-theme
+ * contract and its `role="alert"` + `aria-live="assertive"` semantics are
+ * shared with every other page-level status in the app.
  *
- * `role="alert"` plus `aria-live="assertive"` is the accessibility contract,
- * not a detail: the two pages that gain this paragraph gain the announcement
- * with it. `src/__tests__/auth-message-contract.test.ts` fails when a `.tsx`
- * under `src/app` calls `signInWithGoogle` without rendering this component, so
- * a fourth sign-in surface cannot repeat the original defect quietly.
+ * `src/__tests__/auth-message-contract.test.ts` fails when a `.tsx` under
+ * `src/app` calls `signInWithGoogle` without rendering this component, so a
+ * fourth sign-in surface cannot repeat the original defect quietly. Its
+ * accessibility assertions now follow the delegation, reading this file for the
+ * link and `status-message.tsx` for the semantics.
  */
+
+import { StatusMessage } from "@/app/components/status-message";
 
 type AuthMessageProps = {
   /** The hook's `authMessage`. Empty means there is nothing to announce. */
@@ -27,13 +31,5 @@ type AuthMessageProps = {
 };
 
 export function AuthMessage({ message }: AuthMessageProps) {
-  if (!message) {
-    return null;
-  }
-
-  return (
-    <p className="mt-3 text-sm text-rose-700" role="alert" aria-live="assertive">
-      {message}
-    </p>
-  );
+  return <StatusMessage tone="error" className="mt-3" message={message} />;
 }

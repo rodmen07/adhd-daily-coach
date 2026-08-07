@@ -6,6 +6,7 @@ import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
 import { SwipeStepCard } from "@/app/components/swipe-step-card";
 import { CalmEmptyState } from "@/app/components/empty-state";
+import { StatusMessage } from "@/app/components/status-message";
 
 export default function ExecutePage() {
   const { authUser } = useCoachAuth();
@@ -275,28 +276,24 @@ export default function ExecutePage() {
                 />
               </div>
 
-              {checkinStatus.type === "ok" ? (
-                <p
-                  className={`status-banner mt-2 text-sm text-emerald-800 ${
-                    checkinStatus.message.startsWith("Great work") ? "status-celebrate" : ""
-                  }`}
-                  aria-live="polite"
-                >
-                  {checkinStatus.message}
-                </p>
-              ) : null}
+              <StatusMessage
+                tone="success"
+                className="status-banner mt-2"
+                celebrate={checkinStatus.type === "ok" && checkinStatus.message.startsWith("Great work")}
+                message={checkinStatus.type === "ok" ? checkinStatus.message : null}
+              />
 
-              {checkinAdvice ? (
-                <p className="status-banner mt-2 text-sm text-slate-800" aria-live="polite">
-                  Coach suggestion: {checkinAdvice}
-                </p>
-              ) : null}
+              <StatusMessage
+                tone="notice"
+                className="status-banner mt-2"
+                message={checkinAdvice ? `Coach suggestion: ${checkinAdvice}` : null}
+              />
 
-              {checkinStatus.type === "error" ? (
-                <p className="status-banner mt-2 text-sm text-rose-800" role="alert" aria-live="assertive">
-                  {checkinStatus.message}
-                </p>
-              ) : null}
+              <StatusMessage
+                tone="error"
+                className="status-banner mt-2"
+                message={checkinStatus.type === "error" ? checkinStatus.message : null}
+              />
 
               {hasCheckedIn ? (
                 <div className="flow-route-links mt-3">
