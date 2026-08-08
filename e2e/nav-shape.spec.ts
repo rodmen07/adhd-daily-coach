@@ -1,7 +1,11 @@
 import { test, expect, APP_ROOT } from "./fixtures";
 
 /**
- * v0.23 PR2 - the header fits (docs/design/NAV_SHAPE.md D7, done-when 4 and 5).
+ * v0.23 PR2 - the header fits (docs/design/NAV_SHAPE.md D7, done-when 4 and 5),
+ * extended by v0.24 PR2 with the dismissal clause (docs/design/NAV_TAXONOMY.md
+ * D7, done-when 6). The pixel, one-row and no-sideways-scroll ceilings below
+ * are unchanged by the grouping v0.24 PR1 added to the panel: a grouped panel
+ * must not grow the CLOSED header, and this file is what says so.
  *
  * WHY THIS IS A BROWSER TEST AND NOT A UNIT TEST
  * ----------------------------------------------
@@ -207,6 +211,60 @@ test.describe("v0.23: the header fits", () => {
       "tabbing out of the open More summary did not walk its links in order: a link " +
         "inside the disclosure is out of the tab order, or focus escaped the header",
     ).toEqual(panelHrefs);
+  });
+
+  /**
+   * v0.24 D7, done-when clause 6.
+   *
+   * The unit guard in `src/app/__tests__/route-registry-guard.test.ts` asserts
+   * the same dismissal in jsdom, and this is not a duplicate of it. jsdom has
+   * no layout, no native `<details>` activation behaviour and no real focus
+   * model: there, the disclosure is opened by assigning `open` and Escape is
+   * dispatched at `document`, so passing is a statement about the handler.
+   * Here the menu is opened the way a reader opens it - Tab to the summary,
+   * press Enter - and Escape is a real key on a real focused element, so
+   * passing is a statement about the menu.
+   */
+  test("Escape closes the More disclosure and returns focus to its summary", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await openDashboard(page);
+
+    const disclosure = page.locator(".site-nav-more");
+    await expect(disclosure).toHaveCount(1);
+    await expect(disclosure).not.toHaveAttribute("open", /.*/);
+
+    const reachedInTabs = await tabUntil(page, ".site-nav-more > summary");
+    expect(
+      reachedInTabs,
+      "the More disclosure is not reachable by Tab within 40 stops, so this test " +
+        "never opened the menu it claims to dismiss",
+    ).toBeGreaterThan(0);
+
+    await page.keyboard.press("Enter");
+    await expect(disclosure).toHaveAttribute("open", /.*/);
+
+    // Escape from INSIDE the panel, which is where a keyboard reader who wants
+    // to dismiss it actually is. Pressing it while focus is still on the
+    // summary would leave the focus-return assertion below trivially true.
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(() => document.activeElement?.closest(".site-nav-more-panel") !== null),
+      "tabbing once out of the open summary did not land inside the panel, so the " +
+        "focus-return assertion below would prove nothing about focus moving",
+    ).toBe(true);
+
+    await page.keyboard.press("Escape");
+
+    await expect(disclosure).not.toHaveAttribute("open", /.*/);
+    expect(
+      await page.evaluate(
+        () =>
+          document.activeElement instanceof Element &&
+          document.activeElement.matches(".site-nav-more > summary"),
+      ),
+      "Escape closed the disclosure but left focus on a link inside the panel it " +
+        "just hid, which is worse for a keyboard reader than not closing at all",
+    ).toBe(true);
   });
 });
 

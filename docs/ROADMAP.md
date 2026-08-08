@@ -208,11 +208,21 @@ is written next to.
   twelve pills wrapping to four rows to three inline links plus a native
   "More" disclosure - **264 px to 138 px at 375x667 (39.6% to 20.7% of the
   viewport) and 180 px to 67 px at 1280x720**, measured in chromium against the
-  real export by `e2e/nav-shape.spec.ts`. **package.json reads
-  0.23.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  real export by `e2e/nav-shape.spec.ts`. v0.24 (PR #164 + PR #166,
+  2026-08-08) added no page either but finished that front door: PR1 gave the
+  registry a `navGroup` field, turning the nine undifferentiated items behind
+  "More" into four labelled lists in the panel and the same four headings in
+  the keyboard dialog, and gave the five chordless primary-nav routes a chord;
+  PR2 made the disclosure behave like a menu, so `Escape` closes it and returns
+  focus to its summary and a pointer-down outside dismisses it - the one cost
+  `NAV_SHAPE.md` D4 recorded rather than hid when it chose a native
+  `<details>`. **package.json reads
+  0.24.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
-  2026-08-07 and v0.22 itself shipped hours later and made it wrong again.
+  2026-08-07 and v0.22 itself shipped hours later and made it wrong again. It
+  has been correct on every milestone since, because the guard below now fails
+  the PR that would leave it stale rather than waiting for a reader.
   It was the one claim in this bullet that the milestone-status guard already
   checks from the other direction, via the headings, which is why the headings
   were right the whole time this sentence was wrong. **Four recurrences is a
@@ -1471,7 +1481,7 @@ Firestore rules obligation), the `lighthouse` required-context promotion (own
 dated clearing condition), and `/journal/`+`/trends/` gate widening (v0.20's
 cost reasoning stands).
 
-### v0.24 - Nine peers in a smaller box: the "More" menu gets meaning, and gets out of the way (agent-doable now)
+### v0.24 - Nine peers in a smaller box: the "More" menu gets meaning, and gets out of the way (DONE)
 
 Defined 2026-08-08 (product-role increment), the milestone after v0.23. Design
 doc: [docs/design/NAV_TAXONOMY.md](design/NAV_TAXONOMY.md). Every premise below
@@ -1515,9 +1525,9 @@ pattern to copy is one component away and already tested:
 `keyboard-help.tsx` closes on `Escape` at line 133 and restores focus through
 `restoreFocusRef`.
 
-**PR1 SHIPPED 2026-08-08.** D2-D6 and D8 are live; D7, the E2E clause and the
-`0.24.0` bump are PR2 and have not shipped, so this heading stays open per
-clause 9. One design clarification came out of implementing it and is recorded
+**COMPLETE 2026-08-08** (PR #164 + PR #166). PR1 shipped D2-D6 and D8; PR2
+shipped D7, the browser dismissal clause and the `0.24.0` bump, which is what
+flips this heading. One design clarification came out of implementing PR1 and is recorded
 in `NAV_TAXONOMY.md` D3: "registry order" for the categories means the order
 they first appear in the WHOLE registry, not in the subset a surface renders.
 Ordering each surface by its own list puts **In the moment** first in the panel
@@ -1624,8 +1634,8 @@ sync (still deepens the unpublished Firestore rules obligation), and
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.23 have all landed and v0.24 is DEFINED but not started, so the dev
-queue holds exactly v0.24's two PRs.** v0.22
+through v0.24 have all landed, so the dev queue is EMPTY and the next product
+slot defines v0.25.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
@@ -1638,12 +1648,15 @@ disclosure driven by the registry's new `navSlot` field, taking it from
 264 px (39.6% of a 375x667 viewport, four rows of pills) to 138 px (20.7%, one
 row) and from 180 px to 67 px at 1280x720, with `e2e/nav-shape.spec.ts`
 measuring it in chromium against the real export. v0.24 was defined
-2026-08-08 on top of exactly that disclosure and has not started: it gives the
-nine routes behind "More" four labelled groups, gives the five chordless
-front-door routes a `g` chord, and makes the disclosure close on `Escape` and
-on an outside click. This sentence is
+2026-08-08 on top of exactly that disclosure and completed the same day:
+PR #164 gave the registry a `navGroup` field, so the nine routes behind "More"
+render as four labelled lists in the panel and under the same four headings in
+the keyboard dialog, and the five chordless front-door routes got `g s`, `g a`,
+`g b`, `g c` and `g p`; PR #166 made the disclosure dismissable, so `Escape`
+closes it and returns focus to its summary and a pointer-down outside closes
+it, each proven by its own control and re-asserted in chromium. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected seventeen times now, three on
+therefore is most likely to go stale. (Corrected eighteen times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -1655,8 +1668,10 @@ the completion PR, which flips the heading and this sentence together rather
 than leaving the second half a slot behind, the fifteenth by the
 2026-08-08 product pass that defined v0.23, the sixteenth by v0.23 PR2,
 the completion PR, which again flips the heading and this sentence together,
-and this seventeenth by the 2026-08-08 product pass that defined v0.24 hours
-after v0.23 shipped.
+the seventeenth by the 2026-08-08 product pass that defined v0.24 hours
+after v0.23 shipped, and this eighteenth by v0.24 PR2, the completion PR,
+which flips the heading and this sentence together for the third milestone
+running.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the

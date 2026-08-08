@@ -1,18 +1,20 @@
 # v0.24 - Nine peers in a smaller box: the "More" menu gets meaning, and gets out of the way
 
-Status: **PR1 SHIPPED 2026-08-08** (D2-D6 and D8; dev-role increment). D7 and
-the `0.24.0` bump are PR2 and have not shipped. `package.json` still reads
-`0.23.0` until then.
+Status: **SHIPPED 2026-08-08** — PR1 (D2-D6 and D8) and PR2 (D7, the browser
+dismissal clause and the `0.24.0` bump), both dev-role increments.
+`package.json` reads `0.24.0`.
 
-> **Reading section 1 after PR1.** Every claim in it was true of the tree at
-> `72b6f5a` and is quoted at that commit on purpose, per this system's
+> **Reading section 1 after the milestone.** Every claim in it was true of the
+> tree at `72b6f5a` and is quoted at that commit on purpose, per this system's
 > convention of leaving superseded prose where it stood rather than editing
-> history. PR1 falsifies three of them BY DOING THE WORK, which is the
-> intended outcome and not drift: `grep -rn 'navGroup' src/` is no longer
+> history. The milestone falsifies all four of them BY DOING THE WORK, which is
+> the intended outcome and not drift: `grep -rn 'navGroup' src/` is no longer
 > empty, the `<h[1-6]|<ul|<li|role="group"|aria-labelledby` count in
-> `site-nav.tsx` is no longer 0, and no front-door route is chordless.
-> Section 1c is UNCHANGED and still true: the disclosure still closes on
-> neither `Escape` nor an outside click, because that is D7 and D7 is PR2.
+> `site-nav.tsx` is no longer 0, no front-door route is chordless, and section
+> 1c stopped being true in PR2 —
+> `grep -cE 'addEventListener|useEffect' src/app/components/site-nav.tsx` was
+> **0** through PR1 and is now non-zero, one `keydown` listener and one
+> `pointerdown` listener, both on `document`.
 
 Every decision below is an **overridable default**: silence ships it, one word
 from the user flips it. This document is the product analyst's proposal, not a
@@ -297,6 +299,20 @@ reader than not closing at all.
 disclosure is not a modal. That is the other clearing condition the backlog
 entry names. It is a defensible position for a disclosure holding two items;
 for one holding nine, on every page, it is the reason this milestone exists.
+
+**As shipped in PR2, with the one decision the doc did not anticipate.** Both
+handlers read `details.open` from the DOM rather than mirroring it into React
+state, so a native toggle cannot desync them and nothing about the element's
+hydration story changes. The Escape handler bails on an already-handled event
+but deliberately does NOT call `preventDefault` itself: an open `<details>` has
+no default action for Escape to suppress, and claiming the event would silently
+disable `keyboard-help.tsx`'s own Escape handler on the render where both are
+open. This listener is on `document` and that one is on `window`, so a bubbling
+keydown reaches this one first regardless of mount order — which is precisely
+why not claiming it matters. The outside-click handler tests CONTAINMENT rather
+than closing on any pointer-down (pressing a link in the panel is itself a
+pointer-down) and deliberately does not move focus, because the reader is
+already pointing at what they meant to reach.
 
 ### D8. The guards are EXTENSIONS of `route-registry-guard.test.ts`, so no PR in this milestone changes the guard-suite file set
 
