@@ -144,9 +144,9 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-(--background) text-[--foreground]">
+      <div className="flex min-h-screen items-center justify-center bg-(--background) text-(--foreground)">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent border-[--accent]" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent border-(--accent)" />
           <p className="text-sm font-medium tracking-wide">Loading account details...</p>
         </div>
       </div>
@@ -171,22 +171,22 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </span>
-            <h2 className="text-3xl font-extrabold tracking-tight text-[--foreground]">Your Trial Has Ended</h2>
-            <p className="text-sm text-[--muted]">
+            <h2 className="text-3xl font-extrabold tracking-tight text-(--foreground)">Your Trial Has Ended</h2>
+            <p className="text-sm text-(--muted)">
               Your 30-day free trial has expired. To continue customizing targets, executing plans, and reviewing daily focus cycles, please subscribe.
             </p>
           </div>
 
           <div className="rounded-xl border border-(--line) bg-(--panel)/50 p-5 mt-4">
-            <p className="text-[10px] font-bold text-[--accent] uppercase tracking-wider">Premium Access</p>
-            <p className="text-3xl font-extrabold text-[--foreground] mt-1">$5<span className="text-sm font-normal text-[--muted]">/mo</span></p>
-            <p className="text-xs text-[--muted] mt-2">Unlimited execution timelines, custom categories, analytics review, and secure cloud backups.</p>
+            <p className="text-[10px] font-bold text-(--accent) uppercase tracking-wider">Premium Access</p>
+            <p className="text-3xl font-extrabold text-(--foreground) mt-1">$5<span className="text-sm font-normal text-(--muted)">/mo</span></p>
+            <p className="text-xs text-(--muted) mt-2">Unlimited execution timelines, custom categories, analytics review, and secure cloud backups.</p>
           </div>
 
           <div className="mt-8 space-y-4">
             <Link
               href="/pricing"
-              className="flex w-full items-center justify-center rounded-full bg-[--accent] px-4 py-3 text-sm font-bold text-[--accent-foreground] transition-all hover:bg-[--accent-strong] shadow-lg hover:shadow-[--accent]/20"
+              className="flex w-full items-center justify-center rounded-full bg-(--accent) px-4 py-3 text-sm font-bold text-(--accent-foreground) transition-all hover:bg-(--accent-strong) shadow-lg hover:shadow-(color:--accent)/20"
             >
               Subscribe for $5/month
             </Link>

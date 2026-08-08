@@ -78,7 +78,7 @@ export default function ExecutePage() {
             <h2 className="mb-4 text-xl font-semibold">Today&apos;s deliberate dose</h2>
             <div className="plan-meta-grid mb-5 text-sm">
               <div className="plan-pill flex items-start gap-2.5 p-3 rounded-xl border border-[var(--line)] bg-[var(--field)] text-(--muted)">
-                <div className="rounded-lg bg-[--accent]/10 text-[--accent] p-1.5 shrink-0">
+                <div className="rounded-lg bg-(--accent)/10 text-(--accent) p-1.5 shrink-0">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10" />
                     <circle cx="12" cy="12" r="4" />
@@ -91,7 +91,7 @@ export default function ExecutePage() {
               </div>
 
               <div className="plan-pill flex items-start gap-2.5 p-3 rounded-xl border border-[var(--line)] bg-[var(--field)] text-(--muted)">
-                <div className="rounded-lg bg-[--accent]/10 text-[--accent] p-1.5 shrink-0">
+                <div className="rounded-lg bg-(--accent)/10 text-(--accent) p-1.5 shrink-0">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
@@ -103,7 +103,7 @@ export default function ExecutePage() {
               </div>
 
               <div className="plan-pill flex items-start gap-2.5 p-3 rounded-xl border border-[var(--line)] bg-[var(--field)] text-(--muted)">
-                <div className="rounded-lg bg-[--accent]/10 text-[--accent] p-1.5 shrink-0">
+                <div className="rounded-lg bg-(--accent)/10 text-(--accent) p-1.5 shrink-0">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
@@ -119,41 +119,41 @@ export default function ExecutePage() {
             <div className="relative pl-6 border-l border-[var(--line)] space-y-6 my-6">
               {/* Step 1 */}
               <div className="relative plan-step bg-transparent border-0 !p-0">
-                <span className="absolute -left-[35px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[--panel] border border-[--accent] text-[10px] font-bold text-[--accent]">
+                <span className="absolute -left-[35px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-(--panel) border border-(--accent) text-[10px] font-bold text-(--accent)">
                   1
                 </span>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[--accent] mb-1 flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-(--accent) mb-1 flex items-center gap-1.5">
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                     Action sprint
                   </h3>
-                  <p className="text-sm sm:text-base text-slate-800 dark:text-[--muted-strong] leading-relaxed font-semibold">{plan.action}</p>
+                  <p className="text-sm sm:text-base text-slate-800 dark:text-(--muted-strong) leading-relaxed font-semibold">{plan.action}</p>
                 </div>
               </div>
 
               {/* Step 2 */}
               <div className="relative plan-step bg-transparent border-0 !p-0">
-                <span className="absolute -left-[35px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[--panel] border border-[--accent] text-[10px] font-bold text-[--accent]">
+                <span className="absolute -left-[35px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-(--panel) border border-(--accent) text-[10px] font-bold text-(--accent)">
                   2
                 </span>
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[--accent] mb-1 flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-(--accent) mb-1 flex items-center gap-1.5">
                     <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                       <circle cx="12" cy="12" r="10" />
                       <circle cx="12" cy="12" r="4" />
                     </svg>
                     Reflection checkpoint
                   </h3>
-                  <p className="text-sm sm:text-base text-slate-800 dark:text-[--muted-strong] leading-relaxed font-semibold">{plan.reflection}</p>
+                  <p className="text-sm sm:text-base text-slate-800 dark:text-(--muted-strong) leading-relaxed font-semibold">{plan.reflection}</p>
                 </div>
               </div>
 
               {/* Step 3 Optional */}
               {plan.optionalResource ? (
                 <div className="relative plan-step bg-transparent border-0 !p-0">
-                  <span className="absolute -left-[35px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[--panel] border border-slate-500 text-[10px] font-bold text-slate-500">
+                  <span className="absolute -left-[35px] top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-(--panel) border border-slate-500 text-[10px] font-bold text-slate-500">
                     3
                   </span>
                   <div>
@@ -164,7 +164,7 @@ export default function ExecutePage() {
                       </svg>
                       Optional extra
                     </h3>
-                    <p className="text-sm sm:text-base text-slate-850 dark:text-[--muted-strong] leading-relaxed">{plan.optionalResource}</p>
+                    <p className="text-sm sm:text-base text-slate-850 dark:text-(--muted-strong) leading-relaxed">{plan.optionalResource}</p>
                   </div>
                 </div>
               ) : null}
@@ -228,7 +228,7 @@ export default function ExecutePage() {
               </div>
             )}
 
-            <div className="mt-6 border-t border-[--line] pt-6">
+            <div className="mt-6 border-t border-(--line) pt-6">
               <p className="label mb-3">Close today</p>
               <div className="close-actions">
                 <button

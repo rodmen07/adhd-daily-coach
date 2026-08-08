@@ -70,20 +70,20 @@ export default function BreathePage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Breathe</h1>
-          <p className="mt-1.5 text-xs text-[--muted]">
+          <p className="mt-1.5 text-xs text-(--muted)">
             Guided breathwork pacing to slow down and reset in a couple of minutes.
           </p>
         </div>
         <Link
           href="/"
-          className="rounded-full border border-[--line] bg-[--surface-strong] px-3.5 py-1.5 text-xs font-semibold text-[--foreground] hover:bg-[--panel] transition-colors"
+          className="rounded-full border border-(--line) bg-(--surface-strong) px-3.5 py-1.5 text-xs font-semibold text-(--foreground) hover:bg-(--panel) transition-colors"
         >
           Back Dashboard
         </Link>
       </div>
 
       {/* Pacer card */}
-      <div className="mb-8 rounded-2xl border border-[--line] bg-[--panel] p-6 shadow-xl">
+      <div className="mb-8 rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
         <div className="flex flex-col items-center justify-center">
           <div
             className="flex h-44 w-44 items-center justify-center rounded-full bg-(--accent)/15 transition-transform duration-100 ease-linear"
@@ -91,16 +91,16 @@ export default function BreathePage() {
             aria-hidden="true"
           >
             <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-(--accent)/25 text-center">
-              <span className="text-sm font-semibold text-[--foreground]">
+              <span className="text-sm font-semibold text-(--foreground)">
                 {running ? getPhaseLabel(state.phase) : "Ready"}
               </span>
               {running && (
-                <span className="mt-1 font-mono text-2xl text-[--accent]">{secondsRemaining}</span>
+                <span className="mt-1 font-mono text-2xl text-(--accent)">{secondsRemaining}</span>
               )}
             </div>
           </div>
 
-          <p className="mt-5 text-[11px] font-mono uppercase tracking-wider text-[--muted]">
+          <p className="mt-5 text-[11px] font-mono uppercase tracking-wider text-(--muted)">
             Cycles completed: {cycles}
           </p>
 
@@ -110,7 +110,7 @@ export default function BreathePage() {
               className={`rounded-full border px-5 py-2 text-sm font-semibold transition-all ${
                 running
                   ? "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                  : "border-[--accent]/40 bg-(--accent)/15 text-[--accent] hover:bg-(--accent)/25"
+                  : "border-(--accent)/40 bg-(--accent)/15 text-(--accent) hover:bg-(--accent)/25"
               } cursor-pointer`}
             >
               {running ? "Pause" : "Start"}
@@ -120,8 +120,8 @@ export default function BreathePage() {
               disabled={!running && elapsed === 0}
               className={`rounded-full border px-5 py-2 text-sm font-semibold transition-all ${
                 running || elapsed > 0
-                  ? "border-[--line] text-[--foreground] hover:bg-[--panel] cursor-pointer"
-                  : "border-[--line] text-[--muted] cursor-not-allowed opacity-40"
+                  ? "border-(--line) text-(--foreground) hover:bg-(--panel) cursor-pointer"
+                  : "border-(--line) text-(--muted) cursor-not-allowed opacity-40"
               }`}
             >
               Reset
@@ -131,7 +131,7 @@ export default function BreathePage() {
       </div>
 
       {/* Pattern selection */}
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[--muted]">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-(--muted)">
         Choose a rhythm
       </h2>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
@@ -143,25 +143,25 @@ export default function BreathePage() {
               onClick={() => handleSelectPattern(preset)}
               className={`flex flex-col items-start rounded-xl border p-4 text-left transition-all ${
                 isSelected
-                  ? "border-[--accent] bg-(--accent)/10 text-[--foreground]"
-                  : "border-[--line] bg-[--field] text-[--muted] hover:border-[--muted] cursor-pointer"
+                  ? "border-(--accent) bg-(--accent)/10 text-(--foreground)"
+                  : "border-(--line) bg-(--field) text-(--muted) hover:border-(--muted) cursor-pointer"
               }`}
             >
               <div className="flex w-full items-center justify-between">
-                <span className="font-semibold text-sm text-[--foreground]">{preset.name}</span>
-                <span className="font-mono text-[10px] text-[--muted]">
+                <span className="font-semibold text-sm text-(--foreground)">{preset.name}</span>
+                <span className="font-mono text-[10px] text-(--muted)">
                   {preset.inhale}-{preset.hold}-{preset.exhale}
                   {preset.rest > 0 ? `-${preset.rest}` : ""}
                 </span>
               </div>
-              <p className="mt-2.5 text-[11px] leading-relaxed text-[--muted-strong]">
+              <p className="mt-2.5 text-[11px] leading-relaxed text-(--muted-strong)">
                 {preset.description}
               </p>
               <span
                 className={`mt-3 self-end rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${
                   isSelected
-                    ? "bg-(--accent)/20 text-[--accent] border-[--accent]/30"
-                    : "bg-transparent text-[--muted] border-[--line]"
+                    ? "bg-(--accent)/20 text-(--accent) border-(--accent)/30"
+                    : "bg-transparent text-(--muted) border-(--line)"
                 }`}
               >
                 {isSelected ? "Selected" : "Select"}
