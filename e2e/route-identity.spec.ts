@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test";
+
 import { test, expect, APP_ROOT, routeUrl } from "./fixtures";
 import { ROUTES } from "@/lib/routes";
 import { ROUTE_TITLE_SUFFIX } from "@/app/route-metadata";
@@ -79,12 +81,11 @@ import { ROUTE_TITLE_SUFFIX } from "@/app/route-metadata";
 const ANNOUNCER = "#__next-route-announcer__";
 
 /**
- * The string the browser should show for a route, composed from the registry
- * entry that already names it. Throws rather than returning a fallback: a path
- * this cannot resolve means the spec and the registry have parted company, and
- * a plausible-looking default would hide that.
+ * The registry entry for a path. Throws rather than returning a fallback: a
+ * path this cannot resolve means the spec and the registry have parted
+ * company, and a plausible-looking default would hide that.
  */
-function expectedTitle(path: string): string {
+function registryEntry(path: string) {
   const entry = ROUTES.find((route) => route.path === path);
 
   if (entry === undefined) {
@@ -93,7 +94,13 @@ function expectedTitle(path: string): string {
     );
   }
 
-  return `${entry.label}${ROUTE_TITLE_SUFFIX}`;
+  return entry;
+}
+
+/** The string the browser should show for a route, composed from the label the
+ *  registry already carries plus the suffix the root template declares. */
+function expectedTitle(path: string): string {
+  return `${registryEntry(path).label}${ROUTE_TITLE_SUFFIX}`;
 }
 
 /**
@@ -101,44 +108,99 @@ function expectedTitle(path: string): string {
  * journey never has to open the "More" disclosure. v0.25 explicitly does not
  * touch the nav, and a spec that drove the panel would red on v0.24's surface
  * for reasons that have nothing to do with titles.
+ *
+ * Written as PATHS only. The link text and the URL segment are both derived
+ * from the registry rather than copied here: a hand-written `"Now"` would be a
+ * third spelling of a name the registry already owns, and the moment it drifted
+ * this spec would fail with "link not found" - a message about a locator, in a
+ * file whose whole subject is names.
  */
-const DESTINATIONS = [
-  { path: "/now", link: "Now", url: "now" },
-  { path: "/slicer", link: "Slicer", url: "slicer" },
-] as const;
+const DESTINATION_PATHS = ["/now", "/slicer"] as const;
+
+/**
+ * Land on `/` as a first-time visitor and clear the onboarding overlay, which
+ * a fresh context always shows on the dashboard. Completing it the way J1 and
+ * J2 prove works also writes the preference record that keeps it closed for
+ * the rest of the journey.
+ */
+async function enterAtTheFrontDoor(page: Page): Promise<void> {
+  await page.goto(APP_ROOT);
+  await page.getByRole("button", { name: "Quick start now" }).click();
+  await expect(page.getByTestId("onboarding-container")).toHaveCount(0);
+}
+
+/** Click a header nav link, by the label the registry gives that route.
+ *  Scoped to the `Primary` landmark so a same-named link elsewhere on the
+ *  dashboard cannot stand in for the nav. */
+async function clickNavLink(page: Page, path: string): Promise<void> {
+  await page
+    .getByRole("navigation", { name: "Primary" })
+    .getByRole("link", { name: registryEntry(path).label, exact: true })
+    .click();
+  await expect(page).toHaveURL(routeUrl(path.replace(/^\//, "")));
+}
 
 test.describe("v0.25: the browser and the screen reader both learn the room's name", () => {
-  test("a client-side navigation renames the tab and announces the destination", async ({
-    page,
-  }) => {
-    // Non-vacuity, before anything is navigated: this journey is only
-    // meaningful if the registry it composes expectations from is really
-    // populated and the two destinations really are distinct rooms. Without
-    // this, an empty or collapsed registry would make every assertion below
-    // compare two copies of the same fallback string.
+  /**
+   * Non-vacuity, before either journey navigates anywhere: both are only
+   * meaningful if the registry they compose expectations from is really
+   * populated and the two destinations really are distinct rooms. Without
+   * this, an empty or collapsed registry would make every assertion below
+   * compare two copies of the same fallback string.
+   */
+  test("judges a real registry with two distinct destinations", async () => {
     expect(ROUTES.length, "src/lib/routes.ts exported no routes; the corpus is empty, not clean").toBe(13);
     expect(
-      new Set(DESTINATIONS.map((destination) => expectedTitle(destination.path))).size,
+      new Set(DESTINATION_PATHS.map((path) => expectedTitle(path))).size,
       "the two destinations expect the same title, so nothing below could detect a constant title",
-    ).toBe(DESTINATIONS.length);
+    ).toBe(DESTINATION_PATHS.length);
+  });
 
-    await page.goto(APP_ROOT);
+  /**
+   * Clause 5, kept in its own test rather than folded into the announcer one.
+   * The two clauses fail TOGETHER under the perturbation that matters (one
+   * constant title breaks both), and a single test would stop at whichever
+   * assertion came first - reporting the title and saying nothing about the
+   * announcement, which is the half no other test in this repo can see.
+   */
+  test("a client-side navigation renames the tab, and the name actually changes", async ({
+    page,
+  }) => {
+    await enterAtTheFrontDoor(page);
 
-    // A fresh context is a first-time visitor, so onboarding covers the
-    // dashboard; complete it the way J1 and J2 prove works, which also writes
-    // the preference record that keeps it closed for the rest of the journey.
-    await page.getByRole("button", { name: "Quick start now" }).click();
-    await expect(page.getByTestId("onboarding-container")).toHaveCount(0);
+    for (const path of DESTINATION_PATHS) {
+      const titleBefore = await page.title();
+      const expected = expectedTitle(path);
+
+      await clickNavLink(page, path);
+
+      // `toHaveTitle` retries until the navigation has settled, so the
+      // assertion after it reads a title that is done moving - the "after the
+      // navigation settles rather than on a timer" half of the clause.
+      await expect(page, `${path} does not name itself in the tab`).toHaveTitle(expected);
+      expect(
+        await page.title(),
+        `the title did not change on the navigation to ${path}: it is still ` +
+          `"${titleBefore}", so Next's announcer condition (previousTitle !== currentTitle) ` +
+          "is never true and the destination is announced to nobody",
+      ).not.toBe(titleBefore);
+    }
+  });
+
+  /** Clause 6 - the only assertion in this repo that observes the
+   *  announcement itself rather than its precondition. */
+  test("the route announcer names the destination, including on Back", async ({ page }) => {
+    await enterAtTheFrontDoor(page);
 
     const announcer = page.locator(ANNOUNCER);
 
     // The announcer must EXIST before anything is asserted about its contents,
     // or an empty locator would fail every clause below with "element not
     // found" and say nothing about announcements. Its two attributes are
-    // asserted once, here: they are Next's markup rather than this app's, and
-    // they are the entire mechanism by which the text this spec checks reaches
-    // a screen reader. If a framework bump drops them, the milestone's claim
-    // dies silently and this is the line that says so.
+    // asserted here rather than assumed: they are Next's markup rather than
+    // this app's, and they are the entire mechanism by which the text this
+    // spec checks reaches a screen reader. If a framework bump drops them, the
+    // milestone's claim dies silently and this is the line that says so.
     await expect(
       announcer,
       "no #__next-route-announcer__ inside <next-route-announcer>: Next's route announcer is not mounted, " +
@@ -147,47 +209,28 @@ test.describe("v0.25: the browser and the screen reader both learn the room's na
     await expect(announcer).toHaveAttribute("role", "alert");
     await expect(announcer).toHaveAttribute("aria-live", "assertive");
 
-    for (const destination of DESTINATIONS) {
-      const titleBefore = await page.title();
-      const expected = expectedTitle(destination.path);
+    for (const path of DESTINATION_PATHS) {
+      await clickNavLink(page, path);
 
-      await page
-        .getByRole("navigation", { name: "Primary" })
-        .getByRole("link", { name: destination.link, exact: true })
-        .click();
-      await expect(page).toHaveURL(routeUrl(destination.url));
-
-      // Clause 5, both halves. `toHaveTitle` retries until the navigation has
-      // settled, so the second assertion reads a title that is done moving.
-      await expect(
-        page,
-        `${destination.path} does not name itself in the tab`,
-      ).toHaveTitle(expected);
-      expect(
-        await page.title(),
-        `the title did not change on the navigation to ${destination.path}: it is still ` +
-          `"${titleBefore}", so Next's announcer condition (previousTitle !== currentTitle) ` +
-          "is never true and the destination is announced to nobody",
-      ).not.toBe(titleBefore);
-
-      // Clause 6. The announcer carries the destination's own name, not the
-      // previous room's and not an empty string.
+      // The announcer carries the destination's own name - not the previous
+      // room's, and not an empty string, which is what it held on every
+      // navigation until this milestone.
       await expect(
         announcer,
-        `the route announcer did not name ${destination.path} after navigating to it`,
-      ).toHaveText(expected);
+        `the route announcer did not name ${path} after navigating to it`,
+      ).toHaveText(expectedTitle(path));
     }
 
     // Going BACK is a client-side navigation too, and it is the one a person
     // makes most often. The announcer must speak on it as well - the title is
     // moving in the opposite direction, which is a different pass through the
     // same condition.
+    const first = DESTINATION_PATHS[0];
     await page.goBack();
-    await expect(page).toHaveURL(routeUrl(DESTINATIONS[0].url));
-    await expect(page).toHaveTitle(expectedTitle(DESTINATIONS[0].path));
+    await expect(page).toHaveURL(routeUrl(first.replace(/^\//, "")));
     await expect(
       announcer,
       "the route announcer went silent on a browser Back navigation",
-    ).toHaveText(expectedTitle(DESTINATIONS[0].path));
+    ).toHaveText(expectedTitle(first));
   });
 });
