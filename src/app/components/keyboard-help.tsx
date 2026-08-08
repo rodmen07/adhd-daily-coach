@@ -9,7 +9,7 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { goToRoutes } from "@/lib/routes";
+import { goToRouteGroups, goToRoutes } from "@/lib/routes";
 
 // Everything listed in the dialog is real behavior. The go-to chords are
 // implemented here; the arrow keys live in SwipeStepCard; the rest is
@@ -60,16 +60,39 @@ const BROWSER_ROWS: ShortcutRow[] = [
   { keys: ["Enter"], description: "Activate the focused control" },
 ];
 
-// One row per registry entry that carries a chord, in registry order, labelled
-// with the registry's own word so the dialog and the nav never call the same
-// destination two different things.
-const NAVIGATION_ROWS: ShortcutRow[] = goToRoutes().map((route) => ({
-  keys: ["g", route.goToKey],
-  separator: "then",
-  description: `Go to ${route.label}`,
+// A run of rows, optionally under a heading. The heading is the only new idea
+// in v0.24 D5: the dialog grows from seven navigation rows to twelve in the
+// same edit that gives it headings to put them under, so twelve rows read as
+// four short lists rather than one longer one - the same argument the "More"
+// panel answers with the same four categories, from the same registry.
+type ShortcutSection = {
+  /** `null` for the two runs that describe behaviour which is not a route. */
+  heading: string | null;
+  rows: ShortcutRow[];
+};
+
+// One row per registry entry that carries a chord, grouped and ordered by the
+// registry, labelled with the registry's own word so the dialog and the nav
+// never call the same destination two different things. Nothing here is
+// written down twice: a route that changes category moves in both surfaces,
+// which is why D5 needs no drift guard between them.
+const NAVIGATION_SECTIONS: ShortcutSection[] = goToRouteGroups().map((section) => ({
+  heading: section.group,
+  rows: section.routes.map((route) => ({
+    keys: ["g", route.goToKey],
+    separator: "then" as const,
+    description: `Go to ${route.label}`,
+  })),
 }));
 
-const SHORTCUT_ROWS: ShortcutRow[] = [...HELP_ROWS, ...NAVIGATION_ROWS, ...BROWSER_ROWS];
+// The hand-authored runs stay outside the groups and keep their positions:
+// the help keys first, the browser behaviours last, the registry's categories
+// between them (D6, unchanged by v0.24 D5).
+const SHORTCUT_SECTIONS: ShortcutSection[] = [
+  { heading: null, rows: HELP_ROWS },
+  ...NAVIGATION_SECTIONS,
+  { heading: null, rows: BROWSER_ROWS },
+];
 
 // Never hijack typing: shortcuts stay quiet while focus is in any editable
 // control, so the shortcut keys can always be typed as normal text.
@@ -86,6 +109,10 @@ export function KeyboardHelp() {
   const router = useRouter();
   const titleId = useId();
   const introId = useId();
+  // One stable base per mount; each labelled section suffixes it with its
+  // index, so a category renamed to something with a space or a slash cannot
+  // produce a duplicate or invalid id.
+  const sectionIdBase = useId();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -267,23 +294,42 @@ export function KeyboardHelp() {
             <p id={introId} className="keyboard-help-intro">
               A few quiet shortcuts, always optional. Your mouse or touch works everywhere.
             </p>
-            <ul className="shortcut-list">
-              {SHORTCUT_ROWS.map((row) => (
-                <li key={row.description} className="shortcut-row">
-                  <span className="shortcut-desc">{row.description}</span>
-                  <span className="shortcut-keys">
-                    {row.keys.map((key, index) => (
-                      <span key={key} className="shortcut-key-group">
-                        {index > 0 && row.separator ? (
-                          <span className="shortcut-then">{row.separator}</span>
-                        ) : null}
-                        <kbd>{key}</kbd>
-                      </span>
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="shortcut-sections">
+              {SHORTCUT_SECTIONS.map((section, sectionIndex) => {
+                const headingId =
+                  section.heading === null ? undefined : `${sectionIdBase}-${sectionIndex}`;
+
+                return (
+                  <div
+                    key={section.heading ?? `unlabelled-${sectionIndex}`}
+                    className="shortcut-section"
+                  >
+                    {section.heading === null ? null : (
+                      <h3 id={headingId} className="shortcut-group-heading">
+                        {section.heading}
+                      </h3>
+                    )}
+                    <ul className="shortcut-list" aria-labelledby={headingId}>
+                      {section.rows.map((row) => (
+                        <li key={row.description} className="shortcut-row">
+                          <span className="shortcut-desc">{row.description}</span>
+                          <span className="shortcut-keys">
+                            {row.keys.map((key, index) => (
+                              <span key={key} className="shortcut-key-group">
+                                {index > 0 && row.separator ? (
+                                  <span className="shortcut-then">{row.separator}</span>
+                                ) : null}
+                                <kbd>{key}</kbd>
+                              </span>
+                            ))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : null}

@@ -1510,6 +1510,17 @@ pattern to copy is one component away and already tested:
 `keyboard-help.tsx` closes on `Escape` at line 133 and restores focus through
 `restoreFocusRef`.
 
+**PR1 SHIPPED 2026-08-08.** D2-D6 and D8 are live; D7, the E2E clause and the
+`0.24.0` bump are PR2 and have not shipped, so this heading stays open per
+clause 9. One design clarification came out of implementing it and is recorded
+in `NAV_TAXONOMY.md` D3: "registry order" for the categories means the order
+they first appear in the WHOLE registry, not in the subset a surface renders.
+Ordering each surface by its own list puts **In the moment** first in the panel
+(which holds no `/` and no `/now`) and **Today** first in the keyboard dialog -
+two surfaces teaching a reader two different shapes for the same twelve routes,
+with no drift for a drift guard to find. Clause 4's "in the same order as the
+panel" caught it red before it shipped; `navGroupOrder()` is the fix.
+
 PR1 (the registry gains meaning): `navGroup` on every `inPrimaryNav: true`
 entry and on no other (D2), the four groups Today / In the moment / Looking
 back / Account (D3), the panel rendering one `aria-labelledby`-labelled `<ul>`
@@ -1540,7 +1551,23 @@ an existence grep:
    have at least one `navSlot: "more"` member, in registry order, and every
    `more` route is inside the labelled list of its own group - asserted against
    `ROUTES` rather than a literal list of names, and proven by a control that
-   moves one route to a different group and reddens it.
+   makes the RENDERER stop honouring `navGroup` and reddens it.
+
+   > **Corrected by PR1, 2026-08-08, having been run and observed GREEN.** This
+   > clause originally prescribed "a control that moves one route to a
+   > different group and reddens it". That control was run - `/journal` moved
+   > from `Looking back` to `Today` in `src/lib/routes.ts`, perturbation
+   > confirmed by `git diff` - and the whole guard stayed **26/26 green**,
+   > because both the rendering and the expectation are derived from the same
+   > registry field, so a registry edit moves both sides at once. It is the
+   > same vacuity class the backlog entry filed by PR #157 describes and the
+   > reason PR2 of v0.22 had to replace an equality assertion. A registry edit
+   > is a SPECIFICATION change, not a defect, and no derived guard can call it
+   > one; what a guard can catch is a renderer that stops reading the field,
+   > which is what the corrected control perturbs. The unfalsifiable half -
+   > "is `/journal` really Looking back?" - has no mechanical home today and is
+   > filed as an open backlog item with a doc-table drift guard as its
+   > candidate close condition.
 3. Every `inPrimaryNav: true` route carries a `goToKey`, the existing "assigns
    each chord key to exactly one route" assertion still holds across all
    twelve, and `g <key>` calls `router.push` with that entry's path for every

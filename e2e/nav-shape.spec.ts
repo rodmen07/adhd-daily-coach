@@ -178,8 +178,11 @@ test.describe("v0.23: the header fits", () => {
     await page.keyboard.press("Enter");
     await expect(disclosure).toHaveAttribute("open", /.*/);
 
-    // Every link inside enters the tab order once open, in registry order,
-    // and tabbing out of the summary walks exactly them.
+    // Every link inside enters the tab order once open, and tabbing out of the
+    // summary walks exactly them in DOM order. Since v0.24 that DOM order is
+    // by category (registry order within each), which this assertion is
+    // indifferent to: both sides are read from the live DOM, so it proves the
+    // tab order follows what is rendered rather than what a list says.
     const panelHrefs = await page
       .locator(".site-nav-more-panel a")
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("href")));

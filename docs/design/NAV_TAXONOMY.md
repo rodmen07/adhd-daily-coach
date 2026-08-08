@@ -1,7 +1,18 @@
 # v0.24 - Nine peers in a smaller box: the "More" menu gets meaning, and gets out of the way
 
-Status: **PROPOSED 2026-08-08** (product-role increment). Nothing here has
-shipped. `package.json` reads `0.23.0`.
+Status: **PR1 SHIPPED 2026-08-08** (D2-D6 and D8; dev-role increment). D7 and
+the `0.24.0` bump are PR2 and have not shipped. `package.json` still reads
+`0.23.0` until then.
+
+> **Reading section 1 after PR1.** Every claim in it was true of the tree at
+> `72b6f5a` and is quoted at that commit on purpose, per this system's
+> convention of leaving superseded prose where it stood rather than editing
+> history. PR1 falsifies three of them BY DOING THE WORK, which is the
+> intended outcome and not drift: `grep -rn 'navGroup' src/` is no longer
+> empty, the `<h[1-6]|<ul|<li|role="group"|aria-labelledby` count in
+> `site-nav.tsx` is no longer 0, and no front-door route is chordless.
+> Section 1c is UNCHANGED and still true: the disclosure still closes on
+> neither `Escape` nor an outside click, because that is D7 and D7 is PR2.
 
 Every decision below is an **overridable default**: silence ships it, one word
 from the user flips it. This document is the product analyst's proposal, not a
@@ -167,6 +178,19 @@ words and wrong for the reason above.
 | **Account** | `/pricing` Pricing | Membership |
 
 Groups render in registry order, which puts them in that order today.
+
+> **Clarified by PR1, 2026-08-08: "registry order" means the WHOLE registry,
+> not the subset a surface happens to render.** Written the obvious way — order
+> each surface's groups by their first appearance in that surface's own list —
+> the panel and the dialog disagree. The panel holds no `/` and no `/now`, so
+> its first Today entry is `/focus` and its first In-the-moment entry is
+> `/ambient`, which renders **In the moment** first there and **Today** first
+> in the dialog: two surfaces teaching a reader two different shapes for the
+> same twelve routes, from the same registry, with no drift for a drift guard
+> to find. Done-when clause 4's "in the same order as the panel" is what
+> caught it, red, before any of it shipped. `navGroupOrder()` in
+> `src/lib/routes.ts` is the fix and `route-registry-guard.test.ts` asserts a
+> SUBSET orders its categories the same way the whole nav does.
 
 Two properties of this split are worth stating because they were tested against
 the tree rather than chosen for symmetry:

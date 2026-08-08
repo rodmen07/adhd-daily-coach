@@ -46,6 +46,20 @@ export type RouteAudience = "visitor" | "internal";
  */
 export type NavSlot = "inline" | "more";
 
+/**
+ * What a primary-nav route is ABOUT (v0.24 D3).
+ *
+ * Four categories, chosen so each one is a thing a person is doing rather than
+ * a shelf things were put on: "Today" is the plan and the three steps that
+ * work it, "In the moment" is the set that needs no plan and no account,
+ * "Looking back" is the archives, "Account" is membership.
+ *
+ * The union is closed on purpose. A fifth category is a product decision, and
+ * making it a `string` would let one arrive as a typo - which is exactly the
+ * failure `navSlot` was declared rather than positional to avoid.
+ */
+export type NavGroup = "Today" | "In the moment" | "Looking back" | "Account";
+
 export type RouteEntry = {
   /** Written without a trailing slash, the form every href in the app uses. */
   readonly path: string;
@@ -59,6 +73,15 @@ export type RouteEntry = {
    * directions, so a thirteenth nav route cannot be added without deciding.
    */
   readonly navSlot?: NavSlot;
+  /**
+   * Which category this route belongs to. Required on every `inPrimaryNav:
+   * true` entry and absent on the others, the same both-directions shape
+   * `navSlot` has, and for the same reason (v0.24 D2): a route belongs to a
+   * category because of what it IS, not because of where the header currently
+   * puts it. Carrying it only on the `more` entries would mean promoting a
+   * route to inline silently deleted its meaning.
+   */
+  readonly navGroup?: NavGroup;
   /** The second key of the `g` chord that reaches this route, if any. */
   readonly goToKey?: string;
   readonly audience: RouteAudience;
@@ -78,28 +101,35 @@ export type RouteEntry = {
  * assembled and where the loop returns, `/now` is the one route useful with no
  * plan and no account, and `/slicer` is the largest surface in the app - the
  * one the product names itself after - which until v0.23 PR1 had zero other
- * doors and still has no `g` chord. The three loop steps are deliberately not
- * inline: `SwipeStepCard` already carries `/focus` -> `/execute` -> `/review`
- * -> `/` as swipes, arrow keys and buttons, so they carry each other.
+ * doors. The three loop steps are deliberately not inline: `SwipeStepCard`
+ * already carries `/focus` -> `/execute` -> `/review` -> `/` as swipes, arrow
+ * keys and buttons, so they carry each other.
  *
  * Three is a MEASURED number, not a taste: four items (three links plus the
  * More disclosure) is the largest set that stays on one row at 375x667.
  * See `docs/design/NAV_SHAPE.md` D2 for the shapes that were measured and
  * rejected, and `e2e/nav-shape.spec.ts` for the assertion that keeps it true.
+ *
+ * As of v0.24 D6 every front-door route carries a `g` chord. Before it, seven
+ * did and five did not, and the split had no principle behind it: `/slicer`,
+ * `/ambient`, `/breathe`, `/challenges` and `/pricing` were reachable from the
+ * keyboard only by tabbing into the disclosure and through it. A chord is
+ * invisible until a reader presses `?`, so it costs nothing to the person who
+ * never does - unlike a nav pill, which every reader pays for on every page.
  */
 export const ROUTES: readonly RouteEntry[] = [
-  { path: "/", label: "Dashboard", inPrimaryNav: true, navSlot: "inline", goToKey: "d", audience: "visitor" },
-  { path: "/now", label: "Now", inPrimaryNav: true, navSlot: "inline", goToKey: "n", audience: "visitor" },
-  { path: "/slicer", label: "Slicer", inPrimaryNav: true, navSlot: "inline", audience: "visitor" },
-  { path: "/ambient", label: "Ambient", inPrimaryNav: true, navSlot: "more", audience: "visitor" },
-  { path: "/breathe", label: "Breathe", inPrimaryNav: true, navSlot: "more", audience: "visitor" },
-  { path: "/challenges", label: "Challenges", inPrimaryNav: true, navSlot: "more", audience: "visitor" },
-  { path: "/focus", label: "Focus", inPrimaryNav: true, navSlot: "more", goToKey: "f", audience: "visitor" },
-  { path: "/execute", label: "Execute", inPrimaryNav: true, navSlot: "more", goToKey: "e", audience: "visitor" },
-  { path: "/review", label: "Review", inPrimaryNav: true, navSlot: "more", goToKey: "r", audience: "visitor" },
-  { path: "/trends", label: "Trends", inPrimaryNav: true, navSlot: "more", goToKey: "t", audience: "visitor" },
-  { path: "/journal", label: "Journal", inPrimaryNav: true, navSlot: "more", goToKey: "j", audience: "visitor" },
-  { path: "/pricing", label: "Pricing", inPrimaryNav: true, navSlot: "more", audience: "visitor" },
+  { path: "/", label: "Dashboard", inPrimaryNav: true, navSlot: "inline", navGroup: "Today", goToKey: "d", audience: "visitor" },
+  { path: "/now", label: "Now", inPrimaryNav: true, navSlot: "inline", navGroup: "In the moment", goToKey: "n", audience: "visitor" },
+  { path: "/slicer", label: "Slicer", inPrimaryNav: true, navSlot: "inline", navGroup: "Today", goToKey: "s", audience: "visitor" },
+  { path: "/ambient", label: "Ambient", inPrimaryNav: true, navSlot: "more", navGroup: "In the moment", goToKey: "a", audience: "visitor" },
+  { path: "/breathe", label: "Breathe", inPrimaryNav: true, navSlot: "more", navGroup: "In the moment", goToKey: "b", audience: "visitor" },
+  { path: "/challenges", label: "Challenges", inPrimaryNav: true, navSlot: "more", navGroup: "In the moment", goToKey: "c", audience: "visitor" },
+  { path: "/focus", label: "Focus", inPrimaryNav: true, navSlot: "more", navGroup: "Today", goToKey: "f", audience: "visitor" },
+  { path: "/execute", label: "Execute", inPrimaryNav: true, navSlot: "more", navGroup: "Today", goToKey: "e", audience: "visitor" },
+  { path: "/review", label: "Review", inPrimaryNav: true, navSlot: "more", navGroup: "Today", goToKey: "r", audience: "visitor" },
+  { path: "/trends", label: "Trends", inPrimaryNav: true, navSlot: "more", navGroup: "Looking back", goToKey: "t", audience: "visitor" },
+  { path: "/journal", label: "Journal", inPrimaryNav: true, navSlot: "more", navGroup: "Looking back", goToKey: "j", audience: "visitor" },
+  { path: "/pricing", label: "Pricing", inPrimaryNav: true, navSlot: "more", navGroup: "Account", goToKey: "p", audience: "visitor" },
   { path: "/monetization", label: "Monetization", inPrimaryNav: false, audience: "internal" },
 ];
 
@@ -141,4 +171,92 @@ export type GoToRoute = RouteEntry & { readonly goToKey: string };
  */
 export function goToRoutes(): readonly GoToRoute[] {
   return ROUTES.filter((route): route is GoToRoute => route.goToKey !== undefined);
+}
+
+/** One category and the entries in it, in registry order. */
+export type NavGroupSection<T extends RouteEntry = RouteEntry> = {
+  readonly group: NavGroup;
+  readonly routes: readonly T[];
+};
+
+/**
+ * The categories in registry order, derived from `ROUTES` (v0.24 D3).
+ *
+ * "Registry order" is deliberately a property of the WHOLE registry rather
+ * than of whatever subset is being rendered. Ordering each surface by first
+ * appearance in its own list sounds equivalent and is not: the "More" panel
+ * holds no `/` and no `/now`, so its first Today entry is `/focus` and its
+ * first In-the-moment entry is `/ambient`, which puts In the moment FIRST
+ * there and Today first in the keyboard dialog - two surfaces teaching a
+ * reader two different shapes for the same twelve routes. The guard's
+ * cross-surface assertion caught exactly that during v0.24 PR1; this function
+ * is the fix, and `route-registry-guard.test.ts` keeps it fixed.
+ */
+export function navGroupOrder(): readonly NavGroup[] {
+  const order: NavGroup[] = [];
+
+  for (const route of ROUTES) {
+    if (route.navGroup !== undefined && !order.includes(route.navGroup)) {
+      order.push(route.navGroup);
+    }
+  }
+
+  return order;
+}
+
+/**
+ * Split a list of registry entries into its categories (v0.24 D3, D5).
+ *
+ * Two ordering rules, both derived from the registry rather than written down
+ * anywhere: the GROUPS come out in `navGroupOrder()`, and the routes INSIDE
+ * each group keep their input order. So the one list in this file decides the
+ * order of the "More" panel's headings and the keyboard dialog's headings at
+ * once, and a category that is re-ordered moves both.
+ *
+ * A group with no member in the input renders nothing at all rather than an
+ * empty section, which is D4's "no heading over an empty list" - and it is why
+ * this returns sections rather than a full four-entry map.
+ *
+ * Note that a group is NOT contiguous in the registry - `/` is Today and
+ * `/now` is In the moment - so this is a real regrouping and not a partition
+ * of adjacent runs. That is deliberate: registry order is the order the header
+ * renders pills in, and forcing categories to be contiguous would make the
+ * taxonomy decide the nav order rather than describe it.
+ *
+ * Entries with no category are DROPPED rather than collected into an "other"
+ * bucket, because a nameless bucket is exactly the undifferentiated list this
+ * milestone exists to remove. `route-registry-guard.test.ts` asserts that the
+ * sections are a partition of their input, so a dropped entry is a red test
+ * rather than a link that quietly stops rendering.
+ */
+export function navGroupSections<T extends RouteEntry>(
+  routes: readonly T[],
+): readonly NavGroupSection<T>[] {
+  const grouped = routes.filter(
+    (route): route is T & { readonly navGroup: NavGroup } => route.navGroup !== undefined,
+  );
+
+  return navGroupOrder()
+    .map((group) => ({
+      group,
+      routes: grouped.filter((route) => route.navGroup === group),
+    }))
+    .filter((section) => section.routes.length > 0);
+}
+
+/**
+ * The "More" panel's categories: only the groups that actually have something
+ * behind the disclosure, so no heading is ever rendered over nothing (D4).
+ */
+export function moreNavGroups(): readonly NavGroupSection[] {
+  return navGroupSections(moreNavRoutes());
+}
+
+/**
+ * The keyboard dialog's categories. Same function, same registry, so the
+ * dialog and the panel cannot disagree about what a route is about - there is
+ * nothing to drift, which is why D5 ships no drift guard between the two.
+ */
+export function goToRouteGroups(): readonly NavGroupSection<GoToRoute>[] {
+  return navGroupSections(goToRoutes());
 }
