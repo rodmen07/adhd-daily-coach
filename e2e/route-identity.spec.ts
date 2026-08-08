@@ -59,14 +59,34 @@ import { ROUTE_TITLE_SUFFIX } from "@/app/route-metadata";
  * comparison at once and cannot fail. Composing from the registry keeps the
  * consumer perturbable - which is precisely what clause 6's control perturbs.
  *
- * OBSERVED FAILING (the control this file ships with)
- * --------------------------------------------------
- * With `metadataForRoute()` returning `{}` - the pre-v0.25 state, where all
- * thirteen segments fall back to the root default and every title is the same
- * string - rebuilt and rerun, this spec reports the title change assertion red
- * ("the title did not change") and the announcer assertion red against an
- * EMPTY announcer. The exact output is quoted in the PR body. A gate nobody
- * has seen fail is not a gate.
+ * OBSERVED FAILING (the controls this file ships with)
+ * ----------------------------------------------------
+ * A gate nobody has seen fail is not a gate. Both were run with the
+ * implementation already committed, each perturbation confirmed applied and
+ * each red quoted in the PR body.
+ *
+ *   A - `metadataForRoute()` returns `{}`, so all thirteen segments fall back
+ *       to the root default: the exact state the app shipped in before v0.25,
+ *       and the "pin every segment title to one constant" control the
+ *       done-when list asks for. Rebuilt, all three sampled titles became one
+ *       string, and BOTH tests went red - the title one on
+ *       `Received: "ADHD Daily Coach: Your friendly self-improvement coach"`,
+ *       and the announcer one on `Received: ""` against
+ *       `<div role="alert" aria-live="assertive" id="__next-route-announcer__"></div>`.
+ *       That empty div is the defect, reproduced on demand.
+ *   B - `export const metadata` deleted from `src/app/slicer/layout.tsx` ONLY.
+ *       `/now` stayed green and `/slicer` went red in both tests, so the
+ *       assertions are per route rather than global - and the announcer red
+ *       here is a NON-empty announcer saying the wrong room, which control A
+ *       cannot distinguish.
+ *
+ * And one control that is expected to come back GREEN, run because the
+ * done-when list names it as the trap: editing a `label` in `src/lib/routes.ts`
+ * moves the expectation and the rendered title TOGETHER. It did
+ * (`/now` -> `Right now · ADHD Daily Coach`, three passed). A green there is
+ * the failure signal for that control rather than evidence about this spec,
+ * which is exactly why the expectations here are composed from the registry
+ * and the CONSUMER is what the real controls perturb.
  *
  * The console-error tripwire from ./fixtures is armed automatically.
  */
