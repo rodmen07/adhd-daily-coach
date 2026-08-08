@@ -89,9 +89,22 @@ function auditLevels(source: string): string[] {
   return [...new Set([...matches].map((m) => m[1]))].sort();
 }
 
-/** The distinct `node-version:` values a workflow pins. */
+/**
+ * The distinct `node-version:` values a workflow pins.
+ *
+ * SINGLE quotes are matched as well as double, and that is not tidiness. This
+ * pattern read `"?(\d+)"?` from the day it was written, which is every quoting
+ * style the two workflows it was pointed at happen to use — and
+ * `dev-agent-runner.yml`, the one file in this repository that had drifted,
+ * wrote its pin as `node-version: '20'`. So on 2026-08-08, widening the corpus
+ * to the whole directory was still not enough: the extractor returned an EMPTY
+ * set for the offending file, the offender list came back `[]`, and a repo with
+ * an end-of-life runtime in it read exactly like a repo where every workflow
+ * agrees. It was caught by the discovery control below rather than by reading
+ * this line, which is the argument for having that control at all.
+ */
 function nodeVersions(source: string): string[] {
-  const matches = withoutComments(source).matchAll(/node-version:\s*"?(\d+)"?/g);
+  const matches = withoutComments(source).matchAll(/node-version:\s*['"]?(\d+)['"]?/g);
   return [...new Set([...matches].map((m) => m[1]))].sort();
 }
 
@@ -162,6 +175,15 @@ describe("dependency-audit parity between ci.yml and security-audit.yml", () => 
       "security-audit.yml cannot be run on demand, so a suspected advisory cannot be checked without waiting for the next scheduled run",
     ).toBe(true);
   });
+
+  it("the detector re-runs on pull requests that change it, so it is never merged untested", () => {
+    const triggers = withoutComments(AUDIT);
+    expect(/^\s*pull_request:/m.test(triggers)).toBe(true);
+    expect(
+      triggers.includes(".github/workflows/security-audit.yml"),
+      "security-audit.yml's pull_request paths filter no longer includes the workflow itself",
+    ).toBe(true);
+  });
 });
 
 describe("Node runtime parity across every workflow in .github/workflows", () => {
@@ -212,14 +234,5 @@ describe("Node runtime parity across every workflow in .github/workflows", () =>
         "a workflow left on an older major installs a different dependency tree than the one the gate cleared, " +
         "and an end-of-life major receives no security patches at all",
     ).toEqual([]);
-  });
-
-  it("the detector re-runs on pull requests that change it, so it is never merged untested", () => {
-    const triggers = withoutComments(AUDIT);
-    expect(/^\s*pull_request:/m.test(triggers)).toBe(true);
-    expect(
-      triggers.includes(".github/workflows/security-audit.yml"),
-      "security-audit.yml's pull_request paths filter no longer includes the workflow itself",
-    ).toBe(true);
   });
 });
