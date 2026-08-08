@@ -19,7 +19,25 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ADHD Daily Coach: Your friendly self-improvement coach",
+  /**
+   * v0.25 D3. `template` is what every child segment's one-word title is
+   * rendered through, so `title: "Slicer"` in `src/app/slicer/layout.tsx`
+   * becomes `Slicer · ADHD Daily Coach`. The distinguishing word comes FIRST
+   * because a browser tab truncates from the right.
+   *
+   * `default` is the string `/` keeps, byte-for-byte what it served before
+   * this milestone: a template applies to CHILD segments, never to the segment
+   * that declares it, and `src/app/page.tsx` exports no title of its own. Two
+   * records depend on that string not moving - it is the site's title in
+   * search results and link previews, and `docs/RENAME_RUNBOOK.md` quotes it
+   * verbatim as the evidence that the 2026-07-29 rename completed.
+   * `src/__tests__/route-title-contract.test.ts` reads BOTH the runbook and
+   * the built `out/index.html` and fails if they stop agreeing.
+   */
+  title: {
+    template: "%s · ADHD Daily Coach",
+    default: "ADHD Daily Coach: Your friendly self-improvement coach",
+  },
   description:
     "Your ADHD friendly self-improvement coach. Small, deliberate daily steps that fit how your brain works.",
 };
