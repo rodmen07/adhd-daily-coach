@@ -1179,7 +1179,7 @@ version at all, so it cannot go stale at a bump, plus the dead four-secret
 `env:` block deleted), exactly as one DevSecOps cadence increment. The clause
 above is kept for the record of why v0.21 passed over it, not as a live claim.
 
-### v0.22 - One route vocabulary: every shipped surface is reachable, and nothing internal is in the front door (agent-doable now)
+### v0.22 - One route vocabulary: every shipped surface is reachable, and nothing internal is in the front door (DONE)
 
 Defined 2026-08-07 (product-role increment), the milestone after v0.21. Design
 doc: [docs/design/ROUTE_VOCABULARY.md](design/ROUTE_VOCABULARY.md), every
@@ -1211,7 +1211,7 @@ four lists instead of one:
 
 Two PRs, in dependency order (design doc D8):
 
-- **PR1:** `src/lib/routes.ts`, the registry (`path`, `label`,
+- **PR1 (#156, merged 2026-08-07):** `src/lib/routes.ts`, the registry (`path`, `label`,
   `inPrimaryNav`, `goToKey?`, `audience`); `site-nav.tsx` rendering from it
   instead of its own array; the D3/D4 changes (`/monetization` out of the
   primary nav and marked internal, its page and its dashboard "View analytics"
@@ -1224,11 +1224,16 @@ Two PRs, in dependency order (design doc D8):
   `src/__tests__` and `src/app/__tests__`, so the sentence must move in the
   same commit that adds the suite or PR1's own required gate goes red. Deferring
   it was not a smaller PR1, it was a red one.
-- **PR2:** `keyboard-help.tsx` deriving BOTH its chord table and its dialog
-  rows from the registry (D5 adds `g n` for `/now`, D6 generates the six "Go
-  to X" rows), then the 0.22.0 bump in `package.json` and both
-  `package-lock.json` copies and this heading flipped to DONE, all in the same
-  commit.
+- **PR2 (#157, merged 2026-08-07):** `keyboard-help.tsx` deriving BOTH its
+  chord table and its dialog rows from the registry (D5 adds `g n` for `/now`,
+  D6 generates the now **seven** "Go to X" rows), then the 0.22.0 bump in
+  `package.json` and both `package-lock.json` copies and this heading flipped
+  to DONE, all in the same commit. Two consequences worth recording: the
+  registry gained a `GoToRoute` narrowing so no consumer casts `goToKey`, and
+  PR1's `GO_TO_TARGETS` equality assertion became TAUTOLOGICAL the moment both
+  sides derived from one list, so it was replaced rather than kept — the guard
+  now reads the dialog's rendered rows and a real `router.push`, which a
+  derivation regression can still fail.
 
 Done when, each clause checkable by CI rather than by opinion, and none of them
 an existence grep:
@@ -1278,21 +1283,24 @@ unchanged), the D7 second measurement divergence (user decision), the
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.21 have all landed, v0.22 is defined above (agent-doable now, not
-yet started), and no milestone is defined above v0.22, so the product pass
-after it ships defines v0.23.** v0.21
-completed 2026-08-07 (PR #152 the `StatusMessage` primitive, PR #153 the
-`/now` and `/trends` error branch), so page-level transient status now speaks
-through one accessible vocabulary. This sentence is
+through v0.22 have all landed, no milestone is defined above v0.22, and the
+dev queue is therefore EMPTY: the next product pass defines v0.23.** v0.22
+completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
+derived from it, PR #157 the keyboard dialog derived from it), so the four
+independent hardcoded route lists are one, `/now` is reachable from every page
+by nav link and by `g n`, and `/monetization` is out of the front door without
+being deleted. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected thirteen times now, three on
+therefore is most likely to go stale. (Corrected fourteen times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
 defined v0.20 one day later, the eleventh by v0.20 PR1, which retired the
 two-numbers caveat, the twelfth by the 2026-08-07 product pass that
-defined v0.21, and this thirteenth by the 2026-08-07 product pass that
-defined v0.22 hours after v0.21 shipped. `roadmap-milestone-status.test.ts`
+defined v0.21, the thirteenth by the 2026-08-07 product pass that
+defined v0.22 hours after v0.21 shipped, and this fourteenth by v0.22 PR2,
+the completion PR, which flips the heading and this sentence together rather
+than leaving the second half a slot behind. `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale.)
 

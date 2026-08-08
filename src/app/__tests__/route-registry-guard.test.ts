@@ -7,9 +7,12 @@
  * Source B: `src/lib/routes.ts`, the registry those pages are described by.
  * Source C: the DOM `<SiteNav />` actually renders, so "the nav is derived" is
  *   asserted from output rather than from the shape of the component's source.
- * Source D: `GO_TO_TARGETS` in `keyboard-help.tsx`, the chord table
- *   `router.push` really reads, held equal to the registry's `goToKey` fields
- *   until v0.22 PR2 makes the dialog derive from the registry outright.
+ * Source D: the keyboard help dialog `<KeyboardHelp />` actually renders, plus
+ *   the `router.push` a real `g` chord actually performs. v0.22 PR1 held the
+ *   exported `GO_TO_TARGETS` table equal to the registry's `goToKey` fields;
+ *   PR2 derives that table from the registry, which makes the equality
+ *   tautological, so it is replaced here by assertions on rendered rows and on
+ *   navigation that a derivation regression can still fail.
  *
  * WHY THIS FILE EXISTS
  * --------------------
@@ -40,21 +43,23 @@
  */
 
 import { createElement } from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { shippedSourceFiles } from "@/__tests__/helpers/source-scan";
 import { ROUTES, goToRoutes, primaryNavRoutes } from "@/lib/routes";
 import { SiteNav } from "@/app/components/site-nav";
-import { GO_TO_TARGETS } from "@/app/components/keyboard-help";
+import { KeyboardHelp } from "@/app/components/keyboard-help";
 
-// `SiteNav` reads the pathname; `keyboard-help` imports `useRouter` at module
-// scope even though this suite never renders the dialog, and a mocked module
-// throws on an undeclared named export the moment one is touched.
+// `SiteNav` reads the pathname; `KeyboardHelp` pushes onto the router, and the
+// chord assertions below read what it pushed, so the spy is the source of
+// truth for "this chord really navigates" rather than a table lookup.
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
-  useRouter: () => ({ push: () => {} }),
+  useRouter: () => ({ push }),
 }));
 
 const ROOT = process.cwd();
@@ -77,6 +82,28 @@ const BLINDNESS_ANCHORS = ["/", "/monetization"];
  * file, but losing most of them silently must fail.
  */
 const ROUTE_FLOOR = 13;
+
+/**
+ * The chord count at the time PR2 derived the dialog (7: the six v0.21 chords
+ * plus `g n` for `/now`). A floor for the same reason `ROUTE_FLOOR` is one: the
+ * row assertions below compare a generated list against a generated list, so an
+ * empty registry would satisfy them vacuously. Adding a chord must not require
+ * editing this file; losing them all must fail.
+ */
+const CHORD_FLOOR = 7;
+
+/**
+ * The rows D6 leaves hand authored, listed here rather than derived, because
+ * they are exactly the behaviour that is NOT a route: this is the assertion
+ * that generating the navigation rows did not swallow them.
+ */
+const NON_NAVIGATION_ROWS = [
+  "Open this help",
+  "Close this help",
+  "Previous or next step while a step card is focused",
+  "Move focus between controls",
+  "Activate the focused control",
+];
 
 /** `src/app/page.tsx` -> `/`, `src/app/now/page.tsx` -> `/now`. Pure. */
 export function routePathFromPageFile(relativePath: string): string {
@@ -252,18 +279,79 @@ describe("route registry: the primary nav is derived from it", () => {
   });
 });
 
-describe("route registry: the chord table agrees with it", () => {
-  it("matches keyboard-help's GO_TO_TARGETS entry for entry", () => {
-    // Source D. Until PR2 derives the dialog from the registry, these are two
-    // copies, so the guard holds them equal rather than trusting a comment.
-    const fromRegistry = Object.fromEntries(
-      goToRoutes().map((route) => [route.goToKey as string, route.path]),
+describe("route registry: the keyboard dialog is derived from it", () => {
+  afterEach(() => {
+    cleanup();
+    push.mockReset();
+  });
+
+  /** Open the help dialog and read the descriptions it really rendered. */
+  function renderedShortcutDescriptions(): string[] {
+    render(createElement(KeyboardHelp));
+    fireEvent.keyDown(window, { key: "?" });
+    screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+
+    return Array.from(document.querySelectorAll(".shortcut-desc")).map(
+      (node) => node.textContent ?? "",
     );
+  }
+
+  it("advertises enough chords for the assertions below to mean anything", () => {
+    // Both row assertions compare one derived list against another, so an empty
+    // registry would make them agree about nothing at all.
+    expect(
+      goToRoutes().length,
+      `fewer than ${CHORD_FLOOR} routes carry a goToKey; the chord assertions below are vacuous`,
+    ).toBeGreaterThanOrEqual(CHORD_FLOOR);
+  });
+
+  it("renders one 'Go to' row per registry chord, in registry order, with the registry's label", () => {
+    const expected = goToRoutes().map((route) => `Go to ${route.label}`);
+    const rendered = renderedShortcutDescriptions().filter((row) => row.startsWith("Go to "));
 
     expect(
-      GO_TO_TARGETS,
-      "the g-chord table and src/lib/routes.ts disagree about which key reaches which route",
-    ).toEqual(fromRegistry);
+      rendered,
+      "the dialog's navigation rows are not the registry's chords: a row was hand written back " +
+        "into keyboard-help.tsx, a chord lost its row, or a label was restated instead of read",
+    ).toEqual(expected);
+  });
+
+  it("keeps the five non-navigation rows (v0.22 D6)", () => {
+    const rendered = renderedShortcutDescriptions().filter((row) => !row.startsWith("Go to "));
+
+    expect(
+      rendered,
+      "generating the navigation rows dropped or reordered the rows that describe behaviour " +
+        "which is not a route (the help keys, the step-card arrows, Tab and Enter)",
+    ).toEqual(NON_NAVIGATION_ROWS);
+  });
+
+  it("routes to the registry's path for every chord it advertises", () => {
+    for (const route of goToRoutes()) {
+      cleanup();
+      push.mockReset();
+      render(createElement(KeyboardHelp));
+
+      fireEvent.keyDown(window, { key: "g" });
+      fireEvent.keyDown(window, { key: route.goToKey });
+
+      expect(
+        push,
+        `pressing g then ${route.goToKey} did not navigate to ${route.path}, so the dialog ` +
+          "advertises a chord the key handler does not implement",
+      ).toHaveBeenCalledWith(route.path);
+    }
+  });
+
+  it("gives /now the g n chord it never had (v0.22 D5)", () => {
+    const now = goToRoutes().find((route) => route.path === "/now");
+
+    expect(
+      now,
+      "/now carries no goToKey again: before v0.22 it was in neither the nav nor the chord table",
+    ).toBeDefined();
+    expect(now?.goToKey).toBe("n");
+    expect(renderedShortcutDescriptions()).toContain("Go to Now");
   });
 
   it("assigns each chord key to exactly one route", () => {
