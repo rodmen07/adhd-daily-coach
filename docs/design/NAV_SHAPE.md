@@ -367,6 +367,14 @@ doc string.
   right" question filed by PR #155). This milestone answers "does it fit" and
   "is it the only door", not "what are the categories". If the user wants
   groups, `navSlot` is the field a `navGroup` would sit beside.
+  **SCOPED 2026-08-08 as v0.24** — this bullet is still an accurate record of
+  what v0.23 did and did not do, and is left as written; what changed is that
+  the deferral is no longer open-ended. `docs/design/NAV_TAXONOMY.md` D2 and D3
+  take up this sentence exactly where it left off, with `navGroup` beside
+  `navSlot` as predicted here. D7 there also takes up D4's two recorded costs
+  (no `Escape`, no outside click) and buys both without the popover swap D4
+  priced, so this document's cost accounting stands and only its conclusion
+  that the swap was the way to buy them is superseded.
 - **`/monetization`.** v0.22 settled it: out of the nav, still live, still
   linked from the dashboard's collapsed insights. It has one door and that is
   the intent, so the census guard checks `inPrimaryNav: true` routes only.
