@@ -263,6 +263,44 @@ function renderedMoreGroups(): { groups: RenderedGroup[]; linkTotal: number; gro
 }
 
 /**
+ * The "More" disclosure, rendered and opened, for the v0.24 D7 assertions.
+ *
+ * It is opened by setting `open` directly rather than by clicking the summary
+ * because jsdom does not implement the summary's activation behaviour, so a
+ * click there would leave the panel closed and every assertion downstream
+ * would read a state no reader ever sees. The vacuity checks here are the
+ * price of that shortcut: if the disclosure or its links stopped rendering,
+ * "the menu is closed" would be trivially true and these tests would report a
+ * beautifully dismissable menu that does not exist.
+ */
+function openedDisclosure(): {
+  disclosure: HTMLDetailsElement;
+  summary: HTMLElement;
+  links: HTMLAnchorElement[];
+} {
+  render(createElement(SiteNav));
+  const disclosure = screen
+    .getByRole("navigation", { name: "Primary" })
+    .querySelector<HTMLDetailsElement>(".site-nav-more");
+  expect(disclosure, "the header has no More disclosure at all").not.toBeNull();
+
+  const summary = disclosure!.querySelector<HTMLElement>(":scope > summary");
+  expect(summary, "the More disclosure has no summary to return focus to").not.toBeNull();
+
+  disclosure!.open = true;
+  const links = Array.from(
+    disclosure!.querySelectorAll<HTMLAnchorElement>(".site-nav-more-panel a"),
+  );
+  expect(
+    links.length,
+    "the More panel rendered no links, so an assertion about dismissing it would " +
+      "be about an empty box",
+  ).toBeGreaterThan(0);
+
+  return { disclosure: disclosure!, summary: summary!, links };
+}
+
+/**
  * The keyboard dialog read as sections: the heading each run of rows sits
  * under (empty for the two hand-authored runs) and the descriptions in it.
  */
@@ -525,6 +563,104 @@ describe("route registry: the header's two halves are declared, not positional (
       disclosure!.open,
       "choosing a route left the More menu hanging open over the page it navigated to",
     ).toBe(false);
+  });
+});
+
+describe("route registry: the More disclosure behaves like a menu (v0.24 D7)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("closes on Escape and returns focus to its summary", () => {
+    const { disclosure, summary, links } = openedDisclosure();
+
+    // Focus starts on a link INSIDE the panel, which is where a keyboard
+    // reader who pressed Escape actually is. Without that, "focus is on the
+    // summary afterwards" could be true because focus never moved at all.
+    links[links.length - 1].focus();
+    expect(
+      document.activeElement,
+      "the fixture could not put focus inside the panel, so the assertion below " +
+        "would prove nothing about focus MOVING",
+    ).toBe(links[links.length - 1]);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(
+      disclosure.open,
+      "Escape left the More menu hanging open: nine of the twelve routes stay " +
+        "over the page with no keyboard way to dismiss them",
+    ).toBe(false);
+    expect(
+      document.activeElement,
+      "Escape closed the menu but left focus on a link that is no longer visible, " +
+        "which is worse for a keyboard reader than not closing at all (D7)",
+    ).toBe(summary);
+  });
+
+  it("leaves the disclosure alone on a key that is not Escape", () => {
+    const { disclosure } = openedDisclosure();
+
+    fireEvent.keyDown(document, { key: "m" });
+
+    // Discrimination, not decoration: a handler that closed on ANY keydown
+    // would satisfy the assertion above while making the panel impossible to
+    // read with the keyboard, since the first Tab press would dismiss it.
+    expect(
+      disclosure.open,
+      "a keystroke that is not Escape closed the More menu, so the handler is " +
+        "reading that a key was pressed rather than which one",
+    ).toBe(true);
+  });
+
+  it("does nothing at all while the disclosure is closed", () => {
+    // Both handlers are attached to `document` for the life of the mount, and
+    // the header is on every route, so the closed state is where they spend
+    // essentially all of their time. A version that returned focus on every
+    // Escape - or read containment before reading `open` - would yank focus
+    // into the header from anywhere in the app on a key most surfaces use to
+    // dismiss something of their own.
+    const { disclosure, links } = openedDisclosure();
+    disclosure.open = false;
+    links[0].focus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.pointerDown(document.body);
+
+    expect(disclosure.open, "a closed disclosure opened itself").toBe(false);
+    expect(
+      document.activeElement,
+      "Escape moved focus into the header while the More menu was closed, so every " +
+        "page that uses Escape for its own dismissal loses the reader's place",
+    ).toBe(links[0]);
+  });
+
+  it("closes on a pointer-down outside the disclosure", () => {
+    const { disclosure } = openedDisclosure();
+
+    fireEvent.pointerDown(document.body);
+
+    expect(
+      disclosure.open,
+      "pointing at the page outside the menu left it open, so the only way to " +
+        "dismiss it with a mouse is to find the summary again",
+    ).toBe(false);
+  });
+
+  it("stays open on a pointer-down inside the panel", () => {
+    const { disclosure, links } = openedDisclosure();
+
+    fireEvent.pointerDown(links[0]);
+
+    // The other half of the same discrimination: "close on any pointer-down"
+    // passes the assertion above and breaks the menu, because pressing a link
+    // inside the panel is itself a pointer-down and would dismiss the panel
+    // out from under the press.
+    expect(
+      disclosure.open,
+      "pressing a link inside the panel dismissed it, so the outside-click " +
+        "handler is closing on any pointer-down rather than on containment",
+    ).toBe(true);
   });
 });
 
