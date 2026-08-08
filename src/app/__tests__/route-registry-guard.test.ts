@@ -11,6 +11,14 @@
  *   disclosure - and this guard reads WHICH half each route landed in, not
  *   just that the set is complete. A route silently moving behind the
  *   disclosure is the failure this milestone's own design warns about.
+ *   As of v0.24 the panel half is four labelled lists rather than one, and
+ *   this guard reads the label through `aria-labelledby` rather than by
+ *   position, so four headings that name nothing cannot pass as a taxonomy.
+ *   Because a category is NOT a contiguous run of the registry, the rendered
+ *   order genuinely changed here: every assertion that used to be a single
+ *   full-order equality against registry order is now a full-order equality
+ *   against the GROUPED derivation plus a separate set assertion, so the
+ *   regrouping cannot hide a route that stopped rendering.
  * Source D: the keyboard help dialog `<KeyboardHelp />` actually renders, plus
  *   the `router.push` a real `g` chord actually performs. v0.22 PR1 held the
  *   exported `GO_TO_TARGETS` table equal to the registry's `goToKey` fields;
@@ -54,9 +62,12 @@ import { existsSync } from "node:fs";
 import { shippedSourceFiles } from "@/__tests__/helpers/source-scan";
 import {
   ROUTES,
+  goToRouteGroups,
   goToRoutes,
   inlineNavRoutes,
+  moreNavGroups,
   moreNavRoutes,
+  navGroupSections,
   primaryNavRoutes,
 } from "@/lib/routes";
 import { SiteNav } from "@/app/components/site-nav";
@@ -112,6 +123,17 @@ const CHORD_FLOOR = 7;
  * the cheap one that names the reason, in the gate, without a build.
  */
 const INLINE_SLOT_COUNT = 3;
+
+/**
+ * v0.24 D3: the group assertions below compare one derived list against
+ * another, so a registry whose entries all fell into ONE category - or into
+ * none - would satisfy them while proving nothing. Two is the floor at which
+ * "grouped" stops being a synonym for "the same flat list with a heading over
+ * it"; D3 ships four. A floor rather than an equality for the same reason
+ * `ROUTE_FLOOR` is one: adding a fifth category must not require editing this
+ * file, and collapsing them all into one must fail.
+ */
+const NAV_GROUP_FLOOR = 2;
 
 /**
  * The rows D6 leaves hand authored, listed here rather than derived, because
@@ -192,6 +214,69 @@ function renderedNavShape(): { inline: (string | null)[]; more: (string | null)[
     inline: hrefsOf(nav.querySelectorAll(":scope > a")),
     more: hrefsOf(nav.querySelectorAll(".site-nav-more .site-nav-more-panel a")),
   };
+}
+
+type RenderedGroup = {
+  /** The text of the element `aria-labelledby` actually points at. */
+  heading: string;
+  /** The tag of that element, so an `aria-label` string cannot pass as one. */
+  headingTag: string;
+  hrefs: (string | null)[];
+};
+
+/**
+ * The "More" panel read as labelled lists (v0.24 D4).
+ *
+ * Deliberately resolved through `aria-labelledby` rather than by reading the
+ * heading that happens to sit above each list: D4's whole requirement is that
+ * the label is a REAL element a sighted reader sees AND the accessible name of
+ * the list, and a panel that renders four headings with no association between
+ * them and the lists would pass a positional read while giving a screen-reader
+ * user the same undifferentiated nine items section 1a found.
+ */
+function renderedMoreGroups(): { groups: RenderedGroup[]; linkTotal: number; groupedLinks: number } {
+  render(createElement(SiteNav));
+  const panel = screen
+    .getByRole("navigation", { name: "Primary" })
+    .querySelector<HTMLElement>(".site-nav-more .site-nav-more-panel");
+
+  expect(panel, "the header has no More panel at all").not.toBeNull();
+
+  const groups = Array.from(panel!.querySelectorAll("ul")).map((list) => {
+    const labelledBy = list.getAttribute("aria-labelledby");
+    // `getElementById` rather than a `#id` selector: React's `useId` emits
+    // guillemets, which a CSS selector would have to escape.
+    const heading = labelledBy === null ? null : panel!.ownerDocument.getElementById(labelledBy);
+
+    return {
+      heading: heading?.textContent?.trim() ?? "",
+      headingTag: heading?.tagName ?? "",
+      hrefs: hrefsOf(list.querySelectorAll(":scope > li > a")),
+    };
+  });
+
+  return {
+    groups,
+    linkTotal: panel!.querySelectorAll("a").length,
+    groupedLinks: groups.reduce((total, group) => total + group.hrefs.length, 0),
+  };
+}
+
+/**
+ * The keyboard dialog read as sections: the heading each run of rows sits
+ * under (empty for the two hand-authored runs) and the descriptions in it.
+ */
+function renderedShortcutSections(): { heading: string; descriptions: string[] }[] {
+  render(createElement(KeyboardHelp));
+  fireEvent.keyDown(window, { key: "?" });
+  const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+
+  return Array.from(dialog.querySelectorAll(".shortcut-section")).map((section) => ({
+    heading: section.querySelector(".shortcut-group-heading")?.textContent?.trim() ?? "",
+    descriptions: Array.from(section.querySelectorAll(".shortcut-desc")).map(
+      (node) => node.textContent ?? "",
+    ),
+  }));
 }
 
 describe("route registry: discovery", () => {
@@ -275,8 +360,22 @@ describe("route registry: the primary nav is derived from it", () => {
     cleanup();
   });
 
-  it("renders exactly the routes marked inPrimaryNav, in registry order", () => {
-    const expected = primaryNavRoutes().map((route) => ({ href: route.path, label: route.label }));
+  it("renders exactly the routes marked inPrimaryNav, in the order the header lays them out", () => {
+    // Until v0.24 this was flat registry order, because the header was one
+    // list. It now renders the inline pills in registry order and then the
+    // panel's categories, and a category is not a contiguous run of the
+    // registry - so the expectation is DERIVED from the same two functions the
+    // component reads rather than relaxed to a set comparison. Both halves stay
+    // a full-order equality; what changed is which order is correct.
+    const expected = [
+      ...inlineNavRoutes(),
+      ...moreNavGroups().flatMap((section) => section.routes),
+    ].map((route) => ({ href: route.path, label: route.label }));
+
+    expect(
+      expected.map((link) => link.href).sort(),
+      "the inline half plus the grouped panel is no longer the whole primary nav",
+    ).toEqual(primaryNavRoutes().map((route) => route.path).sort());
 
     expect(
       renderedNavLinks(),
@@ -379,11 +478,21 @@ describe("route registry: the header's two halves are declared, not positional (
         "registry entry moving with it",
     ).toEqual(inlineNavRoutes().map((route) => route.path));
 
+    // Since v0.24 the panel lays these out by category rather than in flat
+    // registry order, so the expectation is the grouped derivation; the SET is
+    // asserted separately against `moreNavRoutes()` so the regrouping cannot
+    // hide a route that stopped rendering.
     expect(
-      more,
+      [...more].sort(),
       "the More disclosure does not hold exactly the routes marked navSlot: \"more\", so a " +
         "route is either advertised twice or reachable from neither half of the header",
-    ).toEqual(moreNavRoutes().map((route) => route.path));
+    ).toEqual(moreNavRoutes().map((route) => route.path).sort());
+
+    expect(
+      more,
+      "the More disclosure holds the right routes in the wrong places: they are no longer " +
+        "laid out by category in registry order",
+    ).toEqual(moreNavGroups().flatMap((section) => section.routes.map((route) => route.path)));
   });
 
   it("closes the disclosure when a link inside it is chosen", () => {
@@ -419,6 +528,165 @@ describe("route registry: the header's two halves are declared, not positional (
   });
 });
 
+describe("route registry: every front door has a category and a chord (v0.24 D2/D3/D6)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("splits into enough categories for the assertions below to mean anything", () => {
+    const sections = navGroupSections(primaryNavRoutes());
+
+    expect(
+      sections.length,
+      `the primary nav falls into fewer than ${NAV_GROUP_FLOOR} categories, so every grouped ` +
+        "assertion below compares one flat list against another flat list with a heading on it",
+    ).toBeGreaterThanOrEqual(NAV_GROUP_FLOOR);
+  });
+
+  it("gives every primary-nav route a navGroup, and no other route one (D2)", () => {
+    for (const route of primaryNavRoutes()) {
+      expect(
+        route.navGroup,
+        `${route.path} is in the primary nav with no navGroup, so the More panel and the ` +
+          "keyboard dialog have nowhere to put it and it silently stops rendering",
+      ).toBeDefined();
+    }
+
+    for (const route of ROUTES.filter((entry) => !entry.inPrimaryNav)) {
+      expect(
+        route.navGroup,
+        `${route.path} is not in the primary nav but carries a navGroup, which reads as a ` +
+          "front-door category for a route the front door never renders",
+      ).toBeUndefined();
+    }
+  });
+
+  it("groups the whole primary nav without losing or duplicating a route (D3)", () => {
+    const sections = navGroupSections(primaryNavRoutes());
+
+    // A partition, asserted the same way the inline/more split is: without it a
+    // route could be dropped by the grouping and every "the panel renders its
+    // group" assertion below would still agree, about a smaller nav.
+    expect(
+      sections.flatMap((section) => section.routes.map((route) => route.path)).sort(),
+      "grouping the primary nav did not return the primary nav: a route is in two categories, " +
+        "in none, or was dropped by navGroupSections",
+    ).toEqual(primaryNavRoutes().map((route) => route.path).sort());
+
+    expect(
+      new Set(sections.map((section) => section.group)).size,
+      "two sections carry the same category, so a group is split in two places",
+    ).toBe(sections.length);
+  });
+
+  it("orders the categories by their first appearance in the registry (D3)", () => {
+    // Derived, never a literal list of names: the order is a consequence of the
+    // registry, so re-ordering ROUTES must move the headings rather than
+    // falsify a hand-written expectation in this file.
+    const expected: string[] = [];
+    for (const route of primaryNavRoutes()) {
+      if (route.navGroup !== undefined && !expected.includes(route.navGroup)) {
+        expected.push(route.navGroup);
+      }
+    }
+
+    expect(
+      navGroupSections(primaryNavRoutes()).map((section) => section.group),
+      "the categories are not in registry order, so the panel's headings and the registry " +
+        "disagree about which concern comes first",
+    ).toEqual(expected);
+
+    // The order is canonical to the REGISTRY, not to whichever subset is being
+    // rendered. Ordering by first appearance in each surface's own list sounds
+    // equivalent and is not: the panel holds no `/`, so its first Today entry
+    // is `/focus` and its first In-the-moment entry is `/ambient`, which puts
+    // In the moment first there and Today first in the dialog.
+    expect(
+      navGroupSections(moreNavRoutes()).map((section) => section.group),
+      "a subset of the nav orders its categories differently from the whole nav, so two " +
+        "surfaces built from the same registry disagree about which concern comes first",
+    ).toEqual(
+      expected.filter((group) => moreNavRoutes().some((route) => route.navGroup === group)),
+    );
+  });
+
+  it("gives every primary-nav route a g chord, and no other route one (D6)", () => {
+    const chordless = primaryNavRoutes()
+      .filter((route) => route.goToKey === undefined)
+      .map((route) => route.path);
+
+    expect(
+      chordless,
+      "these front-door routes are reachable from the keyboard only by tabbing into the More " +
+        "disclosure and through it, which is the asymmetry D6 removed",
+    ).toEqual([]);
+
+    // The other direction keeps the dialog's grouping TOTAL: a chord on a route
+    // with no category would be dropped by navGroupSections and advertised
+    // nowhere, while still navigating.
+    const ungrouped = goToRoutes()
+      .filter((route) => route.navGroup === undefined)
+      .map((route) => route.path);
+
+    expect(
+      ungrouped,
+      "these routes carry a g chord but no navGroup, so the keyboard dialog cannot show them " +
+        "and the chord works while nothing advertises it",
+    ).toEqual([]);
+  });
+});
+
+describe("route registry: the More panel renders one labelled list per category (v0.24 D4)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("labels each list with a real heading element, not an aria-label string", () => {
+    const { groups } = renderedMoreGroups();
+
+    expect(groups.length, "the More panel rendered no labelled lists at all").toBeGreaterThan(0);
+
+    for (const group of groups) {
+      expect(
+        group.headingTag,
+        `a More group is labelled by "${group.heading}" but that label is not a heading ` +
+          "element: an invisible-only label fixes the screen reader and leaves a sighted " +
+          "reader with the same undifferentiated list D4 was written to remove",
+      ).toMatch(/^H[1-6]$/);
+      expect(group.heading.length, "a More group heading renders no text").toBeGreaterThan(0);
+    }
+  });
+
+  it("renders exactly the categories that have a More member, in registry order", () => {
+    const { groups } = renderedMoreGroups();
+
+    expect(
+      groups.map((group) => group.heading),
+      "the panel's headings are not the categories of the routes behind the disclosure: a " +
+        "heading was hand written into site-nav.tsx, or a group with no More member is " +
+        "rendering an empty section",
+    ).toEqual(moreNavGroups().map((section) => section.group));
+  });
+
+  it("puts every More route inside the labelled list of its own category", () => {
+    const { groups, linkTotal, groupedLinks } = renderedMoreGroups();
+
+    expect(
+      groups.map((group) => group.hrefs),
+      "a route behind the disclosure is under the wrong heading, or its group's members are " +
+        "no longer in registry order",
+    ).toEqual(moreNavGroups().map((section) => section.routes.map((route) => route.path)));
+
+    // Every link in the panel is inside a labelled list. Without this a route
+    // could be rendered loose next to the groups and the assertion above would
+    // still pass while a reader met an item belonging to nothing.
+    expect(
+      groupedLinks,
+      `${linkTotal - groupedLinks} link(s) in the More panel sit outside every labelled list`,
+    ).toBe(linkTotal);
+  });
+});
+
 describe("route registry: the keyboard dialog is derived from it", () => {
   afterEach(() => {
     cleanup();
@@ -445,8 +713,10 @@ describe("route registry: the keyboard dialog is derived from it", () => {
     ).toBeGreaterThanOrEqual(CHORD_FLOOR);
   });
 
-  it("renders one 'Go to' row per registry chord, in registry order, with the registry's label", () => {
-    const expected = goToRoutes().map((route) => `Go to ${route.label}`);
+  it("renders one 'Go to' row per registry chord, in grouped registry order, with the registry's label", () => {
+    const expected = goToRouteGroups().flatMap((section) =>
+      section.routes.map((route) => `Go to ${route.label}`),
+    );
     const rendered = renderedShortcutDescriptions().filter((row) => row.startsWith("Go to "));
 
     expect(
@@ -454,6 +724,50 @@ describe("route registry: the keyboard dialog is derived from it", () => {
       "the dialog's navigation rows are not the registry's chords: a row was hand written back " +
         "into keyboard-help.tsx, a chord lost its row, or a label was restated instead of read",
     ).toEqual(expected);
+
+    // A category is NOT a contiguous run of the registry (`/` is Today and
+    // `/now` is In the moment), so v0.24 genuinely re-orders these rows and the
+    // order assertion above can no longer double as "nothing was lost". The set
+    // is therefore asserted separately, against the flat chord list.
+    expect(
+      [...rendered].sort(),
+      "grouping the navigation rows dropped or duplicated a chord: the dialog advertises a " +
+        "different SET of destinations than the registry carries",
+    ).toEqual(goToRoutes().map((route) => `Go to ${route.label}`).sort());
+  });
+
+  it("puts the 'Go to' rows under the registry's categories, in the panel's order (v0.24 D5)", () => {
+    const labelled = renderedShortcutSections().filter((section) => section.heading !== "");
+
+    expect(
+      labelled.map((section) => section.heading),
+      "the dialog's group headings are not the registry's categories in registry order: a " +
+        "heading was hand written into keyboard-help.tsx, or the rows are still one flat list",
+    ).toEqual(goToRouteGroups().map((section) => section.group));
+
+    expect(
+      labelled.map((section) => section.descriptions),
+      "a chord is advertised under the wrong category, so the dialog and the More panel " +
+        "disagree about what a route is about while reading the same registry",
+    ).toEqual(
+      goToRouteGroups().map((section) =>
+        section.routes.map((route) => `Go to ${route.label}`),
+      ),
+    );
+
+    // "the same order as the panel", asserted rather than assumed: the panel
+    // shows only the categories with a route behind the disclosure, so its
+    // heading order must be this one restricted to those.
+    cleanup();
+    const panelHeadings = renderedMoreGroups().groups.map((group) => group.heading);
+
+    expect(
+      labelled
+        .map((section) => section.heading)
+        .filter((heading) => panelHeadings.includes(heading)),
+      "the keyboard dialog and the More panel order the same categories differently, so the " +
+        "two surfaces teach a reader two different shapes for the same twelve routes",
+    ).toEqual(panelHeadings);
   });
 
   it("keeps the five non-navigation rows (v0.22 D6)", () => {

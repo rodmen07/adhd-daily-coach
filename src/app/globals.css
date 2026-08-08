@@ -239,13 +239,36 @@ html[data-theme="dark"] .border-slate-200 {
   z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
   min-width: 11rem;
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
   box-shadow: 0 12px 28px rgba(3, 8, 20, 0.18);
+}
+
+/* v0.24 D3/D4: one labelled list per category, so nine peers read as four
+   short ones. The label uses the same small-caps label scale the dashboard's
+   plan pills and the insights disclosure already use rather than inventing a
+   parallel one, and the panel's own type scale, spacing and colours are
+   untouched - a taxonomy tangled with a restyle is one nobody can evaluate. */
+.site-nav-more-group-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0 2px 4px;
+}
+
+.site-nav-more-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .site-nav-more-panel a {
@@ -1204,8 +1227,26 @@ html[data-theme="dark"] .border-slate-200 {
   color: var(--muted);
 }
 
-.shortcut-list {
+/* v0.24 D5: the dialog carries the registry's four categories too, so twelve
+   navigation rows read as four short lists. The two hand-authored runs (the
+   help keys, the browser behaviours) render with no heading and keep their
+   positions at the top and the bottom. */
+.shortcut-sections {
   margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.shortcut-group-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.shortcut-list {
   display: grid;
   gap: 10px;
 }
