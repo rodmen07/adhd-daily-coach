@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -38,10 +38,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r agents/dev-agent/requirements.txt
 
+      # This Node major is NOT free to drift from the rest of
+      # `.github/workflows/`. It ran `20` from the day this workflow was
+      # written until 2026-08-08, and Node 20 reached end of life on
+      # 2026-04-30 (nodejs/Release `schedule.json`, `v20.end`), so for the
+      # ~100 days before this line changed, the one job in this repository
+      # holding `contents: write`, `pull-requests: write` and three LLM API
+      # keys was the only one running an unpatched runtime.
+      #
+      # Nothing objected, and that is the part worth fixing rather than the
+      # digit. `src/__tests__/workflow-audit-parity.test.ts` has compared
+      # `node-version:` across workflows since PR #111, but its corpus was two
+      # hand-named files (ci.yml and security-audit.yml), so the four
+      # workflows outside those two names could drift while the guard stayed
+      # green. That guard now discovers this directory instead of naming it,
+      # which is what makes this line hold.
       - name: Install Node (for verification)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: 24
 
       - name: Install npm deps
         run: |
