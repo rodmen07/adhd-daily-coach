@@ -97,7 +97,7 @@ is written next to.
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
   post a required context.
-  **Twenty** guard tests now
+  **Twenty-one** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -138,7 +138,12 @@ is written next to.
   itself and fails on the Tailwind v3 `X-[--token]` spelling - v4 compiles it
   to `background-color: --token`, an invalid declaration a browser drops, so
   258 occurrences across 12 files were rendering nothing at all, including
-  every visual difference between a playing and a stopped sound on `/ambient`).
+  every visual difference between a playing and a stopped sound on `/ambient`),
+  and `route-title-contract`
+  (v0.25 PR1, which reads the built `out/<route>/index.html` for all thirteen
+  routes against the registry's labels and fails when two routes serve the same
+  `<title>` - the state the app shipped in until then, which also kept Next's
+  route announcer permanently silent because it speaks only on a title CHANGE).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -1630,7 +1635,7 @@ its own cadence slot), FCM push (console-gated, unchanged), workspace cloud
 sync (still deepens the unpublished Firestore rules obligation), and
 `/journal/`+`/trends/` gate widening (v0.20's cost reasoning stands).
 
-### v0.25 - Every room has a name, and the browser learns it: one title per route (DEFINED, not started)
+### v0.25 - Every room has a name, and the browser learns it: one title per route (IN PROGRESS: PR1 shipped 2026-08-08, PR2 open)
 
 Defined 2026-08-08 (product-role increment), the milestone after v0.24. Design
 doc: [docs/design/ROUTE_IDENTITY.md](design/ROUTE_IDENTITY.md). Every premise
@@ -1646,15 +1651,16 @@ header fit; v0.24 asked what the doors MEAN; v0.25 asks whether anything
 OUTSIDE the page says which room you are in. Nothing in it touches the nav, the
 header, the panel or the chords.
 
-**All thirteen routes serve one identical `<title>`.** Against the live Pages
-deployment rather than the source, five of five sampled routes return
+**Until PR1, all thirteen routes served one identical `<title>`.** Measured at
+definition time (2026-08-08, tree `62c6d7e`) against the live Pages
+deployment rather than the source, five of five sampled routes returned
 `<title>ADHD Daily Coach: Your friendly self-improvement coach</title>`.
 `grep -rln "export const metadata\|generateMetadata" src/app` returns exactly
 one file, `src/app/layout.tsx:21`, and `head -1` on all thirteen `page.tsx`
 files returns `"use client";` on every one - so no page *can* export
 `metadata`. It is structural, not an oversight.
 
-**The route announcer is therefore silent on every navigation.** Next 16.2.11
+**The route announcer was therefore silent on every navigation.** Next 16.2.11
 ships `app-router-announcer.js`, whose effect (lines 50-67) announces the
 destination only `if (previousTitle.current !== currentTitle)` and reads
 `document.title` **in preference to** the page `<h1>`. One constant title means
@@ -1676,12 +1682,16 @@ earlier draft of this section claimed `/execute`, `/focus` and `/review` had no
 it. The correction is kept in the design doc section 1b because the mistake is
 the reusable part.)
 
-PR1 (the browser learns the name): `src/app/route-metadata.ts` with a single
+PR1 (the browser learns the name) **SHIPPED 2026-08-08**:
+`src/app/route-metadata.ts` with a single
 `metadataForRoute(path)` derived from the registry's `label` (D2, D4), twelve
 three-line server segment layouts, `title.template` `"%s · ADHD Daily Coach"`
 in the root layout with `/` keeping its current string byte-for-byte (D3), and
 `src/__tests__/route-title-contract.test.ts` reading the real `out/` export
-(D8). PR2 (and a screen reader hears it): the chromium assertion that a
+(D8). All thirteen built titles are now distinct - `Now · ADHD Daily Coach`
+through `Monetization · ADHD Daily Coach`, with `/` unchanged at
+`ADHD Daily Coach: Your friendly self-improvement coach` - and clauses 1-4, 7
+and 9 are met. PR2 (and a screen reader hears it): the chromium assertion that a
 client-side navigation changes `document.title` and puts the destination's name
 into `#__next-route-announcer__`, then `0.25.0` with both lockfile copies and
 this heading flipped to DONE in the same commit.
@@ -1763,8 +1773,9 @@ increment that decides they gate).
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.24 have all landed, and v0.25 is now DEFINED and not started, so the
-dev queue holds exactly its two PRs and the next dev slot takes PR1.** v0.22
+through v0.24 have all landed, and v0.25 is IN PROGRESS - PR1 shipped
+2026-08-08, so the dev queue holds exactly PR2 and the next dev slot takes
+it.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page

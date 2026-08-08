@@ -113,6 +113,14 @@ const NUMBER_WORDS: Record<string, number> = {
   eighteen: 18,
   nineteen: 19,
   twenty: 20,
+  // Compound words start here. The key is lower-cased before lookup, and the
+  // hyphen is why the claim regex below matches `[\w-]+` rather than `\w+`:
+  // `\w` excludes `-`, so `**Twenty-one**` failed the sentence match ENTIRELY
+  // and threw "no longer contains the guard-suite sentence" before this map
+  // was ever consulted. Both halves are needed; either alone still throws.
+  "twenty-one": 21,
+  "twenty-two": 22,
+  "twenty-three": 23,
 };
 
 interface RoadmapClaim {
@@ -129,7 +137,7 @@ interface RoadmapClaim {
 function parseRoadmapClaim(markdown: string): RoadmapClaim {
   const flat = markdown.replace(/\s+/g, " ");
   const match =
-    /\*\*(\w+)\*\* guard tests now run inside the gate and compare two sources of truth rather than restating either: (.*?)\. \(This count/.exec(
+    /\*\*([\w-]+)\*\* guard tests now run inside the gate and compare two sources of truth rather than restating either: (.*?)\. \(This count/.exec(
       flat
     );
 

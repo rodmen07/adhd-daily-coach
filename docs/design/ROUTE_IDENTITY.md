@@ -1,12 +1,16 @@
 # v0.25 - Every room has a name, and the browser learns it: one title per route
 
 Status: **DEFINED 2026-08-08** (product-role increment), the milestone after
-v0.24. Not started.
+v0.24. **PR1 shipped 2026-08-08**; PR2 is the remaining work.
 
 Design authority: this document. Every decision below is an **overridable
 default** - one word from the product owner flips any of them, and after v0.25
-ships each flip is a one-line edit in `src/lib/route-metadata.ts` rather than a
+ships each flip is a one-line edit in `src/app/route-metadata.ts` rather than a
 redesign, for the same reason `navGroup` made a taxonomy change a field edit.
+(That path read `src/lib/route-metadata.ts` in the definition PR while D4, the
+roadmap and the backlog item all said `src/app/`. Corrected here in PR1 rather
+than left as a second address for one module; the shipped module is
+`src/app/route-metadata.ts`.)
 
 Section 6 is empty on purpose and is where a user decision gets recorded.
 
