@@ -270,12 +270,41 @@ describe("web vitals gate contract", () => {
     expect(pin![1]).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it("stays out of the required-check list it is not ready to join", () => {
-    // Decision D4: this job is observational until the baseline proves
-    // stable. Branch protection is not readable from a test, so what is
-    // guarded here is the claim in the workflow that a reader relies on.
+  it("says in the workflow itself that it is now a required check", () => {
+    // Decision D4 shipped this job observational until the baseline proved
+    // stable; it did (58 runs, one failure, that one pre-merge on the branch
+    // that introduced the workflow), and PR #161 promoted it on 2026-08-08.
+    //
+    // This assertion used to read `expect(workflow).toContain("NOT a required
+    // branch-protection context")`, and it is what caught the promotion:
+    // flipping requiredness reddened this suite instead of quietly leaving a
+    // workflow header that told the next reader the opposite of the truth.
+    // Branch protection is still not readable from an offline test, so what is
+    // guarded here is still the claim in the workflow that a reader relies on -
+    // only now it is the claim that the job DOES gate merges.
     const workflow = read(WORKFLOW_PATH);
-    expect(workflow).toContain("NOT a required branch-protection context");
+    expect(workflow).toContain("THIS IS A REQUIRED BRANCH-PROTECTION CONTEXT");
+    expect(
+      workflow,
+      "the workflow no longer points at the declared contract, so the two can drift",
+    ).toContain(".github/required-checks.json");
+  });
+
+  it("keeps its pull_request trigger unconditional, because it is required", () => {
+    // The property that makes requiredness safe rather than a repo-wide wedge.
+    // A `paths:` filter here would mean a PR touching nothing that matches
+    // never receives the `lighthouse` check, and branch protection would then
+    // block that PR with no way out except an admin changing the setting.
+    // `required-checks-contract.test.ts` enforces this across every required
+    // context; it is restated here because this file is what somebody edits
+    // when they want to make the Web Vitals job cheaper.
+    const workflow = read(WORKFLOW_PATH);
+    const onBlock = workflow.slice(workflow.indexOf("\non:"));
+    const prTrigger = onBlock.slice(0, onBlock.indexOf("\npermissions:"));
+    expect(prTrigger, "lighthouse.yml no longer runs on pull_request at all").toContain("pull_request:");
+    expect(/^\s+paths(-ignore)?:/m.test(prTrigger), "lighthouse.yml's triggers grew a paths filter while it is a required context").toBe(
+      false,
+    );
   });
 
   it("documents the same thresholds the gate is calibrated against, for every measured URL", () => {
