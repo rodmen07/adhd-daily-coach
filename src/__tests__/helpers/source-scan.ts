@@ -1,15 +1,19 @@
 /**
- * Shared plumbing for the guards that read the real source tree
- * (`static-export-surface.test.ts`, `onboarding-storage-contract.test.ts`).
+ * Shared plumbing for the guards that read the real source tree.
  *
- * Both need the same two things: the list of files that actually ship, and a
+ * They need the same two things: the list of files that actually ship, and a
  * way to ignore comments so a module doc may NAME the thing being guarded
  * without tripping its own guard. Keeping one copy here is the same rule those
- * guards enforce on the rest of the repo.
+ * guards enforce on the rest of the repo. The consumers are deliberately not
+ * listed here - `grep -rl "helpers/source-scan" src/` names them, and a
+ * hand-maintained list of callers is precisely the staleness this repo keeps
+ * having to fix (it read "two guards" while seven imported it).
  *
  * This lives under `src/__tests__/` on purpose: the walk below skips any
  * `__tests__` directory, so the helper cannot accidentally scan itself, and
- * coverage (`src/lib/**`) never counts it as product code.
+ * vitest's default `coverage.exclude` (`**\/__tests__/**`) keeps it out of the
+ * report - which is what still holds now that `coverage.include` spans the
+ * whole of `src/` rather than the `src/lib/**` it named until 2026-08-07.
  */
 
 import { readdirSync } from "node:fs";
