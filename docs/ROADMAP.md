@@ -1466,12 +1466,134 @@ Firestore rules obligation), the `lighthouse` required-context promotion (own
 dated clearing condition), and `/journal/`+`/trends/` gate widening (v0.20's
 cost reasoning stands).
 
+### v0.24 - Nine peers in a smaller box: the "More" menu gets meaning, and gets out of the way (agent-doable now)
+
+Defined 2026-08-08 (product-role increment), the milestone after v0.23. Design
+doc: [docs/design/NAV_TAXONOMY.md](design/NAV_TAXONOMY.md). Every premise below
+was **re-checked against the tree at `72b6f5a`** with the command named beside
+it in the design doc, not inherited from the backlog entries that seeded it -
+and one of those entries turned out to be understated. Every decision is an
+overridable default.
+
+It is where v0.23 leads. v0.22 made one registry decide WHICH doors exist;
+v0.23 asked whether a person can get through them and made the header fit;
+v0.24 asks what the doors MEAN, and finishes the interaction v0.23 knowingly
+left half-built.
+
+**The space answer did not produce a meaning answer.** Nine of the twelve
+primary-nav routes now live behind a native `<details>` disclosure, and a
+reader who opens it meets **nine undifferentiated items with no headings at
+all** - where before they met twelve undifferentiated pills. `site-nav.tsx`
+renders the panel as a bare `<div>` of nine `<Link>`s: `grep -cE '<h[1-6]|<ul|<li|role="group"|aria-labelledby' src/app/components/site-nav.tsx`
+returns **0**, so there is no heading, no list semantics and no labelled group
+in that surface, for a sighted reader or a screen reader. `NAV_SHAPE.md`
+section 5 named this out of scope for v0.23 and named the field a taxonomy
+would sit beside; `grep -rn 'navGroup' src/` returns nothing, so it is a plan
+rather than a half-built thing.
+
+**Five front-door routes have no `g` chord, not four.** The entry filed by PR
+#160 names `/slicer`, `/ambient`, `/breathe` and `/challenges`; re-read at the
+source, `/pricing` has none either. `grep -cE '^  \{ path: .*inPrimaryNav: true' src/lib/routes.ts`
+is **12** and `grep -c 'goToKey: "' src/lib/routes.ts` is **7**. The earlier
+count is legibly wrong rather than carelessly wrong: it was filed by the
+increment that closed the ORPHAN-ROUTE bug, and `/pricing` was never an orphan
+because the paywall links to it, so it fell outside that increment's frame and
+outside the sentence it left behind. The frame was right for that bug and wrong
+as a census. The letters `s`, `a`, `b`, `c` and `p` are all unclaimed.
+
+**The disclosure is a menu that cannot be dismissed.** `NAV_SHAPE.md` D4 chose
+`<details>` over a popover and recorded both costs before shipping: it closes
+on neither `Escape` nor an outside click. That cost is now paid by every reader
+on every page. `grep -cE 'addEventListener|useEffect|onKeyDown|onBlur' src/app/components/site-nav.tsx`
+returns **0** - the component has no document-level listener of any kind. The
+pattern to copy is one component away and already tested:
+`keyboard-help.tsx` closes on `Escape` at line 133 and restores focus through
+`restoreFocusRef`.
+
+PR1 (the registry gains meaning): `navGroup` on every `inPrimaryNav: true`
+entry and on no other (D2), the four groups Today / In the moment / Looking
+back / Account (D3), the panel rendering one `aria-labelledby`-labelled `<ul>`
+per group that has a `more` member (D4), the keyboard dialog adopting the same
+groups because it reads the same registry (D5), and chords for the five routes
+without one (D6). PR2 (the disclosure behaves like a menu): `Escape` and an
+outside click close it with focus returning to the `<summary>` (D7), the E2E
+assertion, then `0.24.0` with both lockfile copies and this heading flipped to
+DONE in the same commit.
+
+**No PR in this milestone adds or removes a `.test.ts` under `src/__tests__`
+or `src/app/__tests__`** (D8): every new assertion extends
+`src/app/__tests__/route-registry-guard.test.ts`, and PR2's browser assertion
+lands in `e2e/`, which `roadmap-guard-count` does not scan. So the guard-count
+word stays **Nineteen** and no count obligation is schedulable in either
+direction. That is stated here at definition time rather than discovered at
+implementation time, which is what `ROUTE_VOCABULARY.md` D8 cost when v0.22
+learned it the hard way.
+
+Done when, each clause checkable by CI rather than by opinion and none of them
+an existence grep:
+
+1. `route-registry-guard.test.ts` fails when an `inPrimaryNav: true` entry
+   carries no `navGroup` AND when a non-primary-nav entry carries one, proven
+   by a control that removes one group and adds one to `/monetization`, with
+   both reds quoted in PR1's body.
+2. The rendered "More" panel contains exactly the headings of the groups that
+   have at least one `navSlot: "more"` member, in registry order, and every
+   `more` route is inside the labelled list of its own group - asserted against
+   `ROUTES` rather than a literal list of names, and proven by a control that
+   moves one route to a different group and reddens it.
+3. Every `inPrimaryNav: true` route carries a `goToKey`, the existing "assigns
+   each chord key to exactly one route" assertion still holds across all
+   twelve, and `g <key>` calls `router.push` with that entry's path for every
+   one of them - the existing chord-routing assertion covering the five new
+   chords automatically, plus an explicit assertion that the chordless
+   primary-nav set is empty.
+4. The keyboard dialog renders its "Go to" rows under the same group headings
+   in the same order as the panel, derived from the registry in both places,
+   and the five hand-authored non-navigation rows are unchanged.
+5. `Escape` while the disclosure is open closes it and moves focus to its
+   `<summary>`; a pointer-down outside the disclosure closes it. Each proven by
+   its own control that removes that one handler and quotes the red, so neither
+   assertion can be passing because of the other.
+6. `e2e/nav-shape.spec.ts` still passes its 150 / 150 / 100 px ceilings at
+   375x667, 412x823 and 1280x720 with the one-row and no-horizontal-scroll
+   clauses intact - a grouped panel must not grow the CLOSED header - plus a
+   new clause asserting in a real browser that the disclosure is closed after
+   `Escape`.
+7. Every behavioural clause above is proven by a negative control whose
+   perturbation is confirmed applied and whose red output is quoted, with the
+   implementation committed before the first perturbation.
+8. The pinned CI gate is green on both PRs (`npm run lint`, `npm run
+   typecheck`, `npm run test:coverage`, `npm run build`, `npm audit
+   --audit-level=high`, Node 24 per `.github/workflows/ci.yml`), the
+   non-required `e2e` and `lighthouse` contexts stay green, and the Lighthouse
+   CLS assertion does not regress.
+9. After PR2: `package.json` reads `0.24.0` with both lockfile copies matching
+   (`lockfile-version-parity`), this heading reads DONE
+   (`roadmap-milestone-status`), and the Current-state version sentence reads
+   `0.24.0` (`roadmap-version-claim`). The guard-count word is still
+   **Nineteen** and `roadmap-guard-count` is green without either PR touching
+   it.
+
+Chosen over, with the trail (full reasoning in the design doc section 5): the
+sync/help/theme cluster restructure filed by PR #159 (worth ~40 px on phones
+only, its own surface, its own before/after obligation - and folding it in
+would make neither measurable), swapping `<details>` for the popover D4 priced
+(D7 buys the two behaviours without the swap), a visual redesign of the panel
+(a taxonomy whose evidence is tangled with a restyle is one nobody can
+evaluate), the silent-migration product question filed by PR #153 (unrelated
+surface, own decision), the `e2e` required-context promotion (a DevSecOps item
+with its own dated clearing condition and an evidence step written down), the
+`src/app/**` behaviour-coverage finding filed by PR #158 (a QA-stream item with
+its own cadence slot), FCM push (console-gated, unchanged), workspace cloud
+sync (still deepens the unpublished Firestore rules obligation), and
+`/journal/`+`/trends/` gate widening (v0.20's cost reasoning stands).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.23 have all landed, so the dev queue is EMPTY and the next product
-slot defines v0.24.** v0.22
+through v0.23 have all landed and v0.24 is DEFINED but not started, so the dev
+queue holds exactly v0.24's two PRs.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
@@ -1483,9 +1605,13 @@ PR #162 collapsed the header to three inline links plus a native "More"
 disclosure driven by the registry's new `navSlot` field, taking it from
 264 px (39.6% of a 375x667 viewport, four rows of pills) to 138 px (20.7%, one
 row) and from 180 px to 67 px at 1280x720, with `e2e/nav-shape.spec.ts`
-measuring it in chromium against the real export. This sentence is
+measuring it in chromium against the real export. v0.24 was defined
+2026-08-08 on top of exactly that disclosure and has not started: it gives the
+nine routes behind "More" four labelled groups, gives the five chordless
+front-door routes a `g` chord, and makes the disclosure close on `Escape` and
+on an outside click. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected sixteen times now, three on
+therefore is most likely to go stale. (Corrected seventeen times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -1495,8 +1621,10 @@ defined v0.21, the thirteenth by the 2026-08-07 product pass that
 defined v0.22 hours after v0.21 shipped, the fourteenth by v0.22 PR2,
 the completion PR, which flips the heading and this sentence together rather
 than leaving the second half a slot behind, the fifteenth by the
-2026-08-08 product pass that defined v0.23, and this sixteenth by v0.23 PR2,
-the completion PR, which again flips the heading and this sentence together.
+2026-08-08 product pass that defined v0.23, the sixteenth by v0.23 PR2,
+the completion PR, which again flips the heading and this sentence together,
+and this seventeenth by the 2026-08-08 product pass that defined v0.24 hours
+after v0.23 shipped.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
