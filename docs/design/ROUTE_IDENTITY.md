@@ -1,7 +1,20 @@
 # v0.25 - Every room has a name, and the browser learns it: one title per route
 
-Status: **DEFINED 2026-08-08** (product-role increment), the milestone after
-v0.24. **PR1 shipped 2026-08-08**; PR2 is the remaining work.
+Status: **SHIPPED 2026-08-08** — PR1 (the derivation module, the twelve segment
+layouts, the root `title.template` and the built-export guard) and PR2 (the
+chromium announcer proof and the `0.25.0` bump), both dev-role increments.
+`package.json` reads `0.25.0`.
+
+> **Reading section 1 after the milestone.** Sections 1a and 1c are quoted
+> against the tree at `62c6d7e` on purpose, per this system's convention of
+> leaving superseded prose where it stood rather than editing history. The
+> milestone falsifies both BY DOING THE WORK, which is the intended outcome and
+> not drift: `grep -rln "export const metadata\|generateMetadata" src/app` no
+> longer returns one file, the thirteen served titles are no longer one string,
+> and the route announcer is no longer empty after a navigation — PR2's
+> `e2e/route-identity.spec.ts` asserts the destination's name is IN it, in
+> chromium, against the real export. Section 1b was true when written and
+> stays true; 1d described the cost and is what the milestone bought back.
 
 Design authority: this document. Every decision below is an **overridable
 default** - one word from the product owner flips any of them, and after v0.25

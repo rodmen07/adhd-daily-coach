@@ -221,8 +221,15 @@ is written next to.
   PR2 made the disclosure behave like a menu, so `Escape` closes it and returns
   focus to its summary and a pointer-down outside dismisses it - the one cost
   `NAV_SHAPE.md` D4 recorded rather than hid when it chose a native
-  `<details>`. **package.json reads
-  0.24.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  `<details>`. v0.25 (PR #168 + PR #170, 2026-08-08) added no page either and
+  closed the arc by leaving the page: PR1 derived one `<title>` per route from
+  the same registry, so the thirteen identical tab names, history rows and
+  bookmarks became thirteen distinct ones; PR2 proved in chromium what only a
+  browser can see - that a client-side navigation changes `document.title` and
+  therefore puts the destination's name into Next's route announcer, which had
+  been permanently EMPTY on every navigation while one constant title made its
+  `previousTitle !== currentTitle` condition unreachable. **package.json reads
+  0.25.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
   2026-08-07 and v0.22 itself shipped hours later and made it wrong again. It
@@ -1635,7 +1642,7 @@ its own cadence slot), FCM push (console-gated, unchanged), workspace cloud
 sync (still deepens the unpublished Firestore rules obligation), and
 `/journal/`+`/trends/` gate widening (v0.20's cost reasoning stands).
 
-### v0.25 - Every room has a name, and the browser learns it: one title per route (IN PROGRESS: PR1 shipped 2026-08-08, PR2 open)
+### v0.25 - Every room has a name, and the browser learns it: one title per route (DONE)
 
 Defined 2026-08-08 (product-role increment), the milestone after v0.24. Design
 doc: [docs/design/ROUTE_IDENTITY.md](design/ROUTE_IDENTITY.md). Every premise
@@ -1691,10 +1698,22 @@ in the root layout with `/` keeping its current string byte-for-byte (D3), and
 (D8). All thirteen built titles are now distinct - `Now · ADHD Daily Coach`
 through `Monetization · ADHD Daily Coach`, with `/` unchanged at
 `ADHD Daily Coach: Your friendly self-improvement coach` - and clauses 1-4, 7
-and 9 are met. PR2 (and a screen reader hears it): the chromium assertion that a
-client-side navigation changes `document.title` and puts the destination's name
-into `#__next-route-announcer__`, then `0.25.0` with both lockfile copies and
-this heading flipped to DONE in the same commit.
+and 9 are met.
+
+PR2 (and a screen reader hears it) **SHIPPED 2026-08-08**, and v0.25 is
+COMPLETE: `e2e/route-identity.spec.ts` walks `/` -> `/now` -> `/slicer` in
+chromium against the real export and asserts, at each hop, that
+`document.title` becomes that route's registry-derived string AND that it
+CHANGED, then that the same string lands in `#__next-route-announcer__` -
+the node inside the open shadow root on `<next-route-announcer>`, whose
+`role="alert"` and `aria-live="assertive"` the spec also pins, because they
+are the entire mechanism by which the text reaches a screen reader. A browser
+Back navigation is asserted too: it is the client-side navigation a person
+makes most often and it drives the announcer's condition in the opposite
+direction. Every expectation is composed from `ROUTES[i].label` plus the
+suffix, never from `metadataForRoute()`, so the consumer stays perturbable -
+which is what clause 6's control perturbs. `package.json` reads `0.25.0` with
+both lockfile copies, and this heading flipped to DONE, in the same commit.
 
 **PR1 adds one `.test.ts` under `src/__tests__`, so it owns three count
 obligations in the SAME commit** (D7): the guard sentence below goes
@@ -1773,9 +1792,9 @@ increment that decides they gate).
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.24 have all landed, and v0.25 is IN PROGRESS - PR1 shipped
-2026-08-08, so the dev queue holds exactly PR2 and the next dev slot takes
-it.** v0.22
+through v0.25 have all landed, nothing above this section is defined, and the
+dev queue is therefore EMPTY - the next product slot defines v0.26 rather
+than a dev slot picking a direction unilaterally.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
@@ -1795,14 +1814,18 @@ the keyboard dialog, and the five chordless front-door routes got `g s`, `g a`,
 `g b`, `g c` and `g p`; PR #166 made the disclosure dismissable, so `Escape`
 closes it and returns focus to its summary and a pointer-down outside closes
 it, each proven by its own control and re-asserted in chromium. v0.25 was
-defined 2026-08-08 and closes the arc those three opened by leaving the page
-entirely: all thirteen routes serve one identical `<title>`, so the browser tab,
-the history entry, the bookmark and - because Next's route announcer announces
-only when the title CHANGES and prefers `document.title` over the `<h1>` - the
-sentence a screen reader is given on navigation are the same on every route.
+defined 2026-08-08 and completed the same day, closing the arc those three
+opened by leaving the page entirely: until it shipped, all thirteen routes
+served one identical `<title>`, so the browser tab, the history entry, the
+bookmark and - because Next's route announcer announces only when the title
+CHANGES and prefers `document.title` over the `<h1>` - the sentence a screen
+reader is given on navigation were the same on every route. PR #168 derived
+one title per route from the registry and PR #170 proved in chromium that the
+announcer now speaks the destination, which is the half no file on disk can
+be read for.
 This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected nineteen times now, three on
+therefore is most likely to go stale. (Corrected twenty-one times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -1817,11 +1840,19 @@ the completion PR, which again flips the heading and this sentence together,
 the seventeenth by the 2026-08-08 product pass that defined v0.24 hours
 after v0.23 shipped, the eighteenth by v0.24 PR2, the completion PR,
 which flips the heading and this sentence together for the third milestone
-running, and this nineteenth by the 2026-08-08 product pass that defined v0.25
+running, the nineteenth by the 2026-08-08 product pass that defined v0.25
 hours after v0.24 shipped - which is also the edit that retired the "the dev
 queue is EMPTY and the next product slot defines v0.25" clause opening this
 paragraph, a sentence that was true when written and that this same edit made
-false.
+false - a **twentieth by v0.25 PR1**, which rewrote the opening clause to
+"v0.25 is IN PROGRESS, PR1 shipped" and did NOT increment this counter, so
+the count itself was understated by one for as long as the sentence it counts
+was current, and this twenty-first by v0.25 PR2, the completion PR, which
+flips the heading and this sentence together for the fourth milestone running
+and repairs PR1's uncounted edit in the same pass. **The lesson PR1's miss
+teaches is that the counter is part of the sentence, not commentary on it:**
+any edit to the opening clause owes this number, and a completion PR is not
+the only kind of edit that touches it.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
