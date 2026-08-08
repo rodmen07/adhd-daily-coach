@@ -12,8 +12,14 @@ import {
 
 // Everything listed in the dialog is real behavior. The go-to chords are
 // implemented here; the arrow keys live in SwipeStepCard; the rest is
-// standard browser behavior. Keep this table honest when shortcuts change.
-const GO_TO_TARGETS: Record<string, string> = {
+// standard browser behavior.
+//
+// Exported so `src/app/__tests__/route-registry-guard.test.ts` can hold this
+// table and `src/lib/routes.ts`'s `goToKey` fields in agreement. That guard is
+// what replaces the "keep this table honest" comment that used to sit here
+// doing a test's job; v0.22 PR2 removes the need for the comparison entirely
+// by deriving both this table and the dialog's rows from the registry (D5, D6).
+export const GO_TO_TARGETS: Record<string, string> = {
   d: "/",
   f: "/focus",
   e: "/execute",

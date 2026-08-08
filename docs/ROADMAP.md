@@ -89,7 +89,7 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Fourteen** guard tests now
+  **Fifteen** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -104,9 +104,11 @@ is written next to.
   error alert inline instead of delegating to the shared `StatusMessage`
   vocabulary), `security-policy-truth` (which reads SECURITY.md against
   package.json and fails when the published security policy claims a version
-  the app does not ship), and `workflow-secret-usage` (which reads every
+  the app does not ship), `workflow-secret-usage` (which reads every
   workflow and fails when a step whose body runs nothing is handed a secret
-  anyway).
+  anyway), and `route-registry-guard` (v0.22 PR1, which glob-discovers every
+  `src/app` page file and holds the registry, the rendered nav and the chord
+  table to it, so a shipped route in no navigation surface fails the gate).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -1214,14 +1216,19 @@ Two PRs, in dependency order (design doc D8):
   instead of its own array; the D3/D4 changes (`/monetization` out of the
   primary nav and marked internal, its page and its dashboard "View analytics"
   link untouched; `/now` in, labelled "Now"); and the new
-  `route-registry-guard` suite. No version bump in PR1, per the
-  `roadmap-milestone-status.test.ts` contract v0.14 PR1 proved.
+  `route-registry-guard` suite, **plus the Current-state guard-count sentence
+  taken from Fourteen to Fifteen naming that suite**. No version bump in PR1,
+  per the `roadmap-milestone-status.test.ts` contract v0.14 PR1 proved.
+  *Corrected during PR1 (the definition put the guard-count edit in PR2):*
+  `roadmap-guard-count.test.ts` counts `.test.ts` files on disk under
+  `src/__tests__` and `src/app/__tests__`, so the sentence must move in the
+  same commit that adds the suite or PR1's own required gate goes red. Deferring
+  it was not a smaller PR1, it was a red one.
 - **PR2:** `keyboard-help.tsx` deriving BOTH its chord table and its dialog
   rows from the registry (D5 adds `g n` for `/now`, D6 generates the six "Go
   to X" rows), then the 0.22.0 bump in `package.json` and both
-  `package-lock.json` copies, this heading flipped to DONE, and the
-  Current-state guard-count sentence taken from **Fourteen to Fifteen** naming
-  `route-registry-guard`, all in the same commit.
+  `package-lock.json` copies and this heading flipped to DONE, all in the same
+  commit.
 
 Done when, each clause checkable by CI rather than by opinion, and none of them
 an existence grep:
@@ -1250,10 +1257,11 @@ an existence grep:
    typecheck`, `npm run test:coverage`, `npm run build`, `npm audit
    --audit-level=high`, Node 24 per `.github/workflows/ci.yml`), and the
    non-required `e2e` and `lighthouse` contexts stay green.
-7. After PR2: `package.json` reads `0.22.0` with both lockfile copies matching
-   (`lockfile-version-parity`), this heading reads DONE
-   (`roadmap-milestone-status`), and the guard-count sentence reads Fifteen and
-   names the new suite (`roadmap-guard-count`).
+7. After PR1: the guard-count sentence reads Fifteen and names the new suite
+   (`roadmap-guard-count`, which counts the suites on disk and therefore cannot
+   be satisfied a PR later). After PR2: `package.json` reads `0.22.0` with both
+   lockfile copies matching (`lockfile-version-parity`) and this heading reads
+   DONE (`roadmap-milestone-status`).
 
 Chosen over, with the trail (full reasoning in the design doc section 5): a nav
 grouping or visual redesign (a redesign mixed into a data-layer extraction is

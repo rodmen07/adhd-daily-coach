@@ -3,26 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { normalizeRoutePath } from "@/lib/route-path";
+import { primaryNavRoutes } from "@/lib/routes";
 
-type NavLink = {
-  href: string;
-  label: string;
-};
-
-const NAV_LINKS: NavLink[] = [
-  { href: "/", label: "Dashboard" },
-  { href: "/slicer", label: "Slicer" },
-  { href: "/ambient", label: "Ambient" },
-  { href: "/breathe", label: "Breathe" },
-  { href: "/challenges", label: "Challenges" },
-  { href: "/focus", label: "Focus" },
-  { href: "/execute", label: "Execute" },
-  { href: "/review", label: "Review" },
-  { href: "/trends", label: "Trends" },
-  { href: "/journal", label: "Journal" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/monetization", label: "Monetization" },
-];
+// The links below are DERIVED, never listed here. This component used to carry
+// its own `NAV_LINKS` array, one of the four independent route lists v0.22
+// collapsed into `src/lib/routes.ts`; adding a link by hand here now fails
+// `src/app/__tests__/route-registry-guard.test.ts` rather than quietly giving
+// the app a thirteenth vocabulary for where a person can go.
+const NAV_ROUTES = primaryNavRoutes();
 
 export function SiteNav() {
   // The export is configured with trailingSlash, so the live pathname is
@@ -33,13 +21,13 @@ export function SiteNav() {
 
   return (
     <nav className="site-nav-links" aria-label="Primary">
-      {NAV_LINKS.map((link) => (
+      {NAV_ROUTES.map((route) => (
         <Link
-          key={link.href}
-          href={link.href}
-          aria-current={activePath === link.href ? "page" : undefined}
+          key={route.path}
+          href={route.path}
+          aria-current={activePath === route.path ? "page" : undefined}
         >
-          {link.label}
+          {route.label}
         </Link>
       ))}
     </nav>

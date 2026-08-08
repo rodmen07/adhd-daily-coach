@@ -153,15 +153,27 @@ an imported value, never on the presence of a string in a file, because an
 existence search is satisfied by a comment (L-033).
 
 ### D8. Two PRs, split so PR1 is decision-independent where it can be
-- **PR1:** `src/lib/routes.ts`, `site-nav.tsx` reading it, the guard suite, and
-  the D3/D4 reachability changes. No version bump (the milestone-status guard
-  makes a bump-before-DONE combination red, which v0.14 PR1 proved the hard
-  way).
+- **PR1:** `src/lib/routes.ts`, `site-nav.tsx` reading it, the guard suite, the
+  D3/D4 reachability changes, and the roadmap's guard-count sentence taken from
+  **Fourteen to Fifteen** naming `route-registry-guard`. No version bump (the
+  milestone-status guard makes a bump-before-DONE combination red, which v0.14
+  PR1 proved the hard way).
 - **PR2:** `keyboard-help.tsx` deriving both its chord table and its dialog
   rows (D5, D6), then `package.json` to `0.22.0`, both `package-lock.json`
-  copies, the `### v0.22` heading flipped to DONE, and the roadmap's guard
-  count sentence taken from **Fourteen to Fifteen** naming
-  `route-registry-guard`, all in the same commit.
+  copies, and the `### v0.22` heading flipped to DONE, all in the same commit.
+
+**Corrected while implementing PR1.** This decision originally put the
+guard-count sentence in PR2, which was wrong and would have made PR1 red:
+`src/__tests__/roadmap-guard-count.test.ts` discovers guard suites by reading
+`.test.ts` files on disk under `src/__tests__` and `src/app/__tests__`, so the
+moment `route-registry-guard.test.ts` exists the roadmap's number word and its
+list of names disagree with the filesystem. Two of that suite's four tests go
+red on the commit that adds the guard, not on the commit that bumps the word.
+The general rule this is an instance of: an obligation enforced by a
+disk-scanning guard belongs to whichever PR changes the disk, and cannot be
+scheduled independently of it. Nothing else about the split moved; PR2 still
+owns every version-bump artifact, which is the part the milestone-status guard
+genuinely forces to travel together.
 
 ---
 
