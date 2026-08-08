@@ -97,7 +97,7 @@ is written next to.
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
   post a required context.
-  **Nineteen** guard tests now
+  **Twenty** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -133,7 +133,12 @@ is written next to.
   and fails when a context declared required is one some PR never receives -
   `security-audit.yml`'s `paths:`-filtered trigger is the live example, and a
   required context that never arrives wedges that PR with no way out except an
-  admin changing the setting).
+  admin changing the setting), and `css-var-syntax-guard`
+  (2026-08-08, which reads every shipped `src/` file against the CSS parser
+  itself and fails on the Tailwind v3 `X-[--token]` spelling - v4 compiles it
+  to `background-color: --token`, an invalid declaration a browser drops, so
+  258 occurrences across 12 files were rendering nothing at all, including
+  every visual difference between a playing and a stopped sound on `/ambient`).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition

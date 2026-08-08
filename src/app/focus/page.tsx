@@ -89,10 +89,10 @@ export default function FocusPage() {
                       key={area}
                       type="button"
                       disabled={isPlanningLocked}
-                      className={`category-chip flex items-center gap-1.5 cursor-pointer hover:border-[--accent]/60 transition-all ${
+                      className={`category-chip flex items-center gap-1.5 cursor-pointer hover:border-(--accent)/60 transition-all ${
                         focus === area 
-                          ? "is-selected border-[--accent] shadow-[0_0_12px_rgba(122,214,183,0.2)]" 
-                          : "bg-[--field] border-transparent"
+                          ? "is-selected border-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.2)]" 
+                          : "bg-(--field) border-transparent"
                       }`}
                       onClick={() => setFocus(area)}
                     >
@@ -127,8 +127,8 @@ export default function FocusPage() {
                     key={option} 
                     className={`dose-card flex items-center gap-3 cursor-pointer p-3.5 rounded-xl border transition-all ${
                       dose === option 
-                        ? "border-[--accent] bg-[--accent]/10" 
-                        : "border-[--line] bg-[--field] hover:border-slate-500"
+                        ? "border-(--accent) bg-(--accent)/10" 
+                        : "border-(--line) bg-(--field) hover:border-slate-500"
                     } ${isPlanningLocked ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <input
@@ -138,7 +138,7 @@ export default function FocusPage() {
                       type="radio"
                       name="dose"
                       value={option}
-                      className="accent-[--accent] h-4 w-4"
+                      className="accent-(--accent) h-4 w-4"
                     />
                     <div className="flex flex-col">
                       <span className="font-semibold text-sm">{doseLabels[option]}</span>

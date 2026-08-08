@@ -79,21 +79,21 @@ export default function CalmPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Ambient Noise</h1>
-          <p className="mt-1.5 text-xs text-[--muted]">
+          <p className="mt-1.5 text-xs text-(--muted)">
             Procedural, local-made focus noise to block out nearby clutter.
           </p>
         </div>
         <Link 
           href="/" 
-          className="rounded-full border border-[--line] bg-[--surface-strong] px-3.5 py-1.5 text-xs font-semibold text-[--foreground] hover:bg-[--panel] transition-colors"
+          className="rounded-full border border-(--line) bg-(--surface-strong) px-3.5 py-1.5 text-xs font-semibold text-(--foreground) hover:bg-(--panel) transition-colors"
         >
           Back Dashboard
         </Link>
       </div>
 
       {/* Main player controls custom card */}
-      <div className="mb-8 rounded-2xl border border-[--line] bg-[--panel] p-5 shadow-xl">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-[--muted]">
+      <div className="mb-8 rounded-2xl border border-(--line) bg-(--panel) p-5 shadow-xl">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-(--muted)">
           Player Controls
         </h2>
         <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -104,7 +104,7 @@ export default function CalmPage() {
               className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all ${
                 active !== null
                   ? "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 cursor-pointer"
-                  : "border-[--line] bg-transparent text-[--muted] cursor-not-allowed opacity-40"
+                  : "border-(--line) bg-transparent text-(--muted) cursor-not-allowed opacity-40"
               }`}
               title="Stop playback"
               aria-label="Stop ambient music"
@@ -112,17 +112,17 @@ export default function CalmPage() {
               ■
             </button>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-[--foreground]">
+              <span className="text-sm font-semibold text-(--foreground)">
                 Status: {active ? `Playing ${sounds.find((s) => s.id === active)?.name}` : "Muted"}
               </span>
-              <span className="text-[11px] text-[--muted]">
+              <span className="text-[11px] text-(--muted)">
                 {active ? "Focus backdrop on" : "Click any card underneath to play"}
               </span>
             </div>
           </div>
 
           <div className="flex flex-col gap-1 sm:w-1/2">
-            <div className="flex items-center justify-between text-xs font-mono text-[--muted]">
+            <div className="flex items-center justify-between text-xs font-mono text-(--muted)">
               <label htmlFor="volume-slider">Volume</label>
               <span>{Math.round(volume * 100)}%</span>
             </div>
@@ -132,7 +132,7 @@ export default function CalmPage() {
               min="0"
               max="1"
               step="0.05"
-              className="h-1.5 w-full cursor-pointer rounded-full accent-[--accent] bg-[--line]"
+              className="h-1.5 w-full cursor-pointer rounded-full accent-(--accent) bg-(--line)"
               value={volume}
               onChange={(e) => handleVolumeChange(Number(e.target.value))}
             />
@@ -141,9 +141,9 @@ export default function CalmPage() {
 
         {/* Sync breathing animation circle */}
         {active && (
-          <div className="mt-6 flex flex-col items-center justify-center border-t border-[--line] pt-6">
+          <div className="mt-6 flex flex-col items-center justify-center border-t border-(--line) pt-6">
             <div 
-              className={`flex h-14 w-14 items-center justify-center rounded-full bg-[--accent]/20 text-[--accent] ${
+              className={`flex h-14 w-14 items-center justify-center rounded-full bg-(--accent)/20 text-(--accent) ${
                 active === "drone" ? "animate-pulse" : "animate-bounce"
               }`}
               style={{
@@ -152,7 +152,7 @@ export default function CalmPage() {
             >
               🧘
             </div>
-            <p className="mt-2 text-[11px] text-[--muted] font-mono tracking-wide">
+            <p className="mt-2 text-[11px] text-(--muted) font-mono tracking-wide">
               {active === "drone" ? "Inhale... Exhale (8s breath cycle)" : "Steady focal frequency"}
             </p>
           </div>
@@ -169,21 +169,21 @@ export default function CalmPage() {
               onClick={() => handleToggle(sound.id)}
               className={`flex flex-col items-start rounded-xl border p-4 text-left transition-all ${
                 isSelected
-                  ? "border-[--accent] bg-[--accent]/10 text-[--foreground]"
-                  : "border-[--line] bg-[--field] text-[--muted] hover:border-[--muted] cursor-pointer"
+                  ? "border-(--accent) bg-(--accent)/10 text-(--foreground)"
+                  : "border-(--line) bg-(--field) text-(--muted) hover:border-(--muted) cursor-pointer"
               }`}
             >
               <div className="flex items-center gap-2">
                 <span className="text-xl leading-none">{sound.emoji}</span>
-                <span className="font-semibold text-sm text-[--foreground]">{sound.name}</span>
+                <span className="font-semibold text-sm text-(--foreground)">{sound.name}</span>
               </div>
-              <p className="mt-2.5 text-[11px] leading-relaxed text-[--muted-strong]">
+              <p className="mt-2.5 text-[11px] leading-relaxed text-(--muted-strong)">
                 {sound.description}
               </p>
               <span className={`mt-3 self-end rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide border ${
                 isSelected
-                  ? "bg-[--accent]/20 text-[--accent] border-[--accent]/30"
-                  : "bg-transparent text-[--muted] border-[--line]"
+                  ? "bg-(--accent)/20 text-(--accent) border-(--accent)/30"
+                  : "bg-transparent text-(--muted) border-(--line)"
               }`}>
                 {isSelected ? "Active" : "Play"}
               </span>

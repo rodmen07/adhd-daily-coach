@@ -23,11 +23,11 @@ export default function PricingPage() {
             Enjoy a completely free, unrestricted 30-day trial. Continue afterward for only $5/month.
           </p>
 
-          <div className="mx-auto max-w-sm rounded-2xl border border-[--accent]/30 bg-[--field] p-6 shadow-xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-[--accent] text-slate-950 font-bold font-mono text-[9px] px-3 py-1 uppercase rounded-bl-lg tracking-wider">
+          <div className="mx-auto max-w-sm rounded-2xl border border-(--accent)/30 bg-(--field) p-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 bg-(--accent) text-slate-950 font-bold font-mono text-[9px] px-3 py-1 uppercase rounded-bl-lg tracking-wider">
               30 Days Free
             </div>
-            <p className="text-xs uppercase tracking-widest font-bold text-[--accent] font-mono">Full Membership</p>
+            <p className="text-xs uppercase tracking-widest font-bold text-(--accent) font-mono">Full Membership</p>
             <p className="text-5xl font-extrabold text-slate-800 mt-2">
               $5<span className="text-sm font-normal text-slate-400">/mo</span>
             </p>
@@ -37,19 +37,19 @@ export default function PricingPage() {
 
             <ul className="text-left space-y-2 text-xs text-slate-700 my-5 border-t border-slate-200 dark:border-slate-800 pt-4">
               <li className="flex items-center gap-1.5">
-                <span className="text-[--accent]" aria-hidden="true">✓</span>
+                <span className="text-(--accent)" aria-hidden="true">✓</span>
                 <span>Unrestricted daily cycle timelines</span>
               </li>
               <li className="flex items-center gap-1.5">
-                <span className="text-[--accent]" aria-hidden="true">✓</span>
+                <span className="text-(--accent)" aria-hidden="true">✓</span>
                 <span>Action and reflection customizations</span>
               </li>
               <li className="flex items-center gap-1.5">
-                <span className="text-[--accent]" aria-hidden="true">✓</span>
+                <span className="text-(--accent)" aria-hidden="true">✓</span>
                 <span>Weekly progress sparklines & diagnostics</span>
               </li>
               <li className="flex items-center gap-1.5">
-                <span className="text-[--accent]" aria-hidden="true">✓</span>
+                <span className="text-(--accent)" aria-hidden="true">✓</span>
                 <span>Secure account cross-device cloud sync</span>
               </li>
             </ul>

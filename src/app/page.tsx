@@ -547,7 +547,7 @@ export default function Home() {
           {/* Visual Loop Stepper Pipeline */}
           <div className="my-6 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 rounded-2xl p-4 sm:p-5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 text-center sm:text-left flex items-center justify-center sm:justify-start gap-1.5">
-              <svg className="h-4 w-4 text-[--accent]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <svg className="h-4 w-4 text-(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
               </svg>
               Continuous Growth Loop
@@ -559,7 +559,7 @@ export default function Home() {
                   href="/focus"
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300 group ${
                     !hasPlan
-                      ? "border-[--accent] bg-[--accent]/10 text-[--accent] shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
                       : "border-emerald-500 bg-emerald-500/10 text-emerald-500 hover:border-emerald-400"
                   }`}
                   aria-label="Step 1: Focus"
@@ -571,7 +571,7 @@ export default function Home() {
                   </svg>
                 </Link>
                 <div className="text-left sm:text-center">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${!hasPlan ? "text-[--accent]" : "text-slate-400"}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${!hasPlan ? "text-(--accent)" : "text-slate-400"}`}>
                     01. Focus
                   </p>
                   <p className="text-[10px] text-slate-500 hidden sm:block mt-0.5">Set daily routine & depth</p>
@@ -587,10 +587,10 @@ export default function Home() {
                   href={hasPlan ? "/execute" : "/focus"}
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300 group ${
                     hasPlan && !hasCheckedIn
-                      ? "border-[--accent] bg-[--accent]/10 text-[--accent] shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
                       : hasCheckedIn
                       ? "border-emerald-500 bg-emerald-500/10 text-emerald-500 hover:border-emerald-400"
-                      : "border-[--line] bg-[--field] text-[--muted]"
+                      : "border-(--line) bg-(--field) text-(--muted)"
                   }`}
                   aria-label="Step 2: Execute"
                 >
@@ -599,7 +599,7 @@ export default function Home() {
                   </svg>
                 </Link>
                 <div className="text-left sm:text-center">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${hasPlan && !hasCheckedIn ? "text-[--accent]" : "text-slate-400"}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${hasPlan && !hasCheckedIn ? "text-(--accent)" : "text-slate-400"}`}>
                     02. Execute
                   </p>
                   <p className="text-[10px] text-slate-500 hidden sm:block mt-0.5">Run active sprint dose</p>
@@ -615,8 +615,8 @@ export default function Home() {
                   href="/review"
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300 group ${
                     hasCheckedIn
-                      ? "border-[--accent] bg-[--accent]/10 text-[--accent] shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
-                      : "border-[--line] bg-[--field] text-[--muted]"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
+                      : "border-(--line) bg-(--field) text-(--muted)"
                   }`}
                   aria-label="Step 3: Review"
                 >
@@ -625,7 +625,7 @@ export default function Home() {
                   </svg>
                 </Link>
                 <div className="text-left sm:text-center">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${hasCheckedIn ? "text-[--accent]" : "text-slate-400"}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${hasCheckedIn ? "text-(--accent)" : "text-slate-400"}`}>
                     03. Review
                   </p>
                   <p className="text-[10px] text-slate-500 hidden sm:block mt-0.5">Analyze and optimize</p>
@@ -653,18 +653,18 @@ export default function Home() {
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
                         {action.label === "Focus" && (
-                          <svg className="h-4 w-4 text-[--accent]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                          <svg className="h-4 w-4 text-(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                             <circle cx="12" cy="12" r="10" />
                             <circle cx="12" cy="12" r="4" />
                           </svg>
                         )}
                         {action.label === "Execute" && (
-                          <svg className="h-4 w-4 text-[--accent]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                          <svg className="h-4 w-4 text-(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                           </svg>
                         )}
                         {action.label === "Review" && (
-                          <svg className="h-4 w-4 text-[--accent]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                          <svg className="h-4 w-4 text-(--accent)" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2zm0 0V5a2 2 0 012-2h2a2 2 0 012 2v14" />
                           </svg>
                         )}
@@ -785,7 +785,7 @@ export default function Home() {
             <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--field)] px-3 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Onboarding health</p>
-                <p className="text-xs font-semibold text-[--accent]">{onboardingFunnelSummary.statusLabel}</p>
+                <p className="text-xs font-semibold text-(--accent)">{onboardingFunnelSummary.statusLabel}</p>
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
                 <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] p-2">

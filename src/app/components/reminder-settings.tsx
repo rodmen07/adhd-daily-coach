@@ -122,7 +122,7 @@ export function ReminderSettingsPanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="eyebrow !mb-0">Reminders</p>
-        <p className="text-xs font-semibold text-[--accent]">
+        <p className="text-xs font-semibold text-(--accent)">
           {prefs.enabled ? `Daily at ${prefs.time}` : "Off"}
         </p>
       </div>

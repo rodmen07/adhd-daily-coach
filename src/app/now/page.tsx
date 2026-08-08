@@ -187,11 +187,11 @@ export default function NowPage() {
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{C.heading}</h1>
-          <p className="mt-1.5 text-sm text-[--muted-strong]">{C.subheading}</p>
+          <p className="mt-1.5 text-sm text-(--muted-strong)">{C.subheading}</p>
         </div>
         <Link
           href="/"
-          className="shrink-0 rounded-full border border-[--line] bg-[--surface-strong] px-3.5 py-1.5 text-xs font-semibold text-[--foreground] transition-colors hover:bg-[--panel]"
+          className="shrink-0 rounded-full border border-(--line) bg-(--surface-strong) px-3.5 py-1.5 text-xs font-semibold text-(--foreground) transition-colors hover:bg-(--panel)"
         >
           Back
         </Link>
@@ -211,8 +211,8 @@ export default function NowPage() {
       />
 
       {phase === "setup" && (
-        <div className="rounded-2xl border border-[--line] bg-[--panel] p-6 shadow-xl">
-          <label htmlFor="focus-task" className="block text-sm font-semibold text-[--foreground]">
+        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
+          <label htmlFor="focus-task" className="block text-sm font-semibold text-(--foreground)">
             {C.taskLabel}
           </label>
           <input
@@ -224,10 +224,10 @@ export default function NowPage() {
               if (e.key === "Enter") start();
             }}
             placeholder={C.taskPlaceholder}
-            className="mt-2 w-full rounded-xl border border-[--line] bg-[--surface-strong] px-3.5 py-2.5 text-sm text-[--foreground] outline-none focus:border-[--accent]"
+            className="mt-2 w-full rounded-xl border border-(--line) bg-(--surface-strong) px-3.5 py-2.5 text-sm text-(--foreground) outline-none focus:border-(--accent)"
           />
 
-          <p className="mt-5 text-sm font-semibold text-[--foreground]">{C.durationLabel}</p>
+          <p className="mt-5 text-sm font-semibold text-(--foreground)">{C.durationLabel}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {DURATIONS.map((d) => (
               <button
@@ -237,8 +237,8 @@ export default function NowPage() {
                 onClick={() => setMinutes(d)}
                 className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors ${
                   minutes === d
-                    ? "border-[--accent] bg-(--accent)/15 text-[--accent]"
-                    : "border-[--line] bg-[--surface-strong] text-[--muted-strong] hover:bg-[--panel]"
+                    ? "border-(--accent) bg-(--accent)/15 text-(--accent)"
+                    : "border-(--line) bg-(--surface-strong) text-(--muted-strong) hover:bg-(--panel)"
                 }`}
               >
                 {d} min
@@ -258,21 +258,21 @@ export default function NowPage() {
       )}
 
       {phase === "running" && (
-        <div className="rounded-2xl border border-[--line] bg-[--panel] p-6 shadow-xl">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[--muted]">{C.focusingOn}</p>
-          <p className="mt-1 text-lg font-semibold text-[--foreground]">{task}</p>
+        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-(--muted)">{C.focusingOn}</p>
+          <p className="mt-1 text-lg font-semibold text-(--foreground)">{task}</p>
 
           <div className="mt-6 flex flex-col items-center">
-            <span className="font-mono text-5xl text-[--accent]" aria-live="off">
+            <span className="font-mono text-5xl text-(--accent)" aria-live="off">
               {formatClock(remaining)}
             </span>
-            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-[--surface-strong]">
+            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-(--surface-strong)">
               <div
                 className={reducedMotion ? "h-full rounded-full bg-(--accent)/70" : "h-full rounded-full bg-(--accent)/70 transition-[width] duration-500 ease-linear"}
                 style={{ width: `${progress * 100}%` }}
               />
             </div>
-            {timeUp && <p className="mt-4 text-center text-sm text-[--muted-strong]">{C.timeUpNote}</p>}
+            {timeUp && <p className="mt-4 text-center text-sm text-(--muted-strong)">{C.timeUpNote}</p>}
           </div>
 
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
@@ -287,11 +287,11 @@ export default function NowPage() {
       )}
 
       {phase === "done" && (
-        <div className="rounded-2xl border border-[--line] bg-[--panel] p-6 shadow-xl">
-          <p className="text-base text-[--foreground]">
+        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
+          <p className="text-base text-(--foreground)">
             {lastOutcome === "wrapped-up" ? C.wrappedUpNote : C.stoppedEarlyNote}
           </p>
-          <p className="mt-4 text-sm text-[--muted-strong]">
+          <p className="mt-4 text-sm text-(--muted-strong)">
             {summary.sessionsToday > 0
               ? `${summary.minutesToday} min ${C.summaryToday} across ${summary.sessionsToday} ${
                   summary.sessionsToday === 1 ? "session" : "sessions"

@@ -155,7 +155,7 @@ export default function ReviewPage() {
                     cy="50"
                   />
                   <circle
-                    className="text-[--accent] transition-all duration-700 ease-out"
+                    className="text-(--accent) transition-all duration-700 ease-out"
                     strokeWidth="10"
                     strokeDasharray={`${2 * Math.PI * 40}`}
                     strokeDashoffset={`${2 * Math.PI * 40 * (1 - completionPercent / 100)}`}
@@ -322,7 +322,7 @@ export default function ReviewPage() {
                         <span className="text-slate-500 text-[10px] sm:text-xs">Logged {item.date}</span>
                       </div>
                       <p className="text-slate-600 italic">“{item.reason}”</p>
-                      <div className="mt-2 text-xs flex items-start gap-1 text-[--accent] font-medium">
+                      <div className="mt-2 text-xs flex items-start gap-1 text-(--accent) font-medium">
                         <span aria-hidden="true">💡</span>
                         <span>{item.recommendation}</span>
                       </div>

@@ -206,17 +206,17 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         aria-describedby={introId}
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}
-        className="first-run-dialog rounded-2xl border border-[--line] bg-[--panel] p-6 shadow-xl"
+        className="first-run-dialog rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl"
         data-testid="onboarding-container"
       >
-        <div className="mb-4 flex items-center justify-between border-b border-[--line] pb-3">
+        <div className="mb-4 flex items-center justify-between border-b border-(--line) pb-3">
           <div>
             <p className="eyebrow">Onboarding</p>
             <h2 id={titleId} className="text-xl font-semibold tracking-tight">Personalize your coach</h2>
-            <p id={introId} className="mt-1 text-xs text-[--muted]">Pick a path now. You can fine-tune anytime after your first loop.</p>
+            <p id={introId} className="mt-1 text-xs text-(--muted)">Pick a path now. You can fine-tune anytime after your first loop.</p>
           </div>
           <button
-            className="text-xs font-semibold uppercase tracking-wider text-[--muted] hover:text-[--foreground]"
+            className="text-xs font-semibold uppercase tracking-wider text-(--muted) hover:text-(--foreground)"
             type="button"
             onClick={handleSkip}
           >
@@ -230,18 +230,18 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
               key={step}
               className={`h-1.5 w-10 rounded-full transition-all duration-300 ${
                 activeStep === step
-                  ? "bg-[--accent] w-14"
+                  ? "bg-(--accent) w-14"
                   : step < activeStep
-                  ? "bg-[--accent]/40"
-                  : "bg-[--line]"
+                  ? "bg-(--accent)/40"
+                  : "bg-(--line)"
               }`}
             />
           ))}
         </div>
 
-        <div className="mb-5 rounded-xl border border-[--line] bg-[--field] px-3 py-2.5 text-xs sm:text-sm">
-          <p className="font-semibold uppercase tracking-wide text-[--muted]">Your defaults</p>
-          <p className="mt-1 text-[--muted-strong]">
+        <div className="mb-5 rounded-xl border border-(--line) bg-(--field) px-3 py-2.5 text-xs sm:text-sm">
+          <p className="font-semibold uppercase tracking-wide text-(--muted)">Your defaults</p>
+          <p className="mt-1 text-(--muted-strong)">
             Focus: <span className="font-semibold">{defaultFocus}</span> | Dose: <span className="font-semibold capitalize">{defaultDose}</span> | Theme: <span className="font-semibold capitalize">{defaultTheme}</span>
           </p>
         </div>
@@ -260,21 +260,21 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                   type="button"
                   className={`rounded-xl border p-3 text-left transition-all ${
                     selectedPresetId === preset.id
-                      ? "border-[--accent] bg-[--accent]/10"
-                      : "border-[--line] bg-[--field] hover:border-[--muted]"
+                      ? "border-(--accent) bg-(--accent)/10"
+                      : "border-(--line) bg-(--field) hover:border-(--muted)"
                   }`}
                   onClick={() => applyPreset(preset)}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold">{preset.label}</p>
                     {preset.recommended ? (
-                      <span className="rounded-full border border-[--accent] bg-[--accent]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[--accent]">
+                      <span className="rounded-full border border-(--accent) bg-(--accent)/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-(--accent)">
                         Recommended
                       </span>
                     ) : null}
                   </div>
-                  <p className="mt-1 text-xs text-[--muted]">{preset.description}</p>
-                  <p className="mt-2 text-[10px] uppercase tracking-wide text-[--muted]">
+                  <p className="mt-1 text-xs text-(--muted)">{preset.description}</p>
+                  <p className="mt-2 text-[10px] uppercase tracking-wide text-(--muted)">
                     {preset.defaultFocus} • {preset.defaultDose} • {preset.defaultTheme}
                   </p>
                 </button>
@@ -286,8 +286,8 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 <button
                   key={area}
                   type="button"
-                  className={`category-chip justify-center text-center w-full focus:ring-2 focus:ring-[--accent] ${
-                    defaultFocus === area ? "is-selected border-[--accent]" : "bg-[--field] border-transparent"
+                  className={`category-chip justify-center text-center w-full focus:ring-2 focus:ring-(color:--accent) ${
+                    defaultFocus === area ? "is-selected border-(--accent)" : "bg-(--field) border-transparent"
                   }`}
                   onClick={() => {
                     setDefaultFocus(area);
@@ -314,7 +314,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 Quick start now
               </button>
             </div>
-            <p className="text-xs text-[--muted]">You can adjust focus, dose, or theme anytime from Focus.</p>
+            <p className="text-xs text-(--muted)">You can adjust focus, dose, or theme anytime from Focus.</p>
           </section>
         )}
 
@@ -331,8 +331,8 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                   type="button"
                   className={`flex flex-col items-center gap-1 rounded-xl border p-4 text-center transition-all ${
                     defaultDose === option
-                      ? "border-[--accent] bg-[--accent]/10 text-[--foreground]"
-                      : "border-[--line] bg-[--field] text-[--muted] hover:border-[--muted]"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--foreground)"
+                      : "border-(--line) bg-(--field) text-(--muted) hover:border-(--muted)"
                   }`}
                   onClick={() => setDefaultDose(option)}
                 >
@@ -400,8 +400,8 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                   type="button"
                   className={`flex flex-col items-center gap-1.5 rounded-xl border p-5 text-center transition-all ${
                     defaultTheme === themeOption
-                      ? "border-[--accent] bg-[--accent]/10 text-[--foreground]"
-                      : "border-[--line] bg-[--field] text-[--muted] hover:border-[--muted]"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--foreground)"
+                      : "border-(--line) bg-(--field) text-(--muted) hover:border-(--muted)"
                   }`}
                   onClick={() => setDefaultTheme(themeOption)}
                 >

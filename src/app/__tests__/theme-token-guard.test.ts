@@ -6,7 +6,7 @@
  * light/dark rendering defects, each a literal (non-token) Tailwind color
  * class that slipped past the theme system unnoticed:
  *   1. `hover:bg-slate-800` on four back/reset nav buttons (ambient, breathe
- *      x2, challenges) paired with the theme-aware `text-[--foreground]`
+ *      x2, challenges) paired with the theme-aware `text-(--foreground)`
  *      token - fine in dark mode, near-invisible dark-on-dark hover text the
  *      moment a user switches to light mode.
  *   2. subscription-guard.tsx's paywall screens, fully hardcoded dark
@@ -159,7 +159,7 @@ const INTENTIONAL_EXCEPTIONS: ReadonlyArray<{
     file: "src/app/page.tsx",
     className: "text-slate-400",
     reason:
-      "the 'Continuous Growth Loop' panel's dark:text-slate-400 (line ~420) looks like the same defect shape as the 5 sibling dark:text-slate-400 sites fixed 2026-07-20 (pricing/page.tsx x3, review/page.tsx x2), but traced through the real cascade it is not: this panel's own immediate background (`bg-slate-50 dark:bg-slate-900/40`) and border (`border-slate-200 dark:border-slate-800`) are themselves OS-tracked dark: literals (pre-existing BASELINE_DEBT for this file, not theme tokens), gated by the identical `prefers-color-scheme` media query as this text class. A media query is a single boolean per page load, so the text's dark: and the background's dark: always fire together - text and its own background can never go out of sync the way the 5 fixed sites' did (those sit inside `.panel`/`bg-[--field]` containers, i.e. real theme tokens keyed to data-theme, not dark:). Verified across all 4 data-theme x OS combinations (2026-07-20): every combo keeps this text legible against its own immediate background. The remaining issue - this one widget visually flips independent of the rest of the page when data-theme and OS disagree - is a restatement of the file's own already-baselined bg-slate-900/border-slate-800 debt, not a new contrast defect, so deleting or token-swapping the text alone would not fix anything and could regress the common dark+dark case (slate-500 is not tuned for a dark background).",
+      "the 'Continuous Growth Loop' panel's dark:text-slate-400 (line ~420) looks like the same defect shape as the 5 sibling dark:text-slate-400 sites fixed 2026-07-20 (pricing/page.tsx x3, review/page.tsx x2), but traced through the real cascade it is not: this panel's own immediate background (`bg-slate-50 dark:bg-slate-900/40`) and border (`border-slate-200 dark:border-slate-800`) are themselves OS-tracked dark: literals (pre-existing BASELINE_DEBT for this file, not theme tokens), gated by the identical `prefers-color-scheme` media query as this text class. A media query is a single boolean per page load, so the text's dark: and the background's dark: always fire together - text and its own background can never go out of sync the way the 5 fixed sites' did (those sit inside `.panel`/`bg-(--field)` containers, i.e. real theme tokens keyed to data-theme, not dark:). Verified across all 4 data-theme x OS combinations (2026-07-20): every combo keeps this text legible against its own immediate background. The remaining issue - this one widget visually flips independent of the rest of the page when data-theme and OS disagree - is a restatement of the file's own already-baselined bg-slate-900/border-slate-800 debt, not a new contrast defect, so deleting or token-swapping the text alone would not fix anything and could regress the common dark+dark case (slate-500 is not tuned for a dark background).",
   },
 ];
 

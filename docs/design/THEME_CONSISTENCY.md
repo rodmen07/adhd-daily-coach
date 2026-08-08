@@ -72,10 +72,31 @@ is opt-in via `ThemeToggle`, persisted to `localStorage` under
 `html[data-theme="light"]` override redefine a set of CSS custom properties
 (`--background`, `--foreground`, `--panel`, `--field`, `--line`, `--accent`,
 `--muted`, `--surface-strong`, plus success/warning/danger surface-and-strong
-pairs). Most components consume these correctly via Tailwind v4's
-arbitrary-value syntax (`bg-[--panel]`, `text-[--muted]`,
-`border-(--line)`), which is theme-safe by construction: the variable itself
-changes per theme, not the class name.
+pairs). Most components consume these via Tailwind v4's CSS-variable
+shorthand (`bg-(--panel)`, `text-(--muted)`, `border-(--line)`), which is
+theme-safe by construction: the variable itself changes per theme, not the
+class name.
+
+> **CORRECTED 2026-08-08 (QA increment).** This paragraph previously read
+> "consume these **correctly** via Tailwind v4's arbitrary-value syntax
+> (<code>bg-&#91;--panel&#93;</code>, <code>text-&#91;--muted&#93;</code>,
+> `border-(--line)`)" — it named the **Tailwind v3 bracket form** and called
+> it correct and theme-safe. It is neither under Tailwind v4:
+> <code>bg-&#91;--panel&#93;</code> compiles to `background-color: --panel`,
+> a bare dashed-ident where a `<color>` is required, so the declaration is
+> invalid and a conforming parser drops it — the element is painted by
+> nothing, and `border-color` in particular then falls back to its initial
+> value `currentColor`. Only `X-(--token)` (or the explicit
+> `X-[var(--token)]`) compiles to `var(--token)`. 258 occurrences of the
+> bracket form had shipped across 12 source files, including sections 3 and 4
+> of this very document, which prescribed it as the fix for a DIFFERENT
+> invisible-rendering bug. All of them were rewritten in the same increment,
+> and `src/app/__tests__/css-var-syntax-guard.test.ts` now fails the required
+> gate if the form returns to `src/`. Prose is deliberately NOT guarded: a
+> doc has to be able to name the wrong form in order to teach it, which is
+> what this note and `agents/dev-agent/PROJECT_MEMORY.md:11` both do. That
+> dev-agent memory line had recorded the rule correctly all along — it was
+> written down and ungated, which is exactly why this still shipped.
 
 **Where it isn't.** A second, narrower mechanism exists for a small,
 hand-maintained list of literal Tailwind color classes, at
@@ -118,7 +139,7 @@ resolved hex values, not hypothetical:**
 1. `hover:bg-slate-800` on three "back to dashboard" nav buttons
    (`ambient/page.tsx:88`, `breathe/page.tsx:79` and `:123`,
    `challenges/page.tsx:81`). In dark mode this is fine: a dark hover
-   background under `text-[--foreground]` (`#e8edf6`, light) reads clearly.
+   background under `text-(--foreground)` (`#e8edf6`, light) reads clearly.
    In light mode, `--foreground` resolves to `#1c2333` (near-black) while the
    hover background stays the same unpatched `slate-800` (`#1e293b`, also
    near-black) - dark text on a dark hover background, invisible or
@@ -145,9 +166,9 @@ design (dimming behind a modal reads correctly in both themes), not a defect.
 ## 3. Technical plan
 
 - **Fix 1:** replace the three `hover:bg-slate-800` occurrences with a
-  theme-aware token. **Default:** `hover:bg-[--panel]` (already the next
+  theme-aware token. **Default:** `hover:bg-(--panel)` (already the next
   panel-level surface color one step darker/lighter than
-  `bg-[--surface-strong]`, the base these buttons already use one class
+  `bg-(--surface-strong)`, the base these buttons already use one class
   earlier in the same string). **Overridable:** the implementer may pick a
   different existing token (or `hover:brightness-90` / `hover:opacity-80`) if
   it reads better against both themes' actual hex values at implementation
@@ -166,7 +187,7 @@ design (dimming behind a modal reads correctly in both themes), not a defect.
   this item - the point is that it becomes a recorded decision instead of an
   unexamined default.
 - **Fix 3:** replace `focus/page.tsx`'s `bg-white/70` with a theme token
-  consistent with its parent (default: `bg-[--field]/80` or equivalent).
+  consistent with its parent (default: `bg-(--field)/80` or equivalent).
 - **The regression guard (what makes this a milestone, not a one-off
   cleanup):** add a new test that reads two live sources and fails when they
   disagree, the same shape as `journal-store.test.ts`'s
