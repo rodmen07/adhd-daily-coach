@@ -380,6 +380,45 @@ export default function Home() {
     },
   ];
 
+  /**
+   * The second door for every route the header was the only way into.
+   *
+   * Before v0.23, six of the twelve primary-nav routes were linked from nowhere
+   * else in the product, and four of those six had no keyboard chord either, so
+   * a pill in a header that wraps to four rows on a phone was their entire
+   * affordance (`docs/design/NAV_SHAPE.md` section 1c, measured at `776ab2b`).
+   * `src/app/__tests__/route-door-census.test.ts` fails from now on if any
+   * primary-nav route goes back to having one door.
+   *
+   * The hrefs are written as literals rather than read from `src/lib/routes.ts`
+   * on purpose: a link generated from the registry is the navigation by another
+   * name, and this section exists precisely to be an independent second source.
+   * The census does not count derived hrefs for the same reason.
+   *
+   * Deliberately below the action rail and deliberately not a rail itself: the
+   * rail is the day's deliberate sequence and these are standing places to go.
+   */
+  const moreWaysIn = [
+    {
+      group: "Calm tools",
+      caption: "Open whenever you need them. Nothing here expires.",
+      links: [
+        { label: "Task slicer", href: "/slicer", hint: "Break one overwhelming task down" },
+        { label: "Ambient", href: "/ambient", hint: "Quiet sound for working" },
+        { label: "Breathe", href: "/breathe", hint: "A guided minute" },
+        { label: "Challenges", href: "/challenges", hint: "Small optional nudges" },
+      ],
+    },
+    {
+      group: "Looking back",
+      caption: "Only when you want it. Nothing is counted against you.",
+      links: [
+        { label: "Trends", href: "/trends", hint: "How the weeks have gone" },
+        { label: "Journal", href: "/journal", hint: "What you wrote down" },
+      ],
+    },
+  ];
+
   const completionPercent = weeklySummary ? Math.round(weeklySummary.completionRate * 100) : 0;
   const hasWeeklyProgress = completionPercent > 0;
   const weeklyMomentum =
@@ -645,6 +684,42 @@ export default function Home() {
               ))}
             </div>
           </div>
+
+          <section className="mt-4" aria-labelledby="more-ways-in-heading">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              {/* A real heading, not the styled <p> the Action rail label uses:
+                  this section is a list of destinations, so a screen-reader
+                  user needs to be able to jump to it and to its two groups. */}
+              <h2
+                className="text-xs font-semibold uppercase tracking-wide text-slate-600"
+                id="more-ways-in-heading"
+              >
+                More ways in
+              </h2>
+              <p className="text-xs text-slate-600">Everything else the app can do, from here.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {moreWaysIn.map((section) => (
+                <article className="action-card" key={section.group}>
+                  <h3 className="eyebrow !mb-0">{section.group}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{section.caption}</p>
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {section.links.map((link) => (
+                      <li key={link.href}>
+                        <Link
+                          className="secondary-button flex items-baseline justify-between gap-3 !px-3 !py-2 text-sm"
+                          href={link.href}
+                        >
+                          <span className="font-semibold">{link.label}</span>
+                          <span className="text-xs text-slate-600">{link.hint}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </section>
 
           <ReminderSettingsPanel
             storageScope={storageScope}

@@ -1,7 +1,10 @@
 # v0.23 - A front door that fits: the header stops being the only way in, and stops taking a third of the screen
 
 Status: **PROPOSED 2026-08-08** by the product-role increment that defined it.
-Nothing here has shipped.
+**PR1 SHIPPED 2026-08-08** (D5 and D8: the six second doors on the dashboard,
+plus `src/app/__tests__/route-door-census.test.ts` and the guard-count word).
+PR2 - the header collapse, D2/D3/D4/D6/D7 and the `0.23.0` bump - has NOT
+shipped, so every measurement in section 1a is still the live one.
 
 Every decision below is an **overridable default**: silence ships it, one word
 from the user flips it. This document is the product analyst's proposal, not a
