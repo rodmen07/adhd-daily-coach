@@ -1788,13 +1788,163 @@ surface), and promoting `e2e` to a required context (a DevSecOps item with its
 own evidence bar - and v0.25 adds e2e assertions, so it should not also be the
 increment that decides they gate).
 
+### v0.26 - The last row: three actions stop costing a row of their own (DEFINED, not started)
+
+Defined 2026-08-08 (product-role increment), the milestone after v0.25. Design
+doc: [docs/design/HEADER_ACTIONS.md](design/HEADER_ACTIONS.md). Every premise
+below was measured in chromium against the **real static export** at tree
+`1b7d92e`, with the commands named in that document's section 1 - not read out
+of the source, and not inherited from the backlog entries that seeded it. One
+inherited claim did not survive the measurement, and it is recorded rather than
+quietly corrected (see below). Every decision is an overridable default.
+
+**This is not a fifth nav milestone.** It touches no route, no registry field,
+no chord, no panel and no title; `route-title-contract`, `route-door-census`,
+`route-registry-guard` and `e2e/route-identity.spec.ts` must pass byte-for-byte
+unchanged through both PRs (D8). It is the one strip of the header that v0.23,
+v0.24 and v0.25 each explicitly refused to touch, all three recording the same
+reason: the sync/help/theme cluster is a separate surface with its own tests
+and its own before/after obligation, and folding it in would make the header
+measurement unattributable - a ceiling that moved for two reasons proves
+neither. That is not an objection to the work; it is a description of what the
+work needs, and this milestone supplies exactly those three things.
+
+**The header is 137.9 px on every phone width, and 39.2% of it is three
+controls.** Measured at 375x667 (20.7% of the viewport), 412x823 (16.8%),
+360x740 (18.6%) and 67.0 px at 1280x720 (9.3%). The phone figure reconciles
+exactly: `10` padding + `18.7` title + `10` gap + `34.2` nav row + `8` gap +
+`46.0` cluster + `10` padding + `1` border. The cluster's row therefore costs
+**54.0 px** - its own height plus the gap that exists only because it is there.
+
+**The tallest thing in the app's chrome is one control.** The cluster measures
+327.1 x 46.0 and decomposes into `SyncStatusBadge` 129.5 x 25.0,
+`KeyboardHelp` 30.0 x 30.0 and `ThemeToggle` **143.6 x 46.0**. The nav row -
+twelve routes' worth of front door - is 34.2 px. The theme toggle is 46.0
+because `.secondary-button` wraps a full text label in `padding: 10px 16px`.
+`KeyboardHelp` is the counter-example that makes the fix cheap: a 30 x 30
+circular control with an accessible name and no visible text, already shipped,
+already in this same cluster, already styled in `globals.css:1100-1120`.
+
+**FALSIFIED by the measurement: "the cluster is NOT the binding constraint on
+desktop, so any future work here buys ~40 px on phones only."** That is what
+the PR #159 backlog item recorded and what PR #162 confirmed, and it is wrong.
+At 1280x720 the header is one row of title 18.7, nav 34.2 and cluster 46.0, and
+the shell is 67.0 = `10 + 46 + 10 + 1`. The cluster is the **only** thing above
+padding that sets the desktop height; the desktop header is the theme toggle
+plus padding plus a border. The claim is quoted rather than edited away, per
+this file's standing convention, and the backlog item carries the same
+correction made in the increment that measured it. The consequence is that this
+milestone has **two independent wins**, and PR1 delivers the desktop one before
+any layout changes at all.
+
+**The cluster cannot join the title row until it shrinks**, which is why this
+is two PRs and not one. `.site-nav-inner`'s content box is 32 px narrower than
+the viewport, so beside a 131.8 px title and a 10 px gap there is 201.2 px of
+room at 375, 238.2 at 412 and **186.2 at 360** - the binding width - against a
+cluster that is 327.1. Dependency order, not sizing.
+
+PR1 (the controls get compact): component and CSS only, no DOM restructure.
+`ThemeToggle` drops its visible label and is sized like `.keyboard-help-trigger`
+- the `◐`/`◑` glyph it already renders through `.theme-toggle::before` stays,
+as do its `aria-label`, `aria-pressed`, `aria-expanded` and the whole two-step
+light-mode confirmation (D3). `SyncStatusBadge` keeps its word above the
+`56rem` cap and collapses to its dot plus visually hidden text below it, with
+the same accessible name at both widths (D4). Predicted 137.9 -> ~125.9 px on
+phones and **67.0 -> ~55.2 px on desktop**.
+
+PR2 (the row goes away): the cluster leaves `.site-nav-actions` and shares one
+line with the title, making the header two rows at every width. Predicted
+~125.9 -> ~99.2 px on phones. Both PRs lower `e2e/nav-shape.spec.ts`'s own
+`headerCeiling` values to their measured figure plus ~9% - the slack v0.23
+chose - in the same commit that moves the number (D5), because a gate left at
+150 / 150 / 100 stops describing the shape it guards.
+
+**No count obligation, and that is a decision rather than an accident (D6).**
+`roadmap-guard-count.test.ts` scans exactly `src/__tests__` and
+`src/app/__tests__` (`GUARD_DIRS`, line 50). The unit assertions extend the
+existing `src/app/components/__tests__/` suites, which is not one of those
+directories, so the **Twenty-one** count word and its names list do not move.
+If a new suite is added under a scanned directory instead, the PR that adds the
+file owes the count word `Twenty-one -> Twenty-two` and the new name in the
+same commit - but `NUMBER_WORDS` already carries `"twenty-two": 22` and the
+claim regex is already `[\w-]+`, so unlike v0.25 no parser change is needed.
+
+Done when, each clause checkable by CI rather than by opinion and none of them
+an existence grep:
+
+1. PR1: in chromium against the real export, the cluster measures <= 36 px tall
+   and <= 190 px wide at 360x740, and the theme control's own box is <= 36 px
+   tall. The width clause is what makes PR2 possible, asserted in PR1 so PR2
+   cannot discover it late.
+2. PR1: `.site-nav-shell` measures <= 60 px at 1280x720, down from 67.0, with
+   the 1280 `headerCeiling` lowered in the same commit.
+3. PR1: the theme control's accessible name is still exactly
+   `Switch to light mode` / `Switch to dark mode`, asserted by an
+   accessible-name query rather than by text content, and the existing
+   confirmation-flow assertions in
+   `src/app/components/__tests__/theme-toggle.test.tsx` pass unchanged - or the
+   PR states which one changed and why.
+4. PR1's control: revert only the compact sizing, rebuild, rerun, quote the
+   named red (the cluster back at 46.0 px), with the perturbation confirmed
+   applied by `git diff --numstat` plus a `grep -c` before the red is claimed.
+5. PR2: `.site-nav-shell` measures <= 108 px at 375x667, 412x823 and 360x740,
+   down from 137.9, with those ceilings lowered in the same commit.
+6. PR2: at all three phone widths the title and the cluster share ONE `top`
+   coordinate and `.site-nav-links`' children share one `top` of their own -
+   two rows, asserted as distinct coordinates rather than as a pixel count,
+   which is the clause a smaller font cannot satisfy. The no-sideways-scroll
+   clause stays green at every viewport.
+7. PR2's control: restore the previous DOM nesting, rebuild, rerun, quote the
+   red naming the third row.
+8. The sync badge's accessible name at a 375-wide render and at a 1280-wide
+   render are equal and non-empty, and that name carries the explanation the
+   `title` attribute holds today - asserted in jsdom by accessible name, so it
+   fails if the collapse drops the text instead of hiding it.
+9. The pinned CI gate is green on both PRs (`npm run lint`, `npm run
+   typecheck`, `npm run build`, `npm audit --audit-level=high`, `npm run
+   test:coverage`, Node 24 per `.github/workflows/ci.yml`), both required
+   contexts `lint-and-build` and `lighthouse` pass, and `e2e` stays green. The
+   header sits above the fold on every route, so a layout change that regresses
+   CLS is caught by the Web Vitals gate that already exists.
+10. After PR2: `package.json` reads `0.26.0` with both `package-lock.json`
+    copies matching (`lockfile-version-parity`), this heading reads DONE
+    (`roadmap-milestone-status`), and the Current-state version sentence reads
+    `0.26.0` (`roadmap-version-claim`), all in the same commit.
+11. Every behavioural clause is proven by a control whose perturbation is
+    confirmed applied and whose named red line is quoted, with the
+    implementation committed before the first perturbation.
+12. `route-title-contract`, `route-door-census`, `route-registry-guard` and
+    `e2e/route-identity.spec.ts` are unchanged files and green in both PRs.
+
+Chosen over, with the trail (full reasoning in the design doc section 5):
+moving the three actions into the "More" panel instead (a smaller edit that
+predicts ~83.9 px, rejected because the sync badge is a persistent state
+indicator on a local-first product whose paywall sells sync, and an indicator
+behind a menu is not an indicator - recorded as D2a, which the owner may flip
+for help and theme alone), per-route descriptions and Open Graph tags (thirteen
+sentences of editorial copy is an owner decision; declined by v0.25 D6 for the
+same reason and unchanged, and it is the strongest v0.27 candidate if the owner
+supplies or approves the copy), the two-Escape-owners interaction filed by
+PR #166 (about the nav disclosure, which D8 forbids touching), the `src/app/**`
+behaviour-coverage finding filed by PR #158 and the rendered-DOM theme-guard
+gap filed by PR #165 (both QA-stream, own cadence slot), the surviving
+`background-color: --var` filed by PR #165 (emitted from `agents/dev-agent/`,
+which roadmap work may never edit), `navGroupOrder()`'s second global read filed
+by PR #164 (a watched seam, not a defect), FCM push (console-gated, re-checked
+at this definition and unchanged), the silent-migration product question filed
+by PR #153 (own decision, unrelated surface), and promoting `e2e` to a required
+context (a DevSecOps item with its own evidence bar - now eligible on that bar,
+but a dev milestone should not be the increment that decides its own gate
+becomes required).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.25 have all landed, nothing above this section is defined, and the
-dev queue is therefore EMPTY - the next product slot defines v0.26 rather
-than a dev slot picking a direction unilaterally.** v0.22
+through v0.25 have all landed and v0.26 is DEFINED above (2026-08-08) but not
+started, so the dev queue holds exactly its PR1 - a dev slot picks that up
+rather than picking a direction unilaterally, and the direction it does not
+have to pick is recorded in `docs/design/HEADER_ACTIONS.md`.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
@@ -1825,7 +1975,7 @@ announcer now speaks the destination, which is the half no file on disk can
 be read for.
 This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected twenty-one times now, three on
+therefore is most likely to go stale. (Corrected twenty-two times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -1852,7 +2002,15 @@ flips the heading and this sentence together for the fourth milestone running
 and repairs PR1's uncounted edit in the same pass. **The lesson PR1's miss
 teaches is that the counter is part of the sentence, not commentary on it:**
 any edit to the opening clause owes this number, and a completion PR is not
-the only kind of edit that touches it.
+the only kind of edit that touches it. This **twenty-second** is the
+2026-08-08 product pass that defined v0.26 hours after v0.25 shipped, and it
+is the first edition written by a run that read PR1's lesson BEFORE editing
+rather than after: the clause it retired - "nothing above this section is
+defined, and the dev queue is therefore EMPTY, the next product slot defines
+v0.26" - was true when v0.25 PR2 wrote it and false the moment the v0.26
+section above existed, which is the same shape as the sentence the nineteenth
+edition retired, one milestone earlier. A sentence that describes the queue is
+falsified by filling the queue, so the definition PR owes it every time.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
