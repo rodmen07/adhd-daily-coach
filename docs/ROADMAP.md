@@ -89,7 +89,7 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Seventeen** guard tests now
+  **Eighteen** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -116,7 +116,11 @@ is written next to.
   `roadmap-version-claim` (v0.23 definition, which reads this section's
   "package.json reads x.y.z" sentence against `package.json` itself, the claim
   that had gone stale four times because the milestone-status guard reads
-  headings and never saw it).
+  headings and never saw it), and `route-door-census` (v0.23 PR1, which reads
+  the registry's `inPrimaryNav` entries against every href literal in the
+  shipped `src/app` tree with the two navigation surfaces excluded, so a route
+  whose only affordance is a header pill fails the gate - six of the twelve
+  were in exactly that state when it was written).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition

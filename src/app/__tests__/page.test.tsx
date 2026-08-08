@@ -86,6 +86,36 @@ describe("Dashboard page", () => {
     });
   });
 
+  // The census guard (src/app/__tests__/route-door-census.test.ts) reads href
+  // LITERALS out of the source, so on its own it is satisfied by a literal in a
+  // branch that never renders. This is the half it cannot fake: the six routes
+  // that had no door outside the header before v0.23 must be real anchors in
+  // the real DOM, with the real href, on the dashboard a first-time visitor
+  // meets with no plan and no account.
+  it("gives the six header-only routes a real second door on the dashboard (v0.23 PR1)", async () => {
+    render(<Home />);
+
+    expect(screen.getByRole("heading", { name: "More ways in" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Calm tools" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Looking back" })).toBeTruthy();
+
+    const doors: [string, string][] = [
+      ["Task slicer", "/slicer"],
+      ["Ambient", "/ambient"],
+      ["Breathe", "/breathe"],
+      ["Challenges", "/challenges"],
+      ["Trends", "/trends"],
+      ["Journal", "/journal"],
+    ];
+
+    await waitFor(() => {
+      for (const [label, href] of doors) {
+        const link = screen.getByRole("link", { name: new RegExp(`^${label}`) });
+        expect(link.getAttribute("href")).toBe(href);
+      }
+    });
+  });
+
   it("keeps onboarding closed once a real preference record exists", async () => {
     window.localStorage.setItem(
       "calm-daily-coach:onboarding",
