@@ -1,13 +1,23 @@
 # Web Vitals baseline and regression gate (v0.18,
 # docs/design/WEB_VITALS_BASELINE.md).
 #
-# Runs on every PR and every main push (design decision D5) and is
-# deliberately NOT a required branch-protection context (design decision D4):
-# a browser-timing gate must earn requiredness through observed stability
-# first, exactly the precedent security-audit.yml (PR #111) and e2e.yml
-# (PR #126) already set here. Branch protection stays exactly
-# ["lint-and-build"], and a follow-up product item owns the decision to
-# promote this once the baseline has held for a while.
+# Runs on every PR and every main push (design decision D5).
+#
+# THIS IS A REQUIRED BRANCH-PROTECTION CONTEXT as of 2026-08-08 (PR #161).
+# It shipped deliberately NOT required (design decision D4), because a
+# browser-timing gate must earn requiredness through observed stability first,
+# exactly the precedent security-audit.yml (PR #111) and e2e.yml (PR #126) set
+# here. It earned it: 58 runs since 2026-08-01, one failure, and that one on
+# the PR branch that introduced this file before it merged - 55 consecutive
+# green runs post-merge across 7 days. Required contexts are now
+# ["lint-and-build", "lighthouse"], declared in .github/required-checks.json
+# and held to this file by src/__tests__/required-checks-contract.test.ts.
+#
+# Two consequences of being required, both load-bearing for anyone editing
+# this file: the `pull_request:` trigger below must stay unconditional (a
+# `paths:` filter here would wedge every PR that does not match it), and the
+# job's `name: lighthouse` is now a protected string - renaming it without
+# updating branch protection wedges every PR the same way.
 #
 # WHY THIS IS ITS OWN FILE rather than steps appended to deploy-pages.yml,
 # which is where the design doc's technical plan put it: deploy-pages.yml

@@ -69,8 +69,22 @@ way the tool intends instead: `numberOfRuns: 3` with the median run asserted.
 
 **D4 (fixed, per design precedent): CI enforcement posture.**
 
-- The Lighthouse CI job is a **non-blocking check** that posts to the PR (it never becomes a required context like `lint-and-build`). Why: establishing a baseline on a commit that is already merged to `main` means the first run will capture the current artifact's real performance, not some aspirational target. A blocking gate on the _first_ run would fail every subsequent PR until the baseline is manually tuned, which is backwards — the baseline captures what we ship today, then we can measure regressions going forward.
-- Once a baseline is established and stabilizes, a future product increment can propose **promoting it to required** if desired.
+- The Lighthouse CI job ships as a **non-blocking check** that posts to the PR (it does not become a required context like `lint-and-build` on day one). Why: establishing a baseline on a commit that is already merged to `main` means the first run will capture the current artifact's real performance, not some aspirational target. A blocking gate on the _first_ run would fail every subsequent PR until the baseline is manually tuned, which is backwards — the baseline captures what we ship today, then we can measure regressions going forward.
+- Once a baseline is established and stabilizes, a future increment can propose **promoting it to required**.
+
+> **CLOSED 2026-08-08 (PR #161, DevSecOps increment).** `lighthouse` is now a
+> required context. The stability D4 asked for was measured rather than
+> asserted: `gh run list --workflow=lighthouse.yml --limit 200` returns 58 runs
+> since 2026-08-01 with exactly one `failure`, and that one is run
+> `30707624249` on `autodev/v0.18-lighthouse-baseline` — a red on the PR branch
+> that introduced the workflow, before it merged. Every run after the merge
+> commit (`30708005128`, 2026-08-01T16:23:01Z) is green: 55 consecutive, 28 of
+> them main pushes, across 7 days, with zero noise-only reds. The
+> `numberOfRuns: 5` tightening this file held in reserve for flake was therefore
+> never needed and is NOT applied. Required contexts are now
+> `["lint-and-build", "lighthouse"]`, declared in
+> `.github/required-checks.json` and held to the workflows by
+> `src/__tests__/required-checks-contract.test.ts`.
 
 **D5 (overridable): reporting cadence.**
 
@@ -141,7 +155,11 @@ Future milestones can reference the baseline and assert "we reduced LCP by X ms"
 - [x] Quality gate stays green
 - [x] The Lighthouse CI check is non-blocking per D4 (appears in PR checks but
       is NOT in `branches.main.protection.required_status_checks.contexts`)
-- [x] Branch protection remains `["lint-and-build"]` unchanged
+      — true as shipped by PR #136; **superseded 2026-08-08 by PR #161**, which
+      promoted it on the evidence D4 asked for (see the CLOSED note in section 2)
+- [x] Branch protection remains `["lint-and-build"]` unchanged — true as
+      shipped by PR #136; **now `["lint-and-build", "lighthouse"]`** since
+      2026-08-08
 - [x] The gate is proven able to FAIL, not merely observed passing (section 7)
 
 ## 5. Overridable defaults summary

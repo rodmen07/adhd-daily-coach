@@ -55,6 +55,16 @@ consolidated quality gate. `security-audit.yml` (PR #111) runs daily and on its
 own PRs without being a required context, precisely because a new surface with
 an external failure mode must earn requiredness rather than assume it.
 
+> **Still the precedent, but the set has moved (2026-08-08, PR #161).** Required
+> contexts are now `["lint-and-build", "lighthouse"]`: the Web Vitals gate
+> earned requiredness exactly the way this fact describes, on 55 consecutive
+> green runs. `e2e` is still observational and is the obvious next candidate —
+> it runs unfiltered on every PR, so it is eligible; it needs the same evidence.
+> The live set is declared in `.github/required-checks.json`. Note that
+> `security-audit.yml` can never be promoted: its `pull_request` trigger is
+> `paths`-filtered to itself, so most PRs never receive that check, and
+> `required-checks-contract.test.ts` now fails the gate if anything tries.
+
 **Fact E - vitest currently owns every test-shaped filename.**
 `vitest.config.ts` sets no `test.include`, so vitest's default glob claims any
 `*.test.*` / `*.spec.*` file anywhere outside `node_modules`. Playwright specs

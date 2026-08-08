@@ -1,0 +1,61 @@
+{
+  "readme": [
+    "The declared branch-protection contract for `main`. GitHub owns the live setting;",
+    "this file is the committed claim about it, and src/__tests__/required-checks-contract.test.ts",
+    "holds that claim to the workflows in this repository so a required context can never name",
+    "something no pull request receives.",
+    "",
+    "The failure this exists to prevent: a required context whose name matches no check any PR",
+    "posts wedges EVERY pull request forever, and nothing in the repo objects. The near miss shape",
+    "is a job in a workflow with a `paths:` filter (security-audit.yml) or one that never runs on",
+    "pull_request at all (deploy-pages.yml, dev-agent-runner.yml) - those report SKIPPED or nothing.",
+    "",
+    "To reconcile this file against the live setting:",
+    "  gh api repos/rodmen07/adhd-daily-coach/branches/main/protection --jq '.required_status_checks.contexts'",
+    "To change the live setting (this file must change in the same PR):",
+    "  gh api -X PATCH repos/rodmen07/adhd-daily-coach/branches/main/protection/required_status_checks -f 'contexts[]=...' -F strict=true"
+  ],
+  "protectedBranch": "main",
+  "required": [
+    {
+      "context": "lint-and-build",
+      "postedBy": "ci.yml",
+      "kind": "status",
+      "requiredSince": "2026-07-19",
+      "why": "The consolidated Quality Gate: lint, typecheck, build, `npm audit --audit-level=high`, and the full vitest suite. The name is the legacy pre-consolidation one, kept because it is the protected context; ci.yml's last step posts it from the quality-gate job so the required name and the real gate are the same run."
+    },
+    {
+      "context": "lighthouse",
+      "postedBy": "lighthouse.yml",
+      "kind": "job",
+      "requiredSince": "2026-08-08",
+      "why": "The Web Vitals regression gate (v0.18, PR #136), shipped deliberately non-required per WEB_VITALS_BASELINE.md D4 so it could earn requiredness through observed stability. Evidence at promotion: 58 runs of lighthouse.yml since 2026-08-01, exactly 1 failure, and that one was on the PR branch that introduced the workflow, BEFORE it merged (run 30707624249). 55 consecutive green runs post-merge across 7 days, 28 of them on main pushes. Zero noise-only reds, so the `numberOfRuns: 5` tightening the backlog held in reserve was never needed."
+    }
+  ],
+  "observational": [
+    {
+      "context": "quality-gate",
+      "postedBy": "ci.yml",
+      "kind": "job",
+      "why": "The job that DOES the work behind the required `lint-and-build` status. Not itself required, so that the protected name stays a single stable string while the job behind it is free to be renamed or split."
+    },
+    {
+      "context": "e2e",
+      "postedBy": "e2e.yml",
+      "kind": "job",
+      "why": "Playwright smoke journeys (v0.16, PR #126). Runs unfiltered on every PR, so it is eligible for promotion; still observational because a browser suite's failure modes are partly external. Promotion needs the same evidence lighthouse just produced."
+    },
+    {
+      "context": "audit",
+      "postedBy": "security-audit.yml",
+      "kind": "job",
+      "why": "The daily advisory detector. Its pull_request trigger is path-filtered to the workflow file itself, so most PRs never receive this check. It can therefore NEVER be a required context - requiring it would block every PR that does not touch security-audit.yml. Its gate value is already required: ci.yml runs the identical `npm audit --audit-level=high`, and workflow-audit-parity.test.ts holds the two to the same threshold."
+    },
+    {
+      "context": "GitGuardian Security Checks",
+      "postedBy": "external",
+      "kind": "app",
+      "why": "Posted by the GitGuardian GitHub App, not by any workflow in this repository. Left observational because nothing committed here can prove it posts on every PR, which is the exact property a required context needs. `gh pr checks --watch` also does not wait for a check run that has not appeared yet (L-039), so an app-posted required context is the one that strands a merge."
+    }
+  ]
+}

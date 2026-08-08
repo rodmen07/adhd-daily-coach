@@ -73,11 +73,16 @@ is written next to.
   automating that flip (v0.5) is deprioritized per the direction above.
 - Quality gate: PR #86 (2026-07-19) consolidated CI into a single required job (lint,
   typecheck, tests, build) so the branch-protection check now actually gates all of
-  them; it previously gated only lint and build. Verified 2026-07-26: the required
-  context is exactly `["lint-and-build"]`, posted by that one consolidated job.
-  **Four** DevSecOps increments have since extended the safety net around it
+  them; it previously gated only lint and build. **Re-read live 2026-08-08: the
+  required contexts are exactly `["lint-and-build", "lighthouse"]`** — the first
+  posted by that one consolidated job, the second promoted from observational to
+  required on 2026-08-08 after 55 consecutive green runs since it merged. The set
+  is now a committed contract in `.github/required-checks.json`, held to the
+  workflows by `required-checks-contract` so a required context can never name a
+  check some PR never receives.
+  **Five** DevSecOps increments have since extended the safety net around it
   (corrected from "two" 2026-08-01: the sentence was written when there were two
-  and was never re-counted). PR #111 (2026-07-25) added
+  and was never re-counted; four → five 2026-08-08). PR #111 (2026-07-25) added
   `.github/workflows/security-audit.yml`, which runs the gate's own
   `npm audit --audit-level=high` daily; it **gates nothing** and exists because that
   command queries the live advisory database, so it had flipped an unchanged main
@@ -85,11 +90,14 @@ is written next to.
   next PR. PR #119 (2026-07-26) added `src/__tests__/static-export-surface.test.ts`
   after removing the last pre-static-export server code. PR #127 (2026-07-27)
   added `src/__tests__/lockfile-version-parity.test.ts`. PR #136 (2026-08-01)
-  added `.github/workflows/lighthouse.yml`, the v0.18 Web Vitals gate, which also
-  gates nothing by design. The repo now carries six workflows in total
+  added `.github/workflows/lighthouse.yml`, the v0.18 Web Vitals gate, which
+  gated nothing by design until 2026-08-08. PR #161 (2026-08-08) promoted it and
+  declared the whole contract in `.github/required-checks.json`. The repo now
+  carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
-  `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Eighteen** guard tests now
+  `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
+  post a required context.
+  **Nineteen** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -120,7 +128,12 @@ is written next to.
   the registry's `inPrimaryNav` entries against every href literal in the
   shipped `src/app` tree with the two navigation surfaces excluded, so a route
   whose only affordance is a header pill fails the gate - six of the twelve
-  were in exactly that state when it was written).
+  were in exactly that state when it was written), and `required-checks-contract`
+  (2026-08-08, which reads `.github/required-checks.json` against the workflows
+  and fails when a context declared required is one some PR never receives -
+  `security-audit.yml`'s `paths:`-filtered trigger is the live example, and a
+  required context that never arrives wedges that PR with no way out except an
+  admin changing the setting).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -937,7 +950,7 @@ DONE:
 - `lighthouserc.cjs` pins the gate: a per-audit `minScore` floor at `measured baseline - 0.05`, which is D1's approved "5+ point drop fails the PR" in the units Lighthouse actually scores in.
 - **The tracked third metric is Total Blocking Time, not INP.** Lighthouse declares `interaction-to-next-paint` with `supportedModes: ['timespan']` and `weight: 0`, so a navigation run never produces it and an INP assertion could never fail. TBT is Lighthouse's own lab stand-in for responsiveness and carries the largest weight in the performance category. Verified at the source, recorded in section 6 of the design doc, guarded by `src/__tests__/lighthouse-baseline-contract.test.ts`, and open for user confirmation in the backlog.
 - The measured baseline is recorded in section 7 of the design doc, and every run prints its own calibrated floors to the job summary so recalibration is mechanical.
-- The check is non-blocking per D4: branch protection stays exactly `["lint-and-build"]`, the same precedent `security-audit.yml` and `e2e.yml` already set. Promoting it to required once the baseline proves stable is a filed follow-up, not an assumption.
+- The check shipped non-blocking per D4: branch protection stayed exactly `["lint-and-build"]` at the time of this milestone, the same precedent `security-audit.yml` and `e2e.yml` already set. Promoting it to required once the baseline proved stable was a filed follow-up, not an assumption. **That follow-up closed on 2026-08-08 (PR #161):** 58 runs of `lighthouse.yml`, exactly one failure, and that one on the PR branch that introduced the workflow before it merged, so 55 consecutive green runs post-merge across 7 days. Required contexts are now `["lint-and-build", "lighthouse"]`, declared in `.github/required-checks.json`.
 
 ### v0.19 - Perf pass: the first screen arrives calm and stops moving (DONE)
 
