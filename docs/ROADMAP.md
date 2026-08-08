@@ -89,7 +89,7 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Fifteen** guard tests now
+  **Sixteen** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -106,9 +106,13 @@ is written next to.
   package.json and fails when the published security policy claims a version
   the app does not ship), `workflow-secret-usage` (which reads every
   workflow and fails when a step whose body runs nothing is handed a secret
-  anyway), and `route-registry-guard` (v0.22 PR1, which glob-discovers every
+  anyway), `route-registry-guard` (v0.22 PR1, which glob-discovers every
   `src/app` page file and holds the registry, the rendered nav and the chord
-  table to it, so a shipped route in no navigation surface fails the gate).
+  table to it, so a shipped route in no navigation surface fails the gate), and
+  `coverage-scope-guard` (which runs Node's own glob matcher over
+  `vitest.config.ts`'s `coverage.include` and every shipped module on disk, so
+  a source file cannot sit OUTSIDE the report the way the whole of
+  `src/app/**` did until 2026-08-07 - absent rather than reported at 0%).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
