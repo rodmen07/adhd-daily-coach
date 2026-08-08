@@ -1,6 +1,9 @@
 # v0.22 - One route vocabulary: every shipped surface is reachable, and nothing internal is in the front door
 
-Status: DEFINED 2026-08-07 (product pass). Not started.
+Status: **SHIPPED 2026-08-07** (PR #156 = PR1, PR #157 = PR2), defined the same
+day by the product-role increment. All of D1 through D8 shipped on their
+defaults, with two corrections the milestone made to itself while implementing:
+D8's PR split (recorded under D8) and D6's guard (recorded under D6).
 
 Every decision below is an **overridable default**: silence ships it, one word
 from the user flips it. This document is the product analyst's proposal, not a
@@ -141,6 +144,23 @@ advertise a chord that does not work or hide one that does. The five
 non-navigation rows (`?`, `Esc`, arrow keys, `Tab`, `Enter`) stay hand
 authored: they describe behavior that is not a route, and inventing registry
 entries for them would be the same mistake as D2's extra fields.
+
+**Shipped in PR2 as seven rows, not six**, because D5's `g n` is one of them.
+
+**Correction made while implementing PR2, recorded here rather than only in a
+PR body.** PR1's guard held `GO_TO_TARGETS` equal to the registry's `goToKey`
+fields (`route-registry-guard.test.ts` "matches keyboard-help's GO_TO_TARGETS
+entry for entry"), which was a real assertion while the two were independent
+copies. The moment D6 derives the table from `goToRoutes()` that test compares
+a value against its own source and **cannot fail** — the vacuity class this
+repo keeps catching, and exactly what a mechanical "the guard still passes"
+reading would have missed. PR2 therefore DELETED that assertion and replaced it
+with clause 4's real ones: the descriptions the dialog actually rendered,
+compared to the registry's labels in registry order; the five hand-authored
+rows still present; and, for every chord the registry advertises, a `g`-then-key
+press asserted to have called `router.push` with that path. A regression that
+un-derives either half still reds. Deriving a value does not retire the need to
+test it, it moves what the test must read: from the table to the output.
 
 ### D7. The guard reads the filesystem and the rendered DOM, never a source grep
 `src/app/__tests__/route-registry-guard.test.ts` glob-discovers every

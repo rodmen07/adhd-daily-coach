@@ -9,24 +9,22 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { goToRoutes } from "@/lib/routes";
 
 // Everything listed in the dialog is real behavior. The go-to chords are
 // implemented here; the arrow keys live in SwipeStepCard; the rest is
 // standard browser behavior.
 //
-// Exported so `src/app/__tests__/route-registry-guard.test.ts` can hold this
-// table and `src/lib/routes.ts`'s `goToKey` fields in agreement. That guard is
-// what replaces the "keep this table honest" comment that used to sit here
-// doing a test's job; v0.22 PR2 removes the need for the comparison entirely
-// by deriving both this table and the dialog's rows from the registry (D5, D6).
-export const GO_TO_TARGETS: Record<string, string> = {
-  d: "/",
-  f: "/focus",
-  e: "/execute",
-  r: "/review",
-  t: "/trends",
-  j: "/journal",
-};
+// The chord table and the "Go to X" rows are DERIVED from `src/lib/routes.ts`
+// (v0.22 D5, D6), never written down twice. Until PR1 this file carried two
+// hand-maintained copies of the same six destinations under a comment asking
+// the next reader to "keep this table honest"; PR1 replaced the comment with a
+// guard, and this makes the two copies one. A chord the dialog does not
+// advertise, and a row whose chord does nothing, are now unrepresentable
+// instead of merely tested for: both come from the same registry entry.
+const GO_TO_TARGETS: Record<string, string> = Object.fromEntries(
+  goToRoutes().map((route) => [route.goToKey, route.path]),
+);
 
 // How long the "g" prefix stays armed before quietly resetting. Purely an
 // internal grace window so a stray "g" never navigates minutes later.
@@ -39,15 +37,17 @@ type ShortcutRow = {
   description: string;
 };
 
-const SHORTCUT_ROWS: ShortcutRow[] = [
+// The five rows that describe behavior which is not a route stay hand authored
+// (D6): the help keys are this component's own, the arrows belong to
+// SwipeStepCard, and Tab and Enter are the browser's. Inventing registry
+// entries for them would be the same mistake as giving the registry fields
+// nothing navigates by.
+const HELP_ROWS: ShortcutRow[] = [
   { keys: ["?"], description: "Open this help" },
   { keys: ["Esc"], description: "Close this help" },
-  { keys: ["g", "d"], separator: "then", description: "Go to Dashboard" },
-  { keys: ["g", "f"], separator: "then", description: "Go to Focus" },
-  { keys: ["g", "e"], separator: "then", description: "Go to Execute" },
-  { keys: ["g", "r"], separator: "then", description: "Go to Review" },
-  { keys: ["g", "t"], separator: "then", description: "Go to Trends" },
-  { keys: ["g", "j"], separator: "then", description: "Go to Journal" },
+];
+
+const BROWSER_ROWS: ShortcutRow[] = [
   {
     keys: ["Left / Right arrow"],
     description: "Previous or next step while a step card is focused",
@@ -59,6 +59,17 @@ const SHORTCUT_ROWS: ShortcutRow[] = [
   },
   { keys: ["Enter"], description: "Activate the focused control" },
 ];
+
+// One row per registry entry that carries a chord, in registry order, labelled
+// with the registry's own word so the dialog and the nav never call the same
+// destination two different things.
+const NAVIGATION_ROWS: ShortcutRow[] = goToRoutes().map((route) => ({
+  keys: ["g", route.goToKey],
+  separator: "then",
+  description: `Go to ${route.label}`,
+}));
+
+const SHORTCUT_ROWS: ShortcutRow[] = [...HELP_ROWS, ...NAVIGATION_ROWS, ...BROWSER_ROWS];
 
 // Never hijack typing: shortcuts stay quiet while focus is in any editable
 // control, so the shortcut keys can always be typed as normal text.

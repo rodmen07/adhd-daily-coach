@@ -57,7 +57,7 @@ export type RouteEntry = {
  */
 export const ROUTES: readonly RouteEntry[] = [
   { path: "/", label: "Dashboard", inPrimaryNav: true, goToKey: "d", audience: "visitor" },
-  { path: "/now", label: "Now", inPrimaryNav: true, audience: "visitor" },
+  { path: "/now", label: "Now", inPrimaryNav: true, goToKey: "n", audience: "visitor" },
   { path: "/slicer", label: "Slicer", inPrimaryNav: true, audience: "visitor" },
   { path: "/ambient", label: "Ambient", inPrimaryNav: true, audience: "visitor" },
   { path: "/breathe", label: "Breathe", inPrimaryNav: true, audience: "visitor" },
@@ -77,12 +77,19 @@ export function primaryNavRoutes(): readonly RouteEntry[] {
 }
 
 /**
+ * A registry entry that carries a `g` chord, narrowed so the surfaces that
+ * consume one need no cast to read `goToKey`.
+ */
+export type GoToRoute = RouteEntry & { readonly goToKey: string };
+
+/**
  * The routes reachable by a `g` chord, in registry order.
  *
- * The chord table in `keyboard-help.tsx` is still its own copy as of v0.22
- * PR1; the guard suite holds the two in agreement until PR2 makes the dialog
- * derive from here outright (D5, D6).
+ * As of v0.22 PR2 this is the ONLY chord list: `keyboard-help.tsx` builds both
+ * the table `router.push` reads and the "Go to X" rows the dialog shows from
+ * this function (D5, D6), so a chord that does not work and a working chord
+ * the dialog hides are both unrepresentable rather than merely guarded against.
  */
-export function goToRoutes(): readonly RouteEntry[] {
-  return ROUTES.filter((route) => route.goToKey !== undefined);
+export function goToRoutes(): readonly GoToRoute[] {
+  return ROUTES.filter((route): route is GoToRoute => route.goToKey !== undefined);
 }
