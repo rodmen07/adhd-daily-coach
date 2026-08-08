@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-08-07)
+## Current state (2026-08-08)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
@@ -89,7 +89,7 @@ is written next to.
   gates nothing by design. The repo now carries six workflows in total
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly one, `ci.yml`, is a required context.
-  **Sixteen** guard tests now
+  **Seventeen** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -112,7 +112,11 @@ is written next to.
   `coverage-scope-guard` (which runs Node's own glob matcher over
   `vitest.config.ts`'s `coverage.include` and every shipped module on disk, so
   a source file cannot sit OUTSIDE the report the way the whole of
-  `src/app/**` did until 2026-08-07 - absent rather than reported at 0%).
+  `src/app/**` did until 2026-08-07 - absent rather than reported at 0%), and
+  `roadmap-version-claim` (v0.23 definition, which reads this section's
+  "package.json reads x.y.z" sentence against `package.json` itself, the claim
+  that had gone stale four times because the milestone-status guard reads
+  headings and never saw it).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -167,12 +171,28 @@ is written next to.
   v0.21 (PR #152 + PR #153, 2026-08-07) added no page either: it put every
   page-level transient status behind one `StatusMessage` primitive whose
   politeness is derived from its tone, and gave `/now` and `/trends` the
-  migration error branch they never had. **package.json reads
-  0.21.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
-  then "0.18.0" until 2026-08-07, three milestones stale;
-  it is the one claim in this bullet that the milestone-status guard already
+  migration error branch they never had. v0.22 (PR #156 + PR #157, 2026-08-07)
+  added no page either: it collapsed the four independent route lists into one
+  `src/lib/routes.ts` registry, put `/now` in the primary nav and the `g n`
+  chord, and moved `/monetization` out of the front door without deleting it.
+  PR #158 (2026-08-08, QA stream) then widened `vitest.config.ts`'s
+  `coverage.include` from `src/lib/**` to the whole source tree, so the
+  coverage number describes the app rather than one layer of it; the headline
+  function figure fell 96.12% to 83.58% on the measurement change alone, with
+  no code change. **package.json reads
+  0.22.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
+  2026-08-08, one milestone stale - the v0.22 definition corrected it on
+  2026-08-07 and v0.22 itself shipped hours later and made it wrong again.
+  It was the one claim in this bullet that the milestone-status guard already
   checks from the other direction, via the headings, which is why the headings
-  were right the whole time this sentence was wrong).
+  were right the whole time this sentence was wrong. **Four recurrences is a
+  missing check, not a missing reminder** - the same reasoning that produced
+  `roadmap-milestone-status` for the headings and `roadmap-guard-count` for the
+  sentence below - so the v0.23 definition shipped
+  `src/__tests__/roadmap-version-claim.test.ts`, which reads this section
+  against `package.json` and went red on this very sentence before correcting
+  it. There is no fifth recurrence available.)
 - Access (corrected 2026-07-26 by v0.14): **the app is open to a signed-out
   person on every route.** Until v0.14 it was not - `subscription-guard.tsx`
   answered `!authUser` with a full-screen "Sign in required" wall via
@@ -1283,30 +1303,164 @@ unchanged), the D7 second measurement divergence (user decision), the
 `lighthouse` required-context promotion (own clearing condition), and
 `/journal/`+`/trends/` gate widening (v0.20's cost reasoning stands).
 
+### v0.23 - A front door that fits: the header stops being the only way in, and stops taking a third of the screen (agent-doable now)
+
+Defined 2026-08-08 (product-role increment), the milestone after v0.22. Design
+doc: [docs/design/NAV_SHAPE.md](design/NAV_SHAPE.md). Every number below was
+**measured on the shipped static export** at `776ab2b` - `npm run build` into
+`out/`, served by the same `e2e/serve.mjs` the E2E and Lighthouse harnesses
+use, driven by the repo's own Playwright chromium - not estimated from the CSS
+and not inherited from a previous doc. Every decision is an overridable
+default.
+
+It is where v0.22 leads. v0.22 made one registry decide WHICH doors exist;
+v0.23 asks whether a person can actually get through them, and finds two
+answers that are both no.
+
+**The sticky header takes a quarter to two fifths of the viewport, on every
+route.** `layout.tsx:64` puts the nav in a `position: sticky` shell
+(`globals.css:134-141`), so its height is subtracted from the reading area
+permanently rather than once. Measured identically on `/`, `/now/` and
+`/pricing/`: **264 px at 375x667 (39.6% of the viewport, 4 rows of pills)**,
+222 px at 412x823 (27.0%, 3 rows), 264 px at 360x740 (35.7%), and **180 px at
+1280x720 (25.0%, still 2 rows)**. The desktop figure is what makes this not a
+phone bug: `.site-nav-inner` is capped at `max-width: 56rem`
+(`globals.css:144`), so twelve pills never get more than 896 px however wide
+the window is. There is no responsive treatment to appeal to - `globals.css` is
+the only stylesheet the app ships, it holds exactly two `@media` blocks
+(`max-width: 640px` at line 1304 and `prefers-reduced-motion` at 1354), neither
+mentions any `.site-nav-*` class, and neither `layout.tsx` nor `site-nav.tsx`
+carries a single `sm:`/`md:`/`lg:` prefix.
+
+**Six of the twelve primary-nav routes are reachable from nowhere else in the
+app.** A link census across `src/app/**` and `src/lib/**`, excluding tests and
+excluding the nav surfaces themselves, finds zero other doors for `/slicer`,
+`/ambient`, `/breathe`, `/challenges`, `/trends` and `/journal`. Four of those
+- `/slicer`, `/ambient`, `/breathe`, `/challenges` - have no `g` chord either,
+so each has **exactly one affordance in the entire product**: a pill in a
+header that wraps to four rows on a phone. `/slicer` is the largest surface in
+the repo at 729 lines, and its own `<h1>` reads "ADHD Task Slicer".
+
+**That census is what reverses the obvious fix.** This milestone started as
+"collapse the nav behind a More disclosure"; run against the real tree, that
+plan takes four routes' only door and hides it one interaction deeper. So
+v0.23 is two halves in a fixed order, and the order is the design: **PR1 gives
+every route a second door** and ships the guard that makes "header-only" fail
+CI, **PR2 then collapses the header** to a measured single row. Half 2 without
+half 1 is a regression wearing a redesign's clothes; half 1 alone is worth
+shipping, which is what makes the split safe.
+
+The collapse target is measured rather than chosen. Candidate shapes
+prototyped in the browser against the real export: 5 links + More gives 180 px
+at 375x667 (2 rows), 4 links + More gives the same 180 px, **3 links + More
+gives 138 px (20.7%, one row) and 67 px (9.3%) on desktop**, and all-twelve in
+one scrolling row matches 138 px on phones but is *worse* on desktop (138 px vs
+67 px) while reducing choice load by zero and hiding items off-screen. Four
+items is the largest set that stays on one row at 375x667; 138 px is this
+header structure's floor at that width, which is why the ceilings below are set
+against 138 and not against zero, and why restructuring the sync/help/theme
+cluster is explicitly out of scope.
+
+PR1 (reachability, no header change): the six orphan routes gain contextual
+dashboard entries in the existing `.action-rail` / `.insights-collapsible`
+vocabulary (D5), plus `src/app/__tests__/route-door-census.test.ts` (D8), which
+walks `src/app` for both the `href="/x"` and `href: "/x"` forms and fails when
+an `inPrimaryNav: true` route has none. **The guard-count word goes Seventeen
+-> Eighteen in PR1, not PR2**: `roadmap-guard-count.test.ts` discovers suites
+on disk, so the obligation belongs to the PR that adds the file - the rule
+`ROUTE_VOCABULARY.md` D8 recorded after v0.22 learned it the hard way.
+
+PR2 (the collapse): `RouteEntry` gains `navSlot: "inline" | "more"` (D6) with
+`/`, `/now` and `/slicer` inline by default (D3), a native `<details>` "More"
+holding the rest (D4, the same pattern as the dashboard's Workspace insights at
+`page.tsx:708`), `e2e/nav-shape.spec.ts` measuring the header at three
+viewports (D7), then `0.23.0` with both lockfile copies and this heading
+flipped to DONE in the same commit. PR2's harness lives in `e2e/`, which
+`roadmap-guard-count` does not scan, so PR2 bumps no count.
+
+Done when, each clause checkable by CI rather than by opinion and none of them
+an existence grep:
+
+1. `route-door-census.test.ts` passes, and has been **observed failing against
+   `main` at `776ab2b`** naming all six orphan routes, with the red quoted in
+   PR1's body.
+2. Every `inPrimaryNav: true` route is linked from at least one file that is
+   neither `site-nav.tsx` nor `keyboard-help.tsx` - enforced by clause 1 rather
+   than asserted in prose.
+3. `src/lib/routes.ts` carries `navSlot` on every primary-nav entry, exactly
+   three read `"inline"`, and `route-registry-guard.test.ts` fails when an
+   entry has no slot or when the rendered header shows a different set; proven
+   by a control that flips one entry's slot.
+4. `e2e/nav-shape.spec.ts` asserts, at 375x667, 412x823 and 1280x720, that the
+   `.site-nav-shell` height is at or under **150 / 150 / 100 px**, that every
+   `.site-nav-links` child shares one `top` coordinate (one row), and that
+   `document.documentElement.scrollWidth` does not exceed the viewport width;
+   observed failing against `main` at the measured 264 / 222 / 180 px. All
+   three clauses together, because a pixel ceiling alone is satisfied by
+   shrinking the font and a row count alone is satisfied by the scrolling row
+   D2 rejected.
+5. The "More" disclosure is reachable and operable by keyboard alone and every
+   link inside it enters the tab order once open, asserted in the same spec.
+6. Every behavioral clause above is proven by a negative control whose
+   perturbation is confirmed applied and whose red output is quoted, with the
+   implementation committed before the first perturbation.
+7. The pinned CI gate is green on both PRs (`npm run lint`, `npm run
+   typecheck`, `npm run test:coverage`, `npm run build`, `npm audit
+   --audit-level=high`, Node 24 per `.github/workflows/ci.yml`), the
+   non-required `e2e` and `lighthouse` contexts stay green, and the Lighthouse
+   CLS assertion does not regress - a header that changes height must not do it
+   after first paint.
+8. After PR1: the guard-count sentence reads Eighteen and names
+   `route-door-census`. After PR2: `package.json` reads `0.23.0` with both
+   lockfile copies matching (`lockfile-version-parity`), this heading reads
+   DONE (`roadmap-milestone-status`), and the Current-state version sentence
+   reads `0.23.0` (`roadmap-version-claim`, shipped by this definition and the
+   reason clause 8 can no longer be half-done).
+
+Chosen over, with the trail (full reasoning in the design doc section 5): the
+flat-12 grouping taxonomy filed by PR #155 (this milestone answers "does it fit"
+and "is it the only door", not "what are the categories"; `navSlot` is the field
+a later `navGroup` sits beside), the silent-migration product question filed by
+PR #153 (still open, still needs its own decision, and a routing milestone is
+not where it belongs), the `src/app/**` behaviour-coverage finding filed by PR
+#158 (a QA-stream item with its own cadence slot, not a milestone), FCM push
+(console-gated, unchanged), workspace cloud sync (still deepens the unpublished
+Firestore rules obligation), the `lighthouse` required-context promotion (own
+dated clearing condition), and `/journal/`+`/trends/` gate widening (v0.20's
+cost reasoning stands).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.22 have all landed, no milestone is defined above v0.22, and the
-dev queue is therefore EMPTY: the next product pass defines v0.23.** v0.22
+through v0.22 have all landed, and v0.23 is defined above (agent-doable now,
+not yet started), so the dev queue is no longer empty.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
 by nav link and by `g n`, and `/monetization` is out of the front door without
-being deleted. This sentence is
+being deleted. v0.23 was defined 2026-08-08 on top of exactly that registry:
+it measured the sticky header at 39.6% of a 375x667 viewport and found that
+six of the twelve primary-nav routes have no other door in the app, which is
+why it ships reachability before it ships the collapse. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected fourteen times now, three on
+therefore is most likely to go stale. (Corrected fifteen times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
 defined v0.20 one day later, the eleventh by v0.20 PR1, which retired the
 two-numbers caveat, the twelfth by the 2026-08-07 product pass that
 defined v0.21, the thirteenth by the 2026-08-07 product pass that
-defined v0.22 hours after v0.21 shipped, and this fourteenth by v0.22 PR2,
+defined v0.22 hours after v0.21 shipped, the fourteenth by v0.22 PR2,
 the completion PR, which flips the heading and this sentence together rather
-than leaving the second half a slot behind. `roadmap-milestone-status.test.ts`
+than leaving the second half a slot behind, and this fifteenth by the
+2026-08-08 product pass that defined v0.23. `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
-which is why it is the half that keeps going stale.)
+which is why it is the half that keeps going stale. Its sibling half - the
+Current-state "package.json reads x.y.z" claim - stopped being prose on
+2026-08-08: `roadmap-version-claim.test.ts` now reads it against
+`package.json`, so of this file's two chronic staleness generators only this
+one is still unguarded.)
 
 - Reminder reach expansion: real push notifications via Firebase Cloud
   Messaging (still BaaS-only, no dedicated server), identified as a
