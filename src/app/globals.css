@@ -195,6 +195,64 @@ html[data-theme="dark"] .border-slate-200 {
   border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
 }
 
+/* v0.23 D4: the nine routes that are not inline live behind a native
+   <details>, styled as the fourth pill in the row. Everything here is a
+   token; nothing paints a literal colour, so both themes follow the same
+   variables the rest of the header does. */
+.site-nav-more {
+  position: relative;
+}
+
+.site-nav-more > summary {
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--foreground);
+  background: var(--surface-strong);
+  /* Both properties are needed: `list-style` is what modern chromium and
+     firefox read, and the pseudo-element below is what webkit still uses. */
+  list-style: none;
+  user-select: none;
+}
+
+.site-nav-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.site-nav-more > summary:hover,
+.site-nav-more[open] > summary {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-strong));
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+}
+
+/* Absolutely positioned so opening the menu never grows the sticky header:
+   the whole point of this milestone is that the shell's height is fixed and
+   small, and a panel in normal flow would push the page down under a reader
+   the moment they went looking for a route. */
+.site-nav-more-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 11rem;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 12px 28px rgba(3, 8, 20, 0.18);
+}
+
+.site-nav-more-panel a {
+  display: block;
+  white-space: nowrap;
+}
+
 .theme-toggle {
   display: inline-flex;
   align-items: center;
