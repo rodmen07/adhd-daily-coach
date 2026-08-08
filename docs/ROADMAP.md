@@ -1630,12 +1630,141 @@ its own cadence slot), FCM push (console-gated, unchanged), workspace cloud
 sync (still deepens the unpublished Firestore rules obligation), and
 `/journal/`+`/trends/` gate widening (v0.20's cost reasoning stands).
 
+### v0.25 - Every room has a name, and the browser learns it: one title per route (DEFINED, not started)
+
+Defined 2026-08-08 (product-role increment), the milestone after v0.24. Design
+doc: [docs/design/ROUTE_IDENTITY.md](design/ROUTE_IDENTITY.md). Every premise
+below was checked with the command named beside it in that document, against
+the tree at `62c6d7e` and against the **deployed artifact**, not inherited from
+the backlog entries that seeded it - and one premise this definition first
+wrote down turned out to be **false**, which is recorded in the design doc
+rather than quietly deleted. Every decision is an overridable default.
+
+It is where the nav arc ends and stops. v0.22 made one registry decide WHICH
+doors exist; v0.23 asked whether a person can get through them and made the
+header fit; v0.24 asked what the doors MEAN; v0.25 asks whether anything
+OUTSIDE the page says which room you are in. Nothing in it touches the nav, the
+header, the panel or the chords.
+
+**All thirteen routes serve one identical `<title>`.** Against the live Pages
+deployment rather than the source, five of five sampled routes return
+`<title>ADHD Daily Coach: Your friendly self-improvement coach</title>`.
+`grep -rln "export const metadata\|generateMetadata" src/app` returns exactly
+one file, `src/app/layout.tsx:21`, and `head -1` on all thirteen `page.tsx`
+files returns `"use client";` on every one - so no page *can* export
+`metadata`. It is structural, not an oversight.
+
+**The route announcer is therefore silent on every navigation.** Next 16.2.11
+ships `app-router-announcer.js`, whose effect (lines 50-67) announces the
+destination only `if (previousTitle.current !== currentTitle)` and reads
+`document.title` **in preference to** the page `<h1>`. One constant title means
+that condition is never true, so nothing is ever announced; and because the
+title is always *set*, the `<h1>` fallback that would have rescued it is
+unreachable. A screen-reader user who presses `g j` - a chord v0.24 shipped
+specifically to make `/journal` reachable - is told nothing about where they
+landed. Three milestones made twelve doors reachable and never named the room
+behind them.
+
+**Every route already knows its own name three times over**, which is what
+makes this small: `ROUTES` carries a `label` on all thirteen entries, the nav
+renders it with `aria-current="page"` (`site-nav.tsx:127,160`), and every route
+renders exactly one `<h1>` with route-specific copy - measured on the deployed
+HTML of all thirteen routes, `1` every time, distinct text every time. (An
+earlier draft of this section claimed `/execute`, `/focus` and `/review` had no
+`<h1>`; the source grep that produced that claim could not see the heading
+`SwipeStepCard` renders from a `title` prop, and the rendered check falsified
+it. The correction is kept in the design doc section 1b because the mistake is
+the reusable part.)
+
+PR1 (the browser learns the name): `src/app/route-metadata.ts` with a single
+`metadataForRoute(path)` derived from the registry's `label` (D2, D4), twelve
+three-line server segment layouts, `title.template` `"%s · ADHD Daily Coach"`
+in the root layout with `/` keeping its current string byte-for-byte (D3), and
+`src/__tests__/route-title-contract.test.ts` reading the real `out/` export
+(D8). PR2 (and a screen reader hears it): the chromium assertion that a
+client-side navigation changes `document.title` and puts the destination's name
+into `#__next-route-announcer__`, then `0.25.0` with both lockfile copies and
+this heading flipped to DONE in the same commit.
+
+**PR1 adds one `.test.ts` under `src/__tests__`, so it owns three count
+obligations in the SAME commit** (D7): the guard sentence below goes
+**Twenty -> Twenty-one** and gains `` `route-title-contract` `` in its list;
+`NUMBER_WORDS` in `roadmap-guard-count.test.ts` (line 99) stops at
+`twenty: 20` and needs `"twenty-one": 21`; and that file's claim regex (line
+132) is `/\*\*(\w+)\*\*…/`, where `\w` does not match a hyphen, so
+`**Twenty-one**` fails the match entirely and the parser throws before either
+of the first two fixes can help. `discoverGuardSuites` (lines 81-95) reads the
+disk, so the red arrives on the commit that adds the FILE, never on a later
+prose commit. Stated at definition time rather than discovered at implementation
+time; the alternative (extend the 951-line `route-registry-guard.test.ts` and
+dodge all three) is priced in D7.
+
+Done when, each clause checkable by CI rather than by opinion and none of them
+an existence grep:
+
+1. `metadataForRoute(path)` returns `{ title: <that entry's label> }` for every
+   one of the thirteen paths in `ROUTES`, derived by looping `ROUTES` rather
+   than from a literal list, and throws for an unregistered path.
+2. `out/<route>/index.html` carries a `<title>` for each of the thirteen routes
+   that is distinct across all thirteen (asserted as a set-size comparison),
+   equal to `<label> · ADHD Daily Coach` for the twelve non-root routes, and
+   byte-identical to today's string for `/`.
+3. Clause 2's control perturbs the CONSUMER, not the registry: delete the
+   `export const metadata` line from one segment layout, rebuild, quote the red
+   naming that route. Perturbing `ROUTES` is unfalsifiable here - expectation
+   and rendered title both derive from the edited label and move together, so a
+   green control there is the failure signal, not the pass.
+4. A second control proves clause 2 reads the BUILD and not the source: leave
+   the layouts in place, make `metadataForRoute` return `{}`, rebuild, quote the
+   red. A source-scanning guard stays green through this.
+5. In chromium, a client-side navigation from `/` to at least two routes changes
+   `document.title` to that route's expected string.
+6. In chromium, that same navigation leaves the destination's name in the route
+   announcer (`#__next-route-announcer__`, inside the open shadow root on
+   `<next-route-announcer>`). Control: pin every segment title to one constant,
+   rerun, quote the announcer assertion going red with an empty announcer -
+   which is the state the app ships in today, so the control reproduces the
+   defect on demand.
+7. PR1 lands all three D7 obligations in the commit that adds the suite file,
+   and `roadmap-guard-count` is green in that commit with no follow-up.
+8. The pinned CI gate is green on both PRs (`npm run lint`, `npm run
+   typecheck`, `npm run build`, `npm audit --audit-level=high`, `npm run
+   test:coverage`, Node 24 per `.github/workflows/ci.yml`), both required
+   contexts `lint-and-build` and `lighthouse` pass, and `e2e` stays green.
+9. `e2e/nav-shape.spec.ts` still passes its 150 / 150 / 100 px ceilings
+   unchanged: twelve segment layouts must not move a pixel of the header.
+10. After PR2: `package.json` reads `0.25.0` with both lockfile copies matching
+    (`lockfile-version-parity`), this heading reads DONE
+    (`roadmap-milestone-status`), and the Current-state version sentence reads
+    `0.25.0` (`roadmap-version-claim`).
+11. Every behavioural clause is proven by a control whose perturbation is
+    confirmed applied and whose named red line is quoted, with the
+    implementation committed before the first perturbation.
+
+Chosen over, with the trail (full reasoning in the design doc section 5):
+per-route descriptions and Open Graph tags (thirteen sentences of editorial
+copy is an owner decision, not something a milestone invents on the way past),
+the sync/help/theme header cluster filed by PR #159 (~40 px, its own surface and
+its own before/after obligation - declined by v0.24 for the same reason and
+unchanged), the two-Escape-owners interaction filed by PR #166 (real and small,
+but it is about the nav, which this milestone deliberately does not touch), the
+`src/app/**` behaviour-coverage finding filed by PR #158 and the rendered-DOM
+theme-guard gap filed by PR #165 (both QA-stream items with their own cadence
+slot), the surviving `background-color: --var` declaration filed by PR #165
+(emitted from `agents/dev-agent/`, which roadmap work may never edit),
+`navGroupOrder()`'s second global read filed by PR #164 (a watched seam, not a
+defect), FCM push (console-gated, re-checked at this definition and unchanged),
+the silent-migration product question filed by PR #153 (own decision, unrelated
+surface), and promoting `e2e` to a required context (a DevSecOps item with its
+own evidence bar - and v0.25 adds e2e assertions, so it should not also be the
+increment that decides they gate).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.24 have all landed, so the dev queue is EMPTY and the next product
-slot defines v0.25.** v0.22
+through v0.24 have all landed, and v0.25 is now DEFINED and not started, so the
+dev queue holds exactly its two PRs and the next dev slot takes PR1.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
@@ -1654,9 +1783,15 @@ render as four labelled lists in the panel and under the same four headings in
 the keyboard dialog, and the five chordless front-door routes got `g s`, `g a`,
 `g b`, `g c` and `g p`; PR #166 made the disclosure dismissable, so `Escape`
 closes it and returns focus to its summary and a pointer-down outside closes
-it, each proven by its own control and re-asserted in chromium. This sentence is
+it, each proven by its own control and re-asserted in chromium. v0.25 was
+defined 2026-08-08 and closes the arc those three opened by leaving the page
+entirely: all thirteen routes serve one identical `<title>`, so the browser tab,
+the history entry, the bookmark and - because Next's route announcer announces
+only when the title CHANGES and prefers `document.title` over the `<h1>` - the
+sentence a screen reader is given on navigation are the same on every route.
+This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected eighteen times now, three on
+therefore is most likely to go stale. (Corrected nineteen times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -1669,9 +1804,13 @@ than leaving the second half a slot behind, the fifteenth by the
 2026-08-08 product pass that defined v0.23, the sixteenth by v0.23 PR2,
 the completion PR, which again flips the heading and this sentence together,
 the seventeenth by the 2026-08-08 product pass that defined v0.24 hours
-after v0.23 shipped, and this eighteenth by v0.24 PR2, the completion PR,
+after v0.23 shipped, the eighteenth by v0.24 PR2, the completion PR,
 which flips the heading and this sentence together for the third milestone
-running.
+running, and this nineteenth by the 2026-08-08 product pass that defined v0.25
+hours after v0.24 shipped - which is also the edit that retired the "the dev
+queue is EMPTY and the next product slot defines v0.25" clause opening this
+paragraph, a sentence that was true when written and that this same edit made
+false.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
