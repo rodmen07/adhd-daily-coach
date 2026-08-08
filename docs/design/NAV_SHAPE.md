@@ -1,10 +1,19 @@
 # v0.23 - A front door that fits: the header stops being the only way in, and stops taking a third of the screen
 
-Status: **PROPOSED 2026-08-08** by the product-role increment that defined it.
-**PR1 SHIPPED 2026-08-08** (D5 and D8: the six second doors on the dashboard,
-plus `src/app/__tests__/route-door-census.test.ts` and the guard-count word).
-PR2 - the header collapse, D2/D3/D4/D6/D7 and the `0.23.0` bump - has NOT
-shipped, so every measurement in section 1a is still the live one.
+Status: **SHIPPED 2026-08-08**, both halves, on every default in section 3.
+PR1 (PR #160) shipped D5 and D8 - the six second doors on the dashboard, plus
+`src/app/__tests__/route-door-census.test.ts` and the guard-count word.
+PR2 (PR #162) shipped D2, D3, D4, D6 and D7 - the collapse itself, the
+`navSlot` registry field, `e2e/nav-shape.spec.ts` and the `0.23.0` bump.
+
+**Section 1a's table is now the BEFORE picture, not the live one.** Measured
+the same way after the collapse, on the export built from PR2's branch: **138
+px at 375x667 (20.7%, one row, 4 items), 138 px at 412x823 (16.8%), 138 px at
+360x740 (18.6%) and 67 px at 1280x720 (9.3%)** - exactly the figures D2's
+"3 links + More" row predicted, and the reason that row is bolded there. The
+before column is deliberately left in place rather than overwritten: the
+numbers this milestone was argued from are what make the ceilings in D7 legible
+to the next reader.
 
 Every decision below is an **overridable default**: silence ships it, one word
 from the user flips it. This document is the product analyst's proposal, not a
@@ -230,6 +239,16 @@ menu is a real question.
 and outside-click-to-close, matching `keyboard-help.tsx`'s existing dialog
 handling. Costs client JS and a focus-management test; buys the two behaviours
 above.
+
+**One behaviour PR2 added that this decision did not name, recorded here rather
+than left in a PR body.** The disclosure closes when a link inside it is
+chosen. Client-side navigation does not remount `SiteNav`, and a `<details>`
+keeps its open state in the DOM rather than in React, so the menu would
+otherwise hang open over the page the reader just navigated to - a wart D4
+neither predicted nor argued for. It is four lines on a ref, not the popover
+alternative: the two costs above are unchanged and still stand, and
+`route-registry-guard.test.ts`'s "closes the disclosure when a link inside it
+is chosen" is the assertion that goes red if the handler is removed.
 
 ### D5. The second doors go on the dashboard, in the existing vocabulary
 

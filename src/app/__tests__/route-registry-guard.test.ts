@@ -7,6 +7,10 @@
  * Source B: `src/lib/routes.ts`, the registry those pages are described by.
  * Source C: the DOM `<SiteNav />` actually renders, so "the nav is derived" is
  *   asserted from output rather than from the shape of the component's source.
+ *   As of v0.23 that DOM has two halves - the inline pills and the "More"
+ *   disclosure - and this guard reads WHICH half each route landed in, not
+ *   just that the set is complete. A route silently moving behind the
+ *   disclosure is the failure this milestone's own design warns about.
  * Source D: the keyboard help dialog `<KeyboardHelp />` actually renders, plus
  *   the `router.push` a real `g` chord actually performs. v0.22 PR1 held the
  *   exported `GO_TO_TARGETS` table equal to the registry's `goToKey` fields;
@@ -48,7 +52,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { shippedSourceFiles } from "@/__tests__/helpers/source-scan";
-import { ROUTES, goToRoutes, primaryNavRoutes } from "@/lib/routes";
+import {
+  ROUTES,
+  goToRoutes,
+  inlineNavRoutes,
+  moreNavRoutes,
+  primaryNavRoutes,
+} from "@/lib/routes";
 import { SiteNav } from "@/app/components/site-nav";
 import { KeyboardHelp } from "@/app/components/keyboard-help";
 
@@ -91,6 +101,17 @@ const ROUTE_FLOOR = 13;
  * editing this file; losing them all must fail.
  */
 const CHORD_FLOOR = 7;
+
+/**
+ * v0.23 D2/D3: exactly three routes are inline, and this is an EQUALITY rather
+ * than a floor because three is the whole finding. Four items (three links
+ * plus the More disclosure) is the largest set that stays on one row at
+ * 375x667; five wraps to two rows and 180 px. An extra inline route is
+ * therefore not a preference, it is a silent regression of the measurement
+ * `e2e/nav-shape.spec.ts` enforces in a real browser - and this assertion is
+ * the cheap one that names the reason, in the gate, without a build.
+ */
+const INLINE_SLOT_COUNT = 3;
 
 /**
  * The rows D6 leaves hand authored, listed here rather than derived, because
@@ -148,6 +169,29 @@ function renderedNavLinks(): { href: string | null; label: string }[] {
   return screen
     .getAllByRole("link")
     .map((link) => ({ href: link.getAttribute("href"), label: link.textContent ?? "" }));
+}
+
+/** Read `href` off a live anchor list, in DOM order. */
+function hrefsOf(nodes: Iterable<Element>): (string | null)[] {
+  return Array.from(nodes, (node) => node.getAttribute("href"));
+}
+
+/**
+ * The two halves of the v0.23 header, read from the rendered DOM.
+ *
+ * The inline set is queried as DIRECT anchor children of the nav, so a link
+ * that moved inside the disclosure stops counting as inline - which is the
+ * whole point. Querying `.site-nav-links a` instead would return both halves
+ * and the split would be unfalsifiable.
+ */
+function renderedNavShape(): { inline: (string | null)[]; more: (string | null)[] } {
+  render(createElement(SiteNav));
+  const nav = screen.getByRole("navigation", { name: "Primary" });
+
+  return {
+    inline: hrefsOf(nav.querySelectorAll(":scope > a")),
+    more: hrefsOf(nav.querySelectorAll(".site-nav-more .site-nav-more-panel a")),
+  };
 }
 
 describe("route registry: discovery", () => {
@@ -276,6 +320,102 @@ describe("route registry: the primary nav is derived from it", () => {
       existsSync(path.join(APP_DIR, "monetization", "page.tsx")),
       "the monetization page file is gone; D3 removes it from the nav and changes nothing else",
     ).toBe(true);
+  });
+});
+
+describe("route registry: the header's two halves are declared, not positional (v0.23 D6)", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("gives every primary-nav route a slot, and no other route one", () => {
+    for (const route of primaryNavRoutes()) {
+      expect(
+        route.navSlot,
+        `${route.path} is in the primary nav with no navSlot, so the header has to guess ` +
+          "whether it is a pill or a More entry - the positional rule D6 rejected",
+      ).toBeDefined();
+      expect(["inline", "more"]).toContain(route.navSlot);
+    }
+
+    for (const route of ROUTES.filter((entry) => !entry.inPrimaryNav)) {
+      expect(
+        route.navSlot,
+        `${route.path} is not in the primary nav but carries a navSlot, which reads as a ` +
+          "header placement for a route the header never renders",
+      ).toBeUndefined();
+    }
+  });
+
+  it("keeps exactly three routes inline, the measured one-row maximum (D2)", () => {
+    const inline = inlineNavRoutes();
+    const more = moreNavRoutes();
+
+    expect(
+      inline.map((route) => route.path),
+      `${inline.length} routes are inline, not ${INLINE_SLOT_COUNT}: four header items is the ` +
+        "largest set that stays on one row at 375x667, and a fifth wraps the header back to " +
+        "two rows - see e2e/nav-shape.spec.ts, which measures it in a real browser",
+    ).toHaveLength(INLINE_SLOT_COUNT);
+
+    // The split is a partition, not two independent lists: every primary-nav
+    // route is in exactly one half, and together they are the whole nav in
+    // registry order. Without this a route could be dropped from both and the
+    // two assertions above would still pass.
+    expect(
+      [...inline, ...more].map((route) => route.path),
+      "the two halves are not a partition of the primary nav: a route is in both, in " +
+        "neither, or the halves are no longer in registry order",
+    ).toEqual(primaryNavRoutes().map((route) => route.path));
+  });
+
+  it("renders each half where its slot says, not where its position says", () => {
+    const { inline, more } = renderedNavShape();
+
+    expect(
+      inline,
+      "the header's inline pills are not the routes marked navSlot: \"inline\" - a link was " +
+        "hand-written into site-nav.tsx, or a route moved between the halves without its " +
+        "registry entry moving with it",
+    ).toEqual(inlineNavRoutes().map((route) => route.path));
+
+    expect(
+      more,
+      "the More disclosure does not hold exactly the routes marked navSlot: \"more\", so a " +
+        "route is either advertised twice or reachable from neither half of the header",
+    ).toEqual(moreNavRoutes().map((route) => route.path));
+  });
+
+  it("closes the disclosure when a link inside it is chosen", () => {
+    // Client-side navigation does not remount SiteNav and <details> keeps its
+    // open state in the DOM rather than in React, so without the handler this
+    // asserts, the menu stays open over the page the reader just navigated to.
+    // A behaviour a reader sees, therefore a behaviour with a test: removing
+    // the onClick makes this red while every other assertion here stays green.
+    render(createElement(SiteNav));
+    const disclosure = screen
+      .getByRole("navigation", { name: "Primary" })
+      .querySelector<HTMLDetailsElement>(".site-nav-more");
+
+    expect(disclosure, "the header has no More disclosure at all").not.toBeNull();
+    disclosure!.open = true;
+
+    const firstMoreLink = disclosure!.querySelector<HTMLAnchorElement>(
+      ".site-nav-more-panel a",
+    );
+    expect(firstMoreLink, "the More panel rendered no links").not.toBeNull();
+    // jsdom implements an anchor's default action as a real navigation and
+    // logs "Not implemented" for it. Cancelling the default keeps the suite's
+    // output honest without touching the handler under test: React's listener
+    // is delegated at the root and still runs, which is exactly what the
+    // assertion below reads.
+    firstMoreLink!.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(firstMoreLink!);
+
+    expect(
+      disclosure!.open,
+      "choosing a route left the More menu hanging open over the page it navigated to",
+    ).toBe(false);
   });
 });
 

@@ -196,8 +196,15 @@ is written next to.
   `coverage.include` from `src/lib/**` to the whole source tree, so the
   coverage number describes the app rather than one layer of it; the headline
   function figure fell 96.12% to 83.58% on the measurement change alone, with
-  no code change. **package.json reads
-  0.22.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  no code change. v0.23 (PR #160 + PR #162, 2026-08-08) added no page either
+  but changed the front door twice: PR1 gave the six routes that were reachable
+  only from the header a contextual dashboard door and a census guard that
+  fails CI if one loses it again, and PR2 collapsed the header itself from
+  twelve pills wrapping to four rows to three inline links plus a native
+  "More" disclosure - **264 px to 138 px at 375x667 (39.6% to 20.7% of the
+  viewport) and 180 px to 67 px at 1280x720**, measured in chromium against the
+  real export by `e2e/nav-shape.spec.ts`. **package.json reads
+  0.23.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
   2026-08-07 and v0.22 itself shipped hours later and made it wrong again.
@@ -1320,7 +1327,20 @@ unchanged), the D7 second measurement divergence (user decision), the
 `lighthouse` required-context promotion (own clearing condition), and
 `/journal/`+`/trends/` gate widening (v0.20's cost reasoning stands).
 
-### v0.23 - A front door that fits: the header stops being the only way in, and stops taking a third of the screen (agent-doable now)
+### v0.23 - A front door that fits: the header stops being the only way in, and stops taking a third of the screen (DONE)
+
+**Shipped 2026-08-08** (PR #160 = PR1, PR #162 = PR2). The header measured
+**138 px at 375x667 (20.7% of the viewport, one row), 138 px at 412x823
+(16.8%), 138 px at 360x740 (18.6%) and 67 px at 1280x720 (9.3%)** after the
+collapse, against the 264 / 222 / 264 / 180 px this section records before it -
+each figure taken in chromium against the real static export, the same way the
+premises below were taken. One thing PR2 added that D4 did not name: the More
+disclosure closes when a link inside it is chosen. Client-side navigation does
+not remount `SiteNav` and a `<details>` keeps its open state in the DOM rather
+than in React, so without it the menu hangs open over the page the reader just
+navigated to. D4's two stated costs are unchanged and still stand - native
+`<details>` closes on neither `Escape` nor an outside click - and the popover
+alternative remains the recorded way to buy them.
 
 Defined 2026-08-08 (product-role increment), the milestone after v0.22. Design
 doc: [docs/design/NAV_SHAPE.md](design/NAV_SHAPE.md). Every number below was
@@ -1450,18 +1470,22 @@ cost reasoning stands).
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.22 have all landed, and v0.23 is defined above (agent-doable now,
-not yet started), so the dev queue is no longer empty.** v0.22
+through v0.23 have all landed, so the dev queue is EMPTY and the next product
+slot defines v0.24.** v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
 by nav link and by `g n`, and `/monetization` is out of the front door without
-being deleted. v0.23 was defined 2026-08-08 on top of exactly that registry:
-it measured the sticky header at 39.6% of a 375x667 viewport and found that
-six of the twelve primary-nav routes have no other door in the app, which is
-why it ships reachability before it ships the collapse. This sentence is
+being deleted. v0.23 was defined 2026-08-08 on top of exactly that registry and
+completed the same day: PR #160 gave the six routes that had no door outside
+the header a contextual dashboard entry plus `route-door-census.test.ts`, and
+PR #162 collapsed the header to three inline links plus a native "More"
+disclosure driven by the registry's new `navSlot` field, taking it from
+264 px (39.6% of a 375x667 viewport, four rows of pills) to 138 px (20.7%, one
+row) and from 180 px to 67 px at 1280x720, with `e2e/nav-shape.spec.ts`
+measuring it in chromium against the real export. This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected fifteen times now, three on
+therefore is most likely to go stale. (Corrected sixteen times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -1470,8 +1494,10 @@ two-numbers caveat, the twelfth by the 2026-08-07 product pass that
 defined v0.21, the thirteenth by the 2026-08-07 product pass that
 defined v0.22 hours after v0.21 shipped, the fourteenth by v0.22 PR2,
 the completion PR, which flips the heading and this sentence together rather
-than leaving the second half a slot behind, and this fifteenth by the
-2026-08-08 product pass that defined v0.23. `roadmap-milestone-status.test.ts`
+than leaving the second half a slot behind, the fifteenth by the
+2026-08-08 product pass that defined v0.23, and this sixteenth by v0.23 PR2,
+the completion PR, which again flips the heading and this sentence together.
+`roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
 Current-state "package.json reads x.y.z" claim - stopped being prose on
