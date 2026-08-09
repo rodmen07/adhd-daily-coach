@@ -44,6 +44,29 @@
  * dependencies on) and `dev-agent-runner.yml` kept as a named anchor too,
  * because it is the file that drifted and a scan that stopped seeing it should
  * fail loudly rather than go quiet.
+ *
+ * SHARED-ACTION MAJOR PARITY (added 2026-08-09)
+ * ---------------------------------------------
+ * The same hole existed one level over, and it had already been exercised:
+ * `actions/checkout` and `actions/setup-node` drifted to `@v4` in
+ * `dev-agent-runner.yml` for exactly the reason the Node major did, and the
+ * 2026-08-08 pass (PR #169) fixed those two instances BY HAND — the widened
+ * guard watched `node-version:` only, so nothing stopped the next one.
+ *
+ * The rule, scoped deliberately: any action `uses:`d by MORE THAN ONE
+ * workflow must resolve to ONE major across every workflow that uses it.
+ * Single-WORKFLOW actions are unconstrained by parity ON PURPOSE — parity is
+ * the wrong instrument for currency, and the backlog carries that question
+ * separately (`actions/setup-python@v5` et al.). A control below proves the
+ * boundary is real rather than accidental: loosening a single-use action
+ * leaves this suite green.
+ *
+ * A ref the extractor cannot read as `v<major>` (a commit SHA, a branch
+ * name) is reported as an offender rather than skipped, because this file's
+ * own history says what silent skipping does: the Node-pin extractor
+ * returned an empty set for the one file that had drifted, and the repo read
+ * clean. If this repo ever moves to SHA pinning, that is a deliberate
+ * posture change and this guard should be rewritten in the same commit.
  */
 
 import { describe, expect, it } from "vitest";
@@ -233,6 +256,101 @@ describe("Node runtime parity across every workflow in .github/workflows", () =>
       `every workflow must resolve and run on the Node major the blocking gate uses (${expected.join("/")}, from ci.yml): ` +
         "a workflow left on an older major installs a different dependency tree than the one the gate cleared, " +
         "and an end-of-life major receives no security patches at all",
+    ).toEqual([]);
+  });
+});
+
+/** Every `uses: owner/name@ref` step in one workflow's source. Full-line
+ * comments are dropped first so prose about an action is never counted as a
+ * use of it. Local (`./path`) and `docker://` uses would not match, which is
+ * correct: they have no `@major` to hold to parity. */
+function actionUses(source: string): { action: string; ref: string }[] {
+  const matches = withoutComments(source).matchAll(
+    /^\s*(?:-\s+)?uses:\s*([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)@(\S+)/gm,
+  );
+  return [...matches].map((m) => ({ action: m[1], ref: m[2] }));
+}
+
+/** The census: action -> every (workflow, ref) pair that uses it. */
+function actionCensus(
+  workflows: { file: string; source: string }[],
+): Map<string, { file: string; ref: string }[]> {
+  const census = new Map<string, { file: string; ref: string }[]>();
+  for (const workflow of workflows) {
+    for (const { action, ref } of actionUses(workflow.source)) {
+      const uses = census.get(action) ?? [];
+      uses.push({ file: workflow.file, ref });
+      census.set(action, uses);
+    }
+  }
+  return census;
+}
+
+/** `v7` / `v7.1.0` -> "7"; anything else (a SHA, a branch) -> undefined. */
+function majorOfRef(ref: string): string | undefined {
+  return /^v(\d+)(\.\d+)*$/.exec(ref)?.[1];
+}
+
+describe("shared-action major parity across every workflow in .github/workflows", () => {
+  const discovered = discoverWorkflows();
+  const census = actionCensus(discovered);
+  const shared = [...census.entries()].filter(
+    ([, uses]) => new Set(uses.map((use) => use.file)).size > 1,
+  );
+
+  it("the action census reaches the real corpus rather than an empty one (control for the scan)", () => {
+    // A broken `uses:` regex, a renamed directory, or a quoting change would
+    // all report ZERO uses, and zero shared actions have zero parity
+    // violations — a blind census reads exactly like a healthy repository.
+    // Floors, not exact counts, so adding a workflow cannot redden this.
+    const totalUses = [...census.values()].reduce((n, uses) => n + uses.length, 0);
+    expect(
+      totalUses,
+      `the census found only ${totalUses} action uses across .github/workflows/, far fewer than this ` +
+        "repository has; the extractor has probably stopped matching rather than the workflows having emptied",
+    ).toBeGreaterThanOrEqual(15);
+
+    // Named presence sentinels: the three actions KNOWN to be shared today.
+    // If any stops being shared, that is a deliberate workflow redesign and
+    // this list is updated in the same commit — loudly, not by drift.
+    for (const anchor of ["actions/checkout", "actions/setup-node", "actions/upload-artifact"]) {
+      expect(
+        new Set((census.get(anchor) ?? []).map((use) => use.file)).size,
+        `${anchor} was seen in fewer than two workflows; either the census is blind to it or the ` +
+          "workflow set changed shape, and both need a deliberate answer here",
+      ).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("every action used by more than one workflow resolves to one major everywhere", () => {
+    const offenders: string[] = [];
+    for (const [action, uses] of shared) {
+      const majors = new Set<string>();
+      for (const use of uses) {
+        const major = majorOfRef(use.ref);
+        if (major === undefined) {
+          offenders.push(
+            `${use.file} pins ${action}@${use.ref}, whose major this guard cannot read; ` +
+              "if the repo is moving to SHA pinning, rewrite this guard in the same commit",
+          );
+        } else {
+          majors.add(major);
+        }
+      }
+      if (majors.size > 1) {
+        offenders.push(
+          `${action} is pinned to ${uses.length} steps across ` +
+            `${new Set(uses.map((use) => use.file)).size} workflows at majors {${[...majors].sort().join(", ")}}: ` +
+            uses.map((use) => `${use.file} has @${use.ref}`).join("; "),
+        );
+      }
+    }
+
+    expect(
+      offenders,
+      "an action shared by several workflows drifted apart: the workflows now run DIFFERENT code for the same " +
+        "step, and the stale major keeps receiving none of the fixes the current one gets — exactly how " +
+        "dev-agent-runner.yml sat on checkout@v4/setup-node@v4 until 2026-08-08 with no gate noticing",
     ).toEqual([]);
   });
 });
