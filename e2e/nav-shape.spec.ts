@@ -56,16 +56,22 @@ type NavViewport = {
    * about this app.
    *
    * RATCHETED BY v0.26 PR1 (docs/design/HEADER_ACTIONS.md D5, done-when 2),
-   * from 150 / 150 / 100 to 133 / 133 / 60. The rule is the one v0.23 set:
-   * the measured figure plus ~9%. PR1 measured 121.9 px on all three phone
-   * widths (was 137.9) and 55.2 px at 1280 (was 67.0), so 121.9 x 1.09 = 133
-   * and 55.2 x 1.09 = 60. A gate left at the old numbers would have stayed
+   * from 150 / 150 / 100 to 133 / 133 / 60: PR1 measured 121.9 px on the phone
+   * widths (was 137.9) and 55.2 px at 1280 (was 67.0). RATCHETED AGAIN BY
+   * v0.26 PR2 (D5, done-when 5), phones 133 -> 104: with the cluster on the
+   * title row the phone header measures 95.2 px at all three widths, and
+   * 95.2 x 1.09 = 104. The 1280 ceiling stays 60, because the desktop header
+   * was already one row before PR2 and PR2 must not change it - a regression
+   * of the min-width rule that keeps desktop on one line would jump the shell
+   * to ~95 px and fail that ceiling. The rule is the one v0.23 set: the
+   * measured figure plus ~9%. A gate left at the old numbers would have stayed
    * green through the entire milestone and stopped describing the shape it
    * guards.
    */
   readonly headerCeiling: number;
-  /** What `main` measured before the collapse, quoted in the failure message. */
-  readonly measuredBefore: number;
+  /** What this viewport measured before each ratchet, quoted in the failure
+   * message so a red names how bad it has been rather than only how bad it is. */
+  readonly measuredBefore: string;
 };
 
 const VIEWPORTS: readonly NavViewport[] = [
@@ -73,22 +79,33 @@ const VIEWPORTS: readonly NavViewport[] = [
     label: "375x667 (iPhone SE class)",
     width: 375,
     height: 667,
-    headerCeiling: 133,
-    measuredBefore: 264,
+    headerCeiling: 104,
+    measuredBefore: "264 px before v0.23, 121.9 px before v0.26 PR2",
   },
   {
     label: "412x823 (the Lighthouse mobile default)",
     width: 412,
     height: 823,
-    headerCeiling: 133,
-    measuredBefore: 222,
+    headerCeiling: 104,
+    measuredBefore: "222 px before v0.23, 121.9 px before v0.26 PR2",
+  },
+  {
+    // Joined the table at v0.26 PR2: 360 is section 1c's binding width, where
+    // the room beside the title is smallest, so the two-row clauses below are
+    // asserted here too and this row gives them the ceiling and scroll clauses
+    // for free. It was never measured before v0.23, hence the shorter history.
+    label: "360x740 (the binding width from HEADER_ACTIONS.md 1c)",
+    width: 360,
+    height: 740,
+    headerCeiling: 104,
+    measuredBefore: "121.9 px before v0.26 PR2",
   },
   {
     label: "1280x720 (the e2e project's Desktop Chrome)",
     width: 1280,
     height: 720,
     headerCeiling: 60,
-    measuredBefore: 180,
+    measuredBefore: "180 px before v0.23, 67.0 px before v0.26 PR1",
   },
 ];
 
@@ -141,8 +158,7 @@ test.describe("v0.23: the header fits", () => {
         Math.round(box!.height),
         `the sticky header is taller than ${viewport.headerCeiling} px at ` +
           `${viewport.label}, so it is back to subtracting a large share of the ` +
-          `reading area from every route (it measured ${viewport.measuredBefore} px ` +
-          "before v0.23 collapsed it)",
+          `reading area from every route (it measured ${viewport.measuredBefore})`,
       ).toBeLessThanOrEqual(viewport.headerCeiling);
 
       // Clause 2: one row, not smaller pills on several.
@@ -292,8 +308,16 @@ test.describe("v0.23: the header fits", () => {
  * binding width from section 1c, and the width clause is asserted HERE, in
  * PR1, precisely so PR2 cannot discover late that the cluster still does not
  * fit beside the title.
+ *
+ * RE-POINTED BY v0.26 PR2: this was `.site-nav-actions > :last-child`, a
+ * positional address that PR #172 filed as an obligation on the PR that moves
+ * the node - PR2 removed `.site-nav-actions` entirely and gave the cluster the
+ * `.site-nav-cluster` class hook in layout.tsx in the same commit. The
+ * CLUSTER_CONTROLS count below is unchanged and still runs before any
+ * measurement, so a restructure that leaves this selector naming the wrong
+ * node (or none) fails on the count rather than measuring the wrong box.
  */
-const CLUSTER = ".site-nav-actions > :last-child";
+const CLUSTER = ".site-nav-cluster";
 
 /** Sync badge, keyboard help, theme toggle - the three the design doc measured. */
 const CLUSTER_CONTROLS = 3;
@@ -315,7 +339,7 @@ test.describe("v0.26 PR1: the header's controls are compact", () => {
     const controls = page.locator(`${CLUSTER} > *`);
     expect(
       await controls.count(),
-      "the last child of .site-nav-actions does not hold the three controls the " +
+      ".site-nav-cluster does not hold the three controls the " +
         "measurements below describe, so this spec is measuring the wrong node",
     ).toBe(CLUSTER_CONTROLS);
 
@@ -409,6 +433,101 @@ test.describe("v0.26 PR1: the header's controls are compact", () => {
         "screen reader is told about where the data lives depends on the window width",
     ).toBe(narrowName);
   });
+});
+
+/**
+ * v0.26 PR2 - the row goes away (docs/design/HEADER_ACTIONS.md D1, D5;
+ * roadmap done-when 5, 6 and 7).
+ *
+ * The cluster left `.site-nav-actions` and sits beside the title, so below the
+ * 56rem cap the header is exactly two rows: title + cluster, then the nav. The
+ * shell ceiling above (104, was 133) is the pixel half of that claim; these
+ * clauses are the structural half a font shrink cannot fake.
+ *
+ * WHY CENTERS AND NOT TOPS. Done-when 6 says the title and the cluster "share
+ * one top coordinate", and on a centered flex line they structurally cannot:
+ * `.site-nav-inner` aligns items center, so an 18.7 px title next to a 30 px
+ * cluster sits 5.6 px lower by construction (measured: title top 15.6, cluster
+ * top 10, on the same row). The coordinate two different-height siblings share
+ * when they occupy one row is the vertical CENTER (both 25.0 here), so that is
+ * what is asserted - the clause's intent (two rows, as coordinates rather than
+ * as a pixel count) unchanged, the coordinate corrected. The nav children keep
+ * their literal shared-top assertion in the v0.23 block above: they are
+ * same-height pills, where tops and centers agree.
+ *
+ * Runs at every viewport below the cap - the widths where the two-row shape
+ * exists. Above it the desktop stays one row, which the 60 px ceiling above
+ * already pins (a two-row desktop would measure ~95 px).
+ */
+const NAV_CAP_PX = 56 * 16; // 56rem at the 16px root font e2e runs with.
+const PHONE_VIEWPORTS = VIEWPORTS.filter((viewport) => viewport.width < NAV_CAP_PX);
+
+test.describe("v0.26 PR2: the header is two rows below the cap", () => {
+  for (const viewport of PHONE_VIEWPORTS) {
+    test(`the cluster sits on the title's row at ${viewport.label}`, async ({ page }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await openDashboard(page);
+
+      // Same vacuity control as the PR1 clauses: never measure a node that is
+      // not the three-control cluster.
+      await expect(page.locator(CLUSTER)).toHaveCount(1);
+      expect(await page.locator(`${CLUSTER} > *`).count()).toBe(CLUSTER_CONTROLS);
+
+      const [titleCenter, clusterCenter] = await page.evaluate(() => {
+        const centerOf = (selector: string) => {
+          const rect = document.querySelector(selector)!.getBoundingClientRect();
+          return Math.round(rect.top + rect.height / 2);
+        };
+        return [centerOf(".site-nav-title"), centerOf(".site-nav-cluster")];
+      });
+
+      expect(
+        Math.abs(titleCenter - clusterCenter),
+        `the cluster does not share the title's row at ${viewport.label}: its ` +
+          `vertical center sits ${Math.abs(titleCenter - clusterCenter)} px from ` +
+          "the title's, so the three controls are back on a row of their own - " +
+          "the third row v0.26 PR2 removed",
+      ).toBeLessThanOrEqual(1);
+    });
+
+    test(`the header is exactly two rows at ${viewport.label}`, async ({ page }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await openDashboard(page);
+
+      await expect(page.locator(CLUSTER)).toHaveCount(1);
+      const navChildren = page.locator(".site-nav-links > *");
+      expect(await navChildren.count()).toBeGreaterThanOrEqual(MIN_NAV_CHILDREN);
+
+      // Every header occupant's row, as coordinates: the title, the cluster,
+      // and each nav child. Group centers closer than 4 px into one row (the
+      // rounding slack two same-row siblings can accumulate); distinct rows
+      // are farther apart than that by an order of magnitude (25 vs 67 here).
+      const rowCenters = await page.evaluate(() => {
+        const centers: number[] = [];
+        for (const el of document.querySelectorAll(
+          ".site-nav-title, .site-nav-cluster, .site-nav-links > *",
+        )) {
+          const rect = el.getBoundingClientRect();
+          centers.push(Math.round(rect.top + rect.height / 2));
+        }
+        centers.sort((a, b) => a - b);
+        const rows: number[] = [];
+        for (const center of centers) {
+          if (rows.length === 0 || center - rows[rows.length - 1] > 4) {
+            rows.push(center);
+          }
+        }
+        return rows;
+      });
+
+      expect(
+        rowCenters,
+        `the header renders ${rowCenters.length} distinct rows at ` +
+          `${viewport.label} (row centers at ${rowCenters.join(", ")} px), not ` +
+          "the two v0.26 PR2 ships: title + cluster, then the nav",
+      ).toHaveLength(2);
+    });
+  }
 });
 
 /**

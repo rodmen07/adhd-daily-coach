@@ -97,7 +97,7 @@ is written next to.
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
   post a required context.
-  **Twenty-one** guard tests now
+  **Twenty-two** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -143,7 +143,14 @@ is written next to.
   (v0.25 PR1, which reads the built `out/<route>/index.html` for all thirteen
   routes against the registry's labels and fails when two routes serve the same
   `<title>` - the state the app shipped in until then, which also kept Next's
-  route announcer permanently silent because it speaks only on a title CHANGE).
+  route announcer permanently silent because it speaks only on a title CHANGE),
+  and `nav-cap-agreement`
+  (v0.26 PR2, which reads `.site-nav-inner`'s `max-width:` cap against every
+  rem-valued width media query in `globals.css` and fails when the 56rem
+  boundary drifts in one place but not the others - by PR2 that number was
+  written three times: the inner cap, the sync-word collapse and the desktop
+  one-row rule, and the e2e clauses measure at 360 and 1280, both too far from
+  the boundary to notice it moving).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -228,8 +235,13 @@ is written next to.
   browser can see - that a client-side navigation changes `document.title` and
   therefore puts the destination's name into Next's route announcer, which had
   been permanently EMPTY on every navigation while one constant title made its
-  `previousTitle !== currentTitle` condition unreachable. **package.json reads
-  0.25.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  `previousTitle !== currentTitle` condition unreachable. v0.26 (PR #172 +
+  PR #174, 2026-08-08) left the nav alone entirely and took the
+  header's last own-row strip: PR1 made the sync/help/theme controls compact
+  (phones 137.9 -> 121.9 px, desktop 67.0 -> 55.2 px), PR2 moved the cluster
+  onto the title row (phones 121.9 -> 95.2 px, two rows below the 56rem cap,
+  desktop unchanged one row). **package.json reads
+  0.26.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
   2026-08-07 and v0.22 itself shipped hours later and made it wrong again. It
@@ -1788,7 +1800,7 @@ surface), and promoting `e2e` to a required context (a DevSecOps item with its
 own evidence bar - and v0.25 adds e2e assertions, so it should not also be the
 increment that decides they gate).
 
-### v0.26 - The last row: three actions stop costing a row of their own (DEFINED, not started)
+### v0.26 - The last row: three actions stop costing a row of their own (DONE)
 
 Defined 2026-08-08 (product-role increment), the milestone after v0.25. Design
 doc: [docs/design/HEADER_ACTIONS.md](design/HEADER_ACTIONS.md). Every premise
@@ -1853,8 +1865,16 @@ the same accessible name at both widths (D4). Predicted 137.9 -> ~125.9 px on
 phones and **67.0 -> ~55.2 px on desktop**.
 
 PR2 (the row goes away): the cluster leaves `.site-nav-actions` and shares one
-line with the title, making the header two rows at every width. Predicted
-~125.9 -> ~99.2 px on phones. Both PRs lower `e2e/nav-shape.spec.ts`'s own
+line with the title, making the header two rows below the 56rem cap and
+leaving the one-row desktop untouched. (This clause read "two rows at every
+width" until PR2 shipped; that phrasing contradicted this section's own D5
+table, whose 1280 ceiling stays at 60 after PR2 - a two-row desktop would
+measure ~95 px - and the done-when clauses 5 and 6 name only the three phone
+widths. The clauses governed and the prose is corrected rather than obeyed,
+quoted per the standing convention.) Predicted
+~125.9 -> ~99.2 px on phones; measured 121.9 -> 95.2, the 4 px delta being
+the prediction's 34 px cluster estimate against the 30 px PR1 actually
+shipped. Both PRs lower `e2e/nav-shape.spec.ts`'s own
 `headerCeiling` values to their measured figure plus ~9% - the slack v0.23
 chose - in the same commit that moves the number (D5), because a gate left at
 150 / 150 / 100 stops describing the shape it guards.
@@ -1863,7 +1883,14 @@ chose - in the same commit that moves the number (D5), because a gate left at
 `roadmap-guard-count.test.ts` scans exactly `src/__tests__` and
 `src/app/__tests__` (`GUARD_DIRS`, line 50). The unit assertions extend the
 existing `src/app/components/__tests__/` suites, which is not one of those
-directories, so the **Twenty-one** count word and its names list do not move.
+directories, so the milestone's OWN clauses move no count word. (PR2 did move
+it - Twenty-one to Twenty-two - but for a deliverable outside these clauses:
+`nav-cap-agreement`, the drift guard the PR #172 backlog item asked for, lands
+in the scanned `src/app/__tests__` and paid exactly the one-line price D6's
+next paragraph quotes. This sentence read "so the **Twenty-one** count word
+and its names list do not move" until PR2; true for the clauses it described,
+superseded by the extra deliverable, corrected rather than left to read as if
+the count moving were a surprise.)
 If a new suite is added under a scanned directory instead, the PR that adds the
 file owes the count word `Twenty-one -> Twenty-two` and the new name in the
 same commit - but `NUMBER_WORDS` already carries `"twenty-two": 22` and the
@@ -1893,7 +1920,10 @@ an existence grep:
    coordinate and `.site-nav-links`' children share one `top` of their own -
    two rows, asserted as distinct coordinates rather than as a pixel count,
    which is the clause a smaller font cannot satisfy. The no-sideways-scroll
-   clause stays green at every viewport.
+   clause stays green at every viewport. (As shipped the title/cluster pair
+   shares its vertical CENTER rather than the literal `top` - a centered flex
+   line gives different-height siblings different tops by construction; see
+   the design doc's clause 6 note.)
 7. PR2's control: restore the previous DOM nesting, rebuild, rerun, quote the
    red naming the third row.
 8. The sync badge's accessible name at a 375-wide render and at a 1280-wide
@@ -1941,10 +1971,14 @@ becomes required).
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.25 have all landed and v0.26 is DEFINED above (2026-08-08) but not
-started, so the dev queue holds exactly its PR1 - a dev slot picks that up
-rather than picking a direction unilaterally, and the direction it does not
-have to pick is recorded in `docs/design/HEADER_ACTIONS.md`.** v0.22
+through v0.26 have all landed, nothing above this section is still open, and
+the dev queue is therefore EMPTY - the next product slot defines v0.27 rather
+than a dev slot picking a direction unilaterally.** (Until v0.26 PR2 this
+clause read "v0.26 is DEFINED above (2026-08-08) but not started, so the dev
+queue holds exactly its PR1" - already one PR stale when PR2 picked the work
+up, since PR1 had shipped as PR #172 without rewriting it, and retired here by
+the completion PR. The uncounted-edit lesson below applies to PR1's miss of
+this clause too.) v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
@@ -1972,10 +2006,17 @@ CHANGES and prefers `document.title` over the `<h1>` - the sentence a screen
 reader is given on navigation were the same on every route. PR #168 derived
 one title per route from the registry and PR #170 proved in chromium that the
 announcer now speaks the destination, which is the half no file on disk can
-be read for.
+be read for. v0.26 was defined 2026-08-08 and completed the same day, the
+first milestone since v0.21 to touch no navigation surface at all: PR #172
+made the three header controls compact (the theme toggle joined the keyboard
+trigger's 30x30 icon vocabulary, the sync badge collapses to its dot below
+the 56rem cap with one accessible name at every width), and PR2 removed the
+row they cost - the cluster sits beside the title, so the phone header is
+two rows at 95.2 px, down from 264 px when v0.23 started this arc, and the
+desktop header stays one row at 55.2 px.
 This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected twenty-two times now, three on
+therefore is most likely to go stale. (Corrected twenty-three times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -2010,7 +2051,13 @@ defined, and the dev queue is therefore EMPTY, the next product slot defines
 v0.26" - was true when v0.25 PR2 wrote it and false the moment the v0.26
 section above existed, which is the same shape as the sentence the nineteenth
 edition retired, one milestone earlier. A sentence that describes the queue is
-falsified by filling the queue, so the definition PR owes it every time.
+falsified by filling the queue, so the definition PR owes it every time. This
+**twenty-third** is v0.26 PR2, the completion PR, which flips the heading and
+this sentence together for the fifth milestone running - and which found the
+opening clause already one PR stale, because v0.26 PR1 (PR #172) shipped
+without rewriting "the dev queue holds exactly its PR1": the same uncounted
+class as the twentieth edition's miss, caught at the next edit rather than
+lived with, and repaired in the same pass that retires the clause.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
