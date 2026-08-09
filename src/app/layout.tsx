@@ -79,17 +79,25 @@ export default function RootLayout({
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>
+        {/* v0.26 PR2 (docs/design/HEADER_ACTIONS.md D1): the sync/help/theme
+            cluster left `.site-nav-actions` and sits beside the title, so the
+            header is two rows on phones (title + cluster / nav) and stays one
+            row above the 56rem cap. DOM order is title, cluster, nav - the
+            wrap order phones need; the desktop media query in globals.css
+            restores title, nav, cluster visually. `.site-nav-cluster` is the
+            class hook e2e/nav-shape.spec.ts addresses the cluster by, replacing
+            the positional `.site-nav-actions > :last-child` (PR #172's filed
+            obligation: reposition the node and re-point the selector in the
+            same commit). */}
         <header className="site-nav-shell">
           <div className="site-nav-inner">
             <p className="site-nav-title">ADHD Daily Coach</p>
-            <div className="site-nav-actions">
-              <SiteNav />
-              <div className="flex items-center gap-3">
-                <SyncStatusBadge />
-                <KeyboardHelp />
-                <ThemeToggle />
-              </div>
+            <div className="site-nav-cluster">
+              <SyncStatusBadge />
+              <KeyboardHelp />
+              <ThemeToggle />
             </div>
+            <SiteNav />
           </div>
         </header>
         {/* The single main landmark for every route. Pages contribute their own

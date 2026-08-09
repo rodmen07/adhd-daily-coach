@@ -165,12 +165,35 @@ html[data-theme="dark"] .border-slate-200 {
   gap: 8px;
 }
 
-.site-nav-actions {
+/* v0.26 PR2: the sync/help/theme cluster. A direct child of `.site-nav-inner`
+   since the `.site-nav-actions` wrapper was removed; DOM order is title,
+   cluster, nav so the wrap on phones puts title + cluster on one row and the
+   nav on its own row below. The 12px gap is the spacing the old inline
+   utility wrapper (`gap-3`) carried, kept so the cluster's measured 112 px
+   width does not move. */
+.site-nav-cluster {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
+}
+
+/* Above the cap everything fits one row, so the phone wrap must not apply:
+   the nav returns to the middle (order) and carries the free space on its
+   left margin, which reproduces the grouped-right layout the header had
+   before the restructure - title left, then nav and cluster on the right.
+   The boundary is the SAME 56rem as `.site-nav-inner`'s max-width and the
+   sync-word collapse below, on purpose: the header changes shape exactly
+   where it stops being able to hold everything on one line, and
+   `src/app/__tests__/nav-cap-agreement.test.ts` fails any edit that moves
+   one of the three without the others. */
+@media (min-width: 56rem) {
+  .site-nav-cluster {
+    order: 2;
+  }
+
+  .site-nav-links {
+    margin-left: auto;
+  }
 }
 
 .site-nav-links a {
@@ -1111,7 +1134,7 @@ html[data-theme="dark"] .border-slate-200 {
    `.keyboard-help-trigger` shipped this shape alone; v0.26 D3
    (docs/design/HEADER_ACTIONS.md) gives `.theme-toggle` the SAME rule rather
    than a second 30x30 circle with its own numbers, so the two controls that
-   sit beside each other in `.site-nav-actions` cannot drift apart. That is why
+   sit beside each other in `.site-nav-cluster` cannot drift apart. That is why
    this is one selector list and not a copy: the seam is the rule.
 
    `.theme-toggle` keeps two declarations of its own, both further up this file

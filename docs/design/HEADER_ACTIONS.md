@@ -1,7 +1,12 @@
 # v0.26 - The last row: three actions stop costing a row of their own
 
-Status: **DEFINED 2026-08-08** (product-role increment), not started.
-`package.json` reads `0.25.0`.
+Status: **SHIPPED 2026-08-08** (PR1 merged as PR #172, PR2 the completion PR
+the same day). `package.json` reads `0.26.0`. Measured shipped figures, in
+chromium against the real export: phones 137.9 -> 121.9 (PR1) -> 95.2 px
+(PR2, two rows below the 56rem cap), desktop 67.0 -> 55.2 px (PR1, one row,
+unchanged by PR2). One phrase of section 3 did not survive implementation and
+is corrected in place with the superseded text quoted (D1's "two-row header at
+every width"); every other decision shipped on its default.
 
 Design authority: this document. Every decision in section 3 is an
 **overridable default** - one word from the product owner flips any of them.
@@ -219,8 +224,15 @@ The desktop win lands entirely here, because at 1280 the title, nav and cluster
 already share one row and the row is as tall as its tallest child.
 
 **PR2 - the row goes away.** The cluster leaves `.site-nav-actions` and joins
-the title on one line; `.site-nav-inner` becomes a two-row header at every
-width. Predicted: phone ~125.9 -> ~99.2 px.
+the title on one line; `.site-nav-inner` becomes a two-row header below the
+56rem cap, and the one-row desktop is untouched. (This sentence read "a
+two-row header at every width" until PR2 shipped. That phrasing contradicted
+D5's own table - the 1280 ceiling stays 60 after PR2, and a two-row desktop
+measures ~95 px - and done-when clauses 5 and 6 name only the three phone
+widths, so the clauses governed and the prose is corrected rather than obeyed,
+quoted per the standing convention.) Predicted: phone ~125.9 -> ~99.2 px;
+measured 121.9 -> 95.2, the delta being this table's 34 px cluster estimate
+against the 30 px PR1 shipped.
 
 The split is not cosmetic. PR1's change cannot be attributed if it lands with a
 layout change, which is the exact mistake v0.23 refused to make; and PR2's
@@ -379,6 +391,13 @@ None of these is an existence grep, and none is satisfied by reading a file.
    `.site-nav-links`' children still share exactly one `top` of their own -
    two rows total, asserted as two distinct coordinates rather than as a pixel
    count. The existing no-sideways-scroll clause stays green at every viewport.
+   (As shipped, the shared coordinate for the title/cluster pair is the
+   vertical CENTER, not the literal `top`: `.site-nav-inner` centers its
+   items, so an 18.7 px title beside a 30 px cluster sits 5.6 px lower by
+   construction even on one row - tops literally cannot be equal there. The
+   nav children keep the literal shared-`top` assertion, being same-height
+   pills. Intent unchanged, coordinate corrected; stated here and in the PR
+   body per clause 3's own "or the PR states which one changed and why" rule.)
 7. **PR2's control:** restore the previous DOM nesting (cluster back inside
    `.site-nav-actions`), rebuild, rerun, quote the red naming the third row.
 8. **The sync badge says the same thing at both widths:** its accessible name
