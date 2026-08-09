@@ -1,6 +1,10 @@
 /**
  * Drift guard between what the registry calls a route and what the BROWSER is
- * told a route is called (v0.25 D8).
+ * told a route is called (v0.25 D8) — and, since v0.27, what the WORLD is told
+ * a route is: the per-route `<meta name="description">` and the Open Graph
+ * block ride the same registry-vs-built-export comparison (D7 of
+ * `docs/design/ROUTE_PREVIEWS.md`: no new suite, this file's subject is
+ * already "the registry vs. the built static export").
  *
  * Source A: `src/lib/routes.ts` - the one registry, via
  *   `src/app/route-metadata.ts`'s `metadataForRoute()`, which is CALLED here
@@ -52,7 +56,8 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { ROUTES } from "@/lib/routes";
-import { metadataForRoute, ROUTE_TITLE_SUFFIX } from "@/app/route-metadata";
+import { metadataForRoute, ROOT_TITLE, ROUTE_TITLE_SUFFIX } from "@/app/route-metadata";
+import { SITE_URL } from "../../site-base-path.mjs";
 
 const ROOT = process.cwd();
 const OUT_DIR = path.join(ROOT, "out");
@@ -74,6 +79,105 @@ function exportedHtmlPath(routePath: string): string {
   const segments = routePath.split("/").filter((segment) => segment.length > 0);
   return path.join(OUT_DIR, ...segments, "index.html");
 }
+
+/**
+ * Undo React's attribute escaping, so a description drafted with quotes or an
+ * apostrophe (`"just do it"`, `today's`) compares equal to the registry string
+ * it was rendered from. `&amp;` last, or an escaped escape would double-decode.
+ */
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+/**
+ * Every `content` value of `<meta name="…">` / `<meta property="…">` tags in a
+ * route's built HTML, decoded. Returns ALL matches rather than the first so a
+ * caller can assert "exactly one": two descriptions in one document is a real
+ * defect (crawlers pick whichever they like), and "take the first" would hide
+ * it. Tolerant of attribute order within the tag, because the emitter's
+ * ordering is Next's choice, not this contract's.
+ */
+function exportedMetaContents(
+  routePath: string,
+  attribute: "name" | "property",
+  value: string,
+): string[] {
+  const htmlPath = exportedHtmlPath(routePath);
+
+  expect(
+    existsSync(htmlPath),
+    `${path.relative(ROOT, htmlPath)} is missing - run \`npm run build\` first. ` +
+      "This suite asserts the real static export, so it cannot substitute a " +
+      "fixture and must never skip.",
+  ).toBe(true);
+
+  const tags = readText(htmlPath).match(/<meta\b[^>]*>/g) ?? [];
+
+  return tags
+    .filter((tag) => new RegExp(`\\b${attribute}="${value}"`).test(tag))
+    .map((tag) => {
+      const content = /\bcontent="([^"]*)"/.exec(tag);
+      expect(
+        content,
+        `${routePath}: a <meta ${attribute}="${value}"> tag carries no content attribute`,
+      ).not.toBeNull();
+      return decodeHtmlEntities(content![1]);
+    });
+}
+
+/**
+ * The one description a route serves. Exactly one, for the same reason
+ * `exportedTitle` insists on exactly one `<title>`.
+ */
+function exportedDescription(routePath: string): string {
+  const contents = exportedMetaContents(routePath, "name", "description");
+
+  expect(
+    contents.length,
+    `${routePath} serves ${contents.length} <meta name="description"> tags, expected exactly 1`,
+  ).toBe(1);
+
+  return contents[0];
+}
+
+/** The one value a route serves for an Open Graph property. Exactly one. */
+function exportedOgContent(routePath: string, property: string): string {
+  const contents = exportedMetaContents(routePath, "property", property);
+
+  expect(
+    contents.length,
+    `${routePath} serves ${contents.length} <meta property="${property}"> tags, expected exactly 1`,
+  ).toBe(1);
+
+  return contents[0];
+}
+
+/**
+ * The canonical deployed URL of a route in the trailing-slash form the export
+ * serves, composed HERE from `SITE_URL` and the path — deliberately not by
+ * calling `canonicalUrlForRoute()`, which is the derivation under test
+ * (L-054): an expectation that consumed the derivation would move with it,
+ * and control C (the basePath dropped) could never fail.
+ */
+function expectedCanonicalUrl(routePath: string): string {
+  return routePath === "/" ? SITE_URL : `${SITE_URL}${routePath.slice(1)}/`;
+}
+
+/**
+ * The sentence `/` served before v0.27, byte-for-byte, as a LITERAL: the same
+ * independence argument `runbookRootTitle()` makes for the title. Reading the
+ * expectation out of the registry would let an edit to the root entry's
+ * `description` move the expectation and the artifact together, and D3's
+ * byte-identity clause could never fail.
+ */
+const ROOT_DESCRIPTION =
+  "Your ADHD friendly self-improvement coach. Small, deliberate daily steps that fit how your brain works.";
 
 /**
  * The `<title>` the export actually serves for a route.
@@ -143,14 +247,27 @@ describe("route titles: the registry vs. the built static export", () => {
     ).toBe(true);
   });
 
-  it("derives a title for every registered route from that route's own label", () => {
-    // Clause 1. Looped over ROUTES rather than written as a literal list, so a
-    // fourteenth route is judged the moment it joins the registry.
+  it("derives every route's metadata from that route's own registry entry", () => {
+    // Clause 1, widened by v0.27 D2. Looped over ROUTES rather than written as
+    // a literal list, so a fourteenth route is judged the moment it joins the
+    // registry. `title` stays the bare label (the root template renders it);
+    // `openGraph.title` is the SERVED form, `/`'s untemplated per D3. The
+    // expectation is composed from the entry's own fields plus literals.
     for (const route of ROUTES) {
       expect(
         metadataForRoute(route.path),
-        `metadataForRoute("${route.path}") should carry the registry label "${route.label}"`,
-      ).toEqual({ title: route.label });
+        `metadataForRoute("${route.path}") should derive from the registry entry for "${route.label}"`,
+      ).toEqual({
+        title: route.label,
+        description: route.description,
+        openGraph: {
+          title: route.path === "/" ? ROOT_TITLE : `${route.label}${ROUTE_TITLE_SUFFIX}`,
+          description: route.description,
+          url: expectedCanonicalUrl(route.path),
+          type: "website",
+          siteName: "ADHD Daily Coach",
+        },
+      });
     }
   });
 
@@ -195,5 +312,107 @@ describe("route titles: the registry vs. the built static export", () => {
     // docs/RENAME_RUNBOOK.md quotes it as dated rename evidence.
     expect(exportedTitle(ROOT_ROUTE)).toBe(runbookRootTitle());
     expect(exportedTitle(ROOT_ROUTE)).not.toContain(ROUTE_TITLE_SUFFIX);
+  });
+});
+
+describe("route descriptions: the registry vs. the built static export (v0.27)", () => {
+  it("serves a distinct description on every one of the thirteen routes", () => {
+    // v0.27 done-when clause 1, written as a set-size comparison for the same
+    // reason the title clause is: it fails the moment ANY two routes collide,
+    // and thirteen-identical — the state the app shipped in until v0.27 — is
+    // the loudest possible red. `exportedDescription` already asserts each
+    // route serves EXACTLY one description tag.
+    const descriptions = ROUTES.map((route) => exportedDescription(route.path));
+    const distinct = new Set(descriptions);
+
+    expect(
+      distinct.size,
+      `${descriptions.length} routes serve only ${distinct.size} distinct descriptions: ` +
+        `${[...distinct].join(" | ")}`,
+    ).toBe(descriptions.length);
+  });
+
+  it("serves each non-root route's own registry sentence", () => {
+    // v0.27 done-when clause 2. The expectation is the registry entry's
+    // `description` — never `metadataForRoute()`, the derivation under test
+    // (L-054). Control B (one segment layout's metadata deleted) reds exactly
+    // one iteration of this loop, naming the route that fell back to the root
+    // sentence.
+    for (const route of nonRootRoutes) {
+      expect(
+        exportedDescription(route.path),
+        `${route.path} does not serve its own registry description in the built export`,
+      ).toBe(route.description);
+    }
+  });
+
+  it("leaves the front door's description byte-identical to the pre-v0.27 sentence", () => {
+    // v0.27 done-when clause 2's root half (D3): the sentence is the site's
+    // description in search results, and this milestone has no evidence it
+    // should change. Asserted against a literal, not the registry, so moving
+    // the root entry's sentence is a red here rather than a silent rewrite.
+    expect(exportedDescription(ROOT_ROUTE)).toBe(ROOT_DESCRIPTION);
+  });
+});
+
+describe("open graph: the built export carries the block, base path included (v0.27 D4)", () => {
+  it("has a base path to lose at all (vacuity check for the og:url clause)", () => {
+    // The og:url clause below proves the project-page base path survived URL
+    // composition. If `SITE_URL` ever degenerated to a bare origin, that
+    // clause would pass while proving nothing — so the precondition is
+    // asserted, not assumed.
+    expect(
+      new URL(SITE_URL).pathname,
+      "SITE_URL carries no path segment, so 'the og:url keeps the base path' is vacuous",
+    ).not.toBe("/");
+    expect(SITE_URL.endsWith("/"), "SITE_URL must end in a slash for composition").toBe(true);
+  });
+
+  it("carries og:title equal to the served <title> on every route", () => {
+    // v0.27 done-when clause 3. Both halves are read from the same built
+    // artifact: the root `title.template` reaches `<title>` but not the Open
+    // Graph block, so equality here is exactly the drift this guards.
+    for (const route of ROUTES) {
+      expect(
+        exportedOgContent(route.path, "og:title"),
+        `${route.path}'s og:title does not match the <title> the same page serves`,
+      ).toBe(exportedTitle(route.path));
+    }
+  });
+
+  it("carries og:description equal to the served description on every route", () => {
+    // One voice, not two (D4): the preview a platform unfurls and the snippet
+    // a search engine shows must be the same sentence.
+    for (const route of ROUTES) {
+      expect(
+        exportedOgContent(route.path, "og:description"),
+        `${route.path}'s og:description does not match the description the same page serves`,
+      ).toBe(exportedDescription(route.path));
+    }
+  });
+
+  it("carries og:url in the canonical deployed trailing-slash form, base path intact", () => {
+    // v0.27 done-when clause 3's sharp edge: `new URL("/now/", base)` resolves
+    // against the ORIGIN and silently drops `/adhd-daily-coach/`. The
+    // expectation is composed here from SITE_URL plus the path (L-054), so a
+    // dropped base path — control C — is a red naming the origin-resolved URL,
+    // and "an og:url exists" cannot satisfy this clause (L-033).
+    for (const route of ROUTES) {
+      expect(
+        exportedOgContent(route.path, "og:url"),
+        `${route.path}'s og:url is not its canonical deployed URL - if it lost the ` +
+          "base path, the basePath trap fired",
+      ).toBe(expectedCanonicalUrl(route.path));
+    }
+  });
+
+  it("carries og:type website and the site name on every route", () => {
+    for (const route of ROUTES) {
+      expect(exportedOgContent(route.path, "og:type"), `${route.path} og:type`).toBe("website");
+      expect(
+        exportedOgContent(route.path, "og:site_name"),
+        `${route.path} og:site_name`,
+      ).toBe("ADHD Daily Coach");
+    }
   });
 });

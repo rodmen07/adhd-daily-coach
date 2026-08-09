@@ -30,15 +30,30 @@
  * title here would hide it behind a plausible-looking tab name instead, so the
  * caller gets a build-time failure naming the path.
  *
- * SCOPE: the title only. Per-route `<meta name="description">` is thirteen
- * sentences of editorial copy and therefore a product-owner decision (D6); the
- * root description keeps applying to every route, which is imprecise but never
- * WRONG the way a title naming the wrong page is. If descriptions are ever
- * wanted, this function is where they land, additively.
+ * SCOPE, widened by v0.27 (D2): the title, the description, and the Open Graph
+ * block. Until v0.27 this returned `{ title }` only and the root description
+ * applied to every route — imprecise but never WRONG the way a title naming
+ * the wrong page is. The thirteen description sentences were editorial copy
+ * and therefore a product-owner decision; `docs/design/ROUTE_PREVIEWS.md` D6
+ * drafted them as overridable defaults and they now live on each registry
+ * entry, so this function derives everything and the twelve segment layouts
+ * picked the widening up with zero edits.
+ *
+ * THE BASEPATH TRAP (D4)
+ * ----------------------
+ * The deployed site lives under a project-page basePath
+ * (`https://rodmen07.github.io/adhd-daily-coach/`), and `new URL("/now/",
+ * base)` resolves against the ORIGIN — it silently drops `/adhd-daily-coach/`.
+ * So `og:url` is composed by string concatenation onto `SITE_URL` (which ends
+ * in a slash) and never by URL-resolving an absolute path against a base.
+ * `src/__tests__/route-title-contract.test.ts` asserts the BUILT artifact's
+ * `og:url` carries the base path, so a regression here is a red, not a
+ * surprise.
  */
 
 import type { Metadata } from "next";
 import { ROUTES } from "@/lib/routes";
+import { SITE_URL } from "../../site-base-path.mjs";
 
 /**
  * The suffix the root layout's `title.template` appends, written here only so
@@ -55,8 +70,43 @@ import { ROUTES } from "@/lib/routes";
 export const ROUTE_TITLE_SUFFIX = " · ADHD Daily Coach";
 
 /**
+ * The `<title>` the ROOT route serves, byte-for-byte (v0.25 D3, v0.27 D3).
+ *
+ * `/` is deliberately NOT templated: this string is the site's title in search
+ * results and link previews, and `docs/RENAME_RUNBOOK.md` quotes it verbatim
+ * as the evidence that the 2026-07-29 rename completed. It lives here so the
+ * root layout's `title.default` and the root `og:title` (which clause 3 of the
+ * v0.27 done-when holds equal to the SERVED title) are one string rather than
+ * two agreeing ones. `src/__tests__/route-title-contract.test.ts` holds the
+ * built `out/index.html` to the runbook's independent record of it.
+ */
+export const ROOT_TITLE = "ADHD Daily Coach: Your friendly self-improvement coach";
+
+/** What every route's Open Graph block says the site is called (v0.27 D4). */
+export const OG_SITE_NAME = "ADHD Daily Coach";
+
+/**
+ * The canonical deployed URL of a route, in the trailing-slash form the static
+ * export serves. Composed by concatenation (see THE BASEPATH TRAP above):
+ * `SITE_URL` already ends in `/`, so `/` maps to `SITE_URL` itself and
+ * `/now` maps to `${SITE_URL}now/`.
+ */
+export function canonicalUrlForRoute(path: string): string {
+  return path === "/" ? SITE_URL : `${SITE_URL}${path.slice(1)}/`;
+}
+
+/**
  * The `metadata` a route segment should export, derived from its registry
- * entry's `label`.
+ * entry's `label` and `description`.
+ *
+ * The `title` field carries the BARE label because Next applies the root
+ * layout's `title.template` to it; `openGraph.title` carries the SERVED form
+ * (label plus suffix) because the template does not reach into `openGraph`,
+ * and clause 3 of the v0.27 done-when holds `og:title` equal to the served
+ * `<title>`. `/` is the one route whose served title is not templated (D3),
+ * so its `og:title` is `ROOT_TITLE` — the root layout consumes this
+ * function's `description` and `openGraph` while keeping its own
+ * template-shaped `title`, exactly as `src/app/layout.tsx` documents.
  *
  * @param path a registry path written WITHOUT a trailing slash, the form every
  *   href in this app and every `ROUTES` entry uses.
@@ -73,5 +123,15 @@ export function metadataForRoute(path: string): Metadata {
     );
   }
 
-  return { title: entry.label };
+  return {
+    title: entry.label,
+    description: entry.description,
+    openGraph: {
+      title: path === "/" ? ROOT_TITLE : `${entry.label}${ROUTE_TITLE_SUFFIX}`,
+      description: entry.description,
+      url: canonicalUrlForRoute(path),
+      type: "website",
+      siteName: OG_SITE_NAME,
+    },
+  };
 }

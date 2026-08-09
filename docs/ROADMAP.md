@@ -244,7 +244,7 @@ is written next to.
   (phones 137.9 -> 121.9 px, desktop 67.0 -> 55.2 px), PR2 moved the cluster
   onto the title row (phones 121.9 -> 95.2 px, two rows below the 56rem cap,
   desktop unchanged one row). **package.json reads
-  0.26.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  0.27.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
   2026-08-07 and v0.22 itself shipped hours later and made it wrong again. It
@@ -1970,7 +1970,7 @@ context (a DevSecOps item with its own evidence bar - now eligible on that bar,
 but a dev milestone should not be the increment that decides its own gate
 becomes required).
 
-### v0.27 - Thirteen rooms, one business card: per-route descriptions and link previews (DEFINED, not started)
+### v0.27 - Thirteen rooms, one business card: per-route descriptions and link previews (DONE)
 
 Defined 2026-08-08. Design doc:
 [docs/design/ROUTE_PREVIEWS.md](design/ROUTE_PREVIEWS.md), every decision an

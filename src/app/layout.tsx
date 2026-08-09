@@ -5,6 +5,8 @@ import { ThemeToggle } from "@/app/components/theme-toggle";
 import { SyncStatusBadge } from "@/app/components/sync-status-badge";
 import { SubscriptionGuard } from "@/app/components/subscription-guard";
 import { KeyboardHelp } from "@/app/components/keyboard-help";
+import { metadataForRoute, ROOT_TITLE } from "@/app/route-metadata";
+import { SITE_URL } from "../../site-base-path.mjs";
 import "./globals.css";
 
 const sora = Sora({
@@ -18,6 +20,14 @@ const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
 });
 
+/**
+ * `/`'s registry-derived metadata (v0.27 D3): its `description` moved into the
+ * registry entry — one home, D1 — and its `openGraph` block is composed by the
+ * same derivation every other route uses, with `og:title` special-cased there
+ * to the untemplated `ROOT_TITLE` the root actually serves.
+ */
+const rootMetadata = metadataForRoute("/");
+
 export const metadata: Metadata = {
   /**
    * v0.25 D3. `template` is what every child segment's one-word title is
@@ -26,20 +36,31 @@ export const metadata: Metadata = {
    * because a browser tab truncates from the right.
    *
    * `default` is the string `/` keeps, byte-for-byte what it served before
-   * this milestone: a template applies to CHILD segments, never to the segment
+   * v0.25: a template applies to CHILD segments, never to the segment
    * that declares it, and `src/app/page.tsx` exports no title of its own. Two
    * records depend on that string not moving - it is the site's title in
    * search results and link previews, and `docs/RENAME_RUNBOOK.md` quotes it
    * verbatim as the evidence that the 2026-07-29 rename completed.
    * `src/__tests__/route-title-contract.test.ts` reads BOTH the runbook and
-   * the built `out/index.html` and fails if they stop agreeing.
+   * the built `out/index.html` and fails if they stop agreeing. The literal
+   * itself lives in `src/app/route-metadata.ts` as of v0.27 so this default
+   * and the root `og:title` cannot drift apart.
    */
   title: {
     template: "%s · ADHD Daily Coach",
-    default: "ADHD Daily Coach: Your friendly self-improvement coach",
+    default: ROOT_TITLE,
   },
-  description:
-    "Your ADHD friendly self-improvement coach. Small, deliberate daily steps that fit how your brain works.",
+  description: rootMetadata.description,
+  /**
+   * v0.27 D4. Declared so anything Next ever resolves relatively resolves
+   * under the real deployed URL, base path included. The `og:url` values
+   * themselves are deliberately NOT relative: `new URL("/now/", base)` drops
+   * a project-page base path (the trap `src/app/route-metadata.ts` documents),
+   * so the derivation composes absolute URLs and this base is a backstop, not
+   * the mechanism.
+   */
+  metadataBase: new URL(SITE_URL),
+  openGraph: rootMetadata.openGraph,
 };
 
 export default function RootLayout({
