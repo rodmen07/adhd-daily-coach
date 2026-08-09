@@ -393,6 +393,91 @@ describe("route registry: the registry matches the shipped tree", () => {
   });
 });
 
+describe("route registry: every route tells the world what it is (v0.27 D1/D6)", () => {
+  /**
+   * The SERP truncation ceiling D6 drafted to. A description longer than this
+   * is not wrong, it is silently cut mid-sentence by the surface it was
+   * written for, which is worse than shorter honest copy.
+   */
+  const DESCRIPTION_CEILING = 160;
+
+  /**
+   * Calm-tone vocabulary banned from description copy in BOTH polarities
+   * (L-079): a sentence saying "no streaks" still puts the word into the copy
+   * a search result or link preview shows, so the ban is a substring match
+   * that a denial cannot pass. Matched case-insensitively. The list names the
+   * three mechanics the product rules exclude (streaks, infinite feeds,
+   * pressure mechanics) in the words each would actually arrive as.
+   */
+  const CALM_TONE_BANNED = [
+    "streak",
+    "infinite feed",
+    "infinite scroll",
+    "hurry",
+    "last chance",
+    "miss out",
+    "don't break",
+    "catch up",
+    "falling behind",
+  ];
+
+  it("gives every entry a non-empty description (D1: a total rule, no exemptions)", () => {
+    for (const route of ROUTES) {
+      expect(
+        route.description.trim().length,
+        `${route.path} has no description, so its search result and link preview fall back ` +
+          "to the root sentence - the thirteen-identical state v0.27 removed",
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps the thirteen descriptions pairwise distinct", () => {
+    const descriptions = ROUTES.map((route) => route.description);
+
+    expect(
+      new Set(descriptions).size,
+      "two routes share a description, so a search result or pasted link for each reads " +
+        "word-for-word the same - the defect this milestone exists to remove",
+    ).toBe(descriptions.length);
+  });
+
+  it(`keeps every description at or under ${DESCRIPTION_CEILING} characters`, () => {
+    for (const route of ROUTES) {
+      expect(
+        route.description.length,
+        `${route.path}'s description is ${route.description.length} characters; a SERP ` +
+          `truncates it mid-sentence past ${DESCRIPTION_CEILING}`,
+      ).toBeLessThanOrEqual(DESCRIPTION_CEILING);
+    }
+  });
+
+  it("keeps the calm-tone banned vocabulary out of every description, in both polarities", () => {
+    for (const route of ROUTES) {
+      const lowered = route.description.toLowerCase();
+      const offending = CALM_TONE_BANNED.filter((banned) => lowered.includes(banned));
+
+      expect(
+        offending,
+        `${route.path}'s description carries banned calm-tone vocabulary - even as a denial, ` +
+          "the word is in the copy the world sees (L-079)",
+      ).toEqual([]);
+    }
+  });
+
+  it("judges a real banned list (negative control: the ban actually fires)", () => {
+    // Substring matching is what makes the polarity trap unpassable; prove it
+    // on the exact denial shape L-079 warns about rather than trusting the
+    // filter above to be non-vacuous.
+    const denial = "No streaks, ever. Skip a day freely.".toLowerCase();
+
+    expect(
+      CALM_TONE_BANNED.filter((banned) => denial.includes(banned)),
+      "the banned-vocabulary filter no longer catches a denial, so the both-polarities " +
+        "clause is vacuous",
+    ).toEqual(["streak"]);
+  });
+});
+
 describe("route registry: the primary nav is derived from it", () => {
   afterEach(() => {
     cleanup();

@@ -65,6 +65,20 @@ export type RouteEntry = {
   readonly path: string;
   /** The word a person sees. Nav labels and keyboard-dialog rows share it. */
   readonly label: string;
+  /**
+   * The sentence the world sees (v0.27 D1): the route's
+   * `<meta name="description">` and its `og:description`, served by the same
+   * derivation that already serves the label as the title. Required on every
+   * entry, `/monetization` included — the same "no exemptions in an otherwise
+   * total rule" argument the v0.25 monetization layout records. Each is ≤160
+   * characters (the SERP truncation ceiling), calm-tone in BOTH polarities
+   * (even a denial like "no streaks" would put the word into copy — L-079),
+   * and pairwise distinct; `route-registry-guard.test.ts` enforces all three,
+   * and `route-title-contract.test.ts` holds the built export to these exact
+   * strings. The thirteen sentences are D6's owner-reviewable defaults
+   * (`docs/design/ROUTE_PREVIEWS.md`).
+   */
+  readonly description: string;
   /** Whether this route appears in the primary nav, in registry order. */
   readonly inPrimaryNav: boolean;
   /**
@@ -118,19 +132,146 @@ export type RouteEntry = {
  * never does - unlike a nav pill, which every reader pays for on every page.
  */
 export const ROUTES: readonly RouteEntry[] = [
-  { path: "/", label: "Dashboard", inPrimaryNav: true, navSlot: "inline", navGroup: "Today", goToKey: "d", audience: "visitor" },
-  { path: "/now", label: "Now", inPrimaryNav: true, navSlot: "inline", navGroup: "In the moment", goToKey: "n", audience: "visitor" },
-  { path: "/slicer", label: "Slicer", inPrimaryNav: true, navSlot: "inline", navGroup: "Today", goToKey: "s", audience: "visitor" },
-  { path: "/ambient", label: "Ambient", inPrimaryNav: true, navSlot: "more", navGroup: "In the moment", goToKey: "a", audience: "visitor" },
-  { path: "/breathe", label: "Breathe", inPrimaryNav: true, navSlot: "more", navGroup: "In the moment", goToKey: "b", audience: "visitor" },
-  { path: "/challenges", label: "Challenges", inPrimaryNav: true, navSlot: "more", navGroup: "In the moment", goToKey: "c", audience: "visitor" },
-  { path: "/focus", label: "Focus", inPrimaryNav: true, navSlot: "more", navGroup: "Today", goToKey: "f", audience: "visitor" },
-  { path: "/execute", label: "Execute", inPrimaryNav: true, navSlot: "more", navGroup: "Today", goToKey: "e", audience: "visitor" },
-  { path: "/review", label: "Review", inPrimaryNav: true, navSlot: "more", navGroup: "Today", goToKey: "r", audience: "visitor" },
-  { path: "/trends", label: "Trends", inPrimaryNav: true, navSlot: "more", navGroup: "Looking back", goToKey: "t", audience: "visitor" },
-  { path: "/journal", label: "Journal", inPrimaryNav: true, navSlot: "more", navGroup: "Looking back", goToKey: "j", audience: "visitor" },
-  { path: "/pricing", label: "Pricing", inPrimaryNav: true, navSlot: "more", navGroup: "Account", goToKey: "p", audience: "visitor" },
-  { path: "/monetization", label: "Monetization", inPrimaryNav: false, audience: "internal" },
+  {
+    path: "/",
+    label: "Dashboard",
+    description:
+      "Your ADHD friendly self-improvement coach. Small, deliberate daily steps that fit how your brain works.",
+    inPrimaryNav: true,
+    navSlot: "inline",
+    navGroup: "Today",
+    goToKey: "d",
+    audience: "visitor",
+  },
+  {
+    path: "/now",
+    label: "Now",
+    description:
+      "One thing, right now: a calm focus timer for a single task. Start when you are ready, stop when you need to — nothing is held against you.",
+    inPrimaryNav: true,
+    navSlot: "inline",
+    navGroup: "In the moment",
+    goToKey: "n",
+    audience: "visitor",
+  },
+  {
+    path: "/slicer",
+    label: "Slicer",
+    description:
+      'Slice a big, foggy task into small concrete steps you can actually start. Built for ADHD brains that stall on "just do it".',
+    inPrimaryNav: true,
+    navSlot: "inline",
+    navGroup: "Today",
+    goToKey: "s",
+    audience: "visitor",
+  },
+  {
+    path: "/ambient",
+    label: "Ambient",
+    description:
+      "Steady background sound for focus: pick an ambient noise, press play, and give your brain something calm to lean on.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "In the moment",
+    goToKey: "a",
+    audience: "visitor",
+  },
+  {
+    path: "/breathe",
+    label: "Breathe",
+    description:
+      "A short guided breathing pause. Follow the rhythm on screen and let your nervous system settle before the next thing.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "In the moment",
+    goToKey: "b",
+    audience: "visitor",
+  },
+  {
+    path: "/challenges",
+    label: "Challenges",
+    description:
+      "Tiny, optional micro-challenges that build momentum in minutes. Try one when you have the energy; skip freely.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "In the moment",
+    goToKey: "c",
+    audience: "visitor",
+  },
+  {
+    path: "/focus",
+    label: "Focus",
+    description:
+      "Choose today's focus and dose: one intention, sized to fit the day you are actually having.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "Today",
+    goToKey: "f",
+    audience: "visitor",
+  },
+  {
+    path: "/execute",
+    label: "Execute",
+    description:
+      "Work through today's plan one step at a time, with a coach suggestion when you stall and a calm stop whenever you choose.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "Today",
+    goToKey: "e",
+    audience: "visitor",
+  },
+  {
+    path: "/review",
+    label: "Review",
+    description:
+      "A gentle end-of-day review: what worked, what felt heavy, and one small adjustment for tomorrow.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "Today",
+    goToKey: "r",
+    audience: "visitor",
+  },
+  {
+    path: "/trends",
+    label: "Trends",
+    description:
+      "Your last four weeks at a glance: check-ins, focus sessions, and gentle patterns. Information, not judgement.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "Looking back",
+    goToKey: "t",
+    audience: "visitor",
+  },
+  {
+    path: "/journal",
+    label: "Journal",
+    description:
+      "A quiet page for today. Write what is on your mind; it stays on your device unless you choose to sync it.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "Looking back",
+    goToKey: "j",
+    audience: "visitor",
+  },
+  {
+    path: "/pricing",
+    label: "Pricing",
+    description:
+      "One simple membership: $5/month after a 30-day free trial. No tiers, and the local app keeps working either way.",
+    inPrimaryNav: true,
+    navSlot: "more",
+    navGroup: "Account",
+    goToKey: "p",
+    audience: "visitor",
+  },
+  {
+    path: "/monetization",
+    label: "Monetization",
+    description:
+      "An internal conversion-analytics snapshot for the site owner. Not part of the daily coaching loop.",
+    inPrimaryNav: false,
+    audience: "internal",
+  },
 ];
 
 /** The routes the primary nav renders, in registry order. */
