@@ -50,10 +50,18 @@ type NavViewport = {
   readonly width: number;
   readonly height: number;
   /**
-   * D7's ceiling: the measured achievable height (138 / 138 / 67) with
-   * headroom for font-metric noise across chromium versions. Deliberately NOT
-   * set to the achievable figure itself - a ceiling with no slack turns a
-   * chromium bump into a red that says nothing about this app.
+   * The measured achievable height with headroom for font-metric noise across
+   * chromium versions. Deliberately NOT set to the achievable figure itself -
+   * a ceiling with no slack turns a chromium bump into a red that says nothing
+   * about this app.
+   *
+   * RATCHETED BY v0.26 PR1 (docs/design/HEADER_ACTIONS.md D5, done-when 2),
+   * from 150 / 150 / 100 to 133 / 133 / 60. The rule is the one v0.23 set:
+   * the measured figure plus ~9%. PR1 measured 121.9 px on all three phone
+   * widths (was 137.9) and 55.2 px at 1280 (was 67.0), so 121.9 x 1.09 = 133
+   * and 55.2 x 1.09 = 60. A gate left at the old numbers would have stayed
+   * green through the entire milestone and stopped describing the shape it
+   * guards.
    */
   readonly headerCeiling: number;
   /** What `main` measured before the collapse, quoted in the failure message. */
@@ -65,21 +73,21 @@ const VIEWPORTS: readonly NavViewport[] = [
     label: "375x667 (iPhone SE class)",
     width: 375,
     height: 667,
-    headerCeiling: 150,
+    headerCeiling: 133,
     measuredBefore: 264,
   },
   {
     label: "412x823 (the Lighthouse mobile default)",
     width: 412,
     height: 823,
-    headerCeiling: 150,
+    headerCeiling: 133,
     measuredBefore: 222,
   },
   {
     label: "1280x720 (the e2e project's Desktop Chrome)",
     width: 1280,
     height: 720,
-    headerCeiling: 100,
+    headerCeiling: 60,
     measuredBefore: 180,
   },
 ];
@@ -265,6 +273,141 @@ test.describe("v0.23: the header fits", () => {
       "Escape closed the disclosure but left focus on a link inside the panel it " +
         "just hid, which is worse for a keyboard reader than not closing at all",
     ).toBe(true);
+  });
+});
+
+/**
+ * v0.26 PR1 - the controls get compact (docs/design/HEADER_ACTIONS.md D3, D4,
+ * D5; roadmap done-when 1, 2 and the browser half of 8).
+ *
+ * This lives beside the v0.23 ceilings rather than in a spec of its own (D7):
+ * a second file measuring the same shell would create two places that must
+ * agree about the same numbers.
+ *
+ * WHY THE CLUSTER AND NOT JUST THE SHELL. The shell ceilings above already
+ * fell to 133 / 60, but a shell height is satisfiable by many shapes - a
+ * smaller font, a tighter padding, a control that wrapped somewhere invisible.
+ * These clauses name the thing the milestone actually changed: the cluster's
+ * own box, and the individual control that was setting it. 360x740 is the
+ * binding width from section 1c, and the width clause is asserted HERE, in
+ * PR1, precisely so PR2 cannot discover late that the cluster still does not
+ * fit beside the title.
+ */
+const CLUSTER = ".site-nav-actions > :last-child";
+
+/** Sync badge, keyboard help, theme toggle - the three the design doc measured. */
+const CLUSTER_CONTROLS = 3;
+
+test.describe("v0.26 PR1: the header's controls are compact", () => {
+  test("the cluster and the theme control are both under 36 px at 360x740, and the cluster fits the title row's 190 px", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 360, height: 740 });
+    await openDashboard(page);
+
+    const cluster = page.locator(CLUSTER);
+    await expect(cluster).toHaveCount(1);
+
+    // Vacuity control, and the selector's own self-check in one. `:last-child`
+    // is how section 1b addressed this node; if the header ever restructures so
+    // that it names something else, this count is what says so instead of the
+    // measurements below quietly describing the wrong box.
+    const controls = page.locator(`${CLUSTER} > *`);
+    expect(
+      await controls.count(),
+      "the last child of .site-nav-actions does not hold the three controls the " +
+        "measurements below describe, so this spec is measuring the wrong node",
+    ).toBe(CLUSTER_CONTROLS);
+
+    const clusterBox = await cluster.boundingBox();
+    expect(clusterBox, "the actions cluster has no layout box at all").not.toBeNull();
+
+    // Clause 1a: it was 46.0 px, and 54.0 px of the 137.9 px header once the
+    // gap it forces is counted - 39.2% of the header for three controls.
+    expect(
+      Math.round(clusterBox!.height),
+      "the sync/help/theme cluster is taller than 36 px again, so it is back to " +
+        "being the tallest thing in the app's chrome (it measured 46.0 px before " +
+        "v0.26 PR1, and 30.0 px after)",
+    ).toBeLessThanOrEqual(36);
+
+    // Clause 1b: the width PR2 needs. 360 is the binding width - beside a
+    // 131.8 px title and a 10 px gap there is 186.2 px of room, and this
+    // ceiling is that figure rounded up with the same slack rule.
+    expect(
+      Math.round(clusterBox!.width),
+      "the cluster is wider than 190 px at the binding 360 px width, so it will " +
+        "not fit beside the title and v0.26 PR2's two-row header is blocked (it " +
+        "measured 327.1 px before PR1, and 112.0 px after)",
+    ).toBeLessThanOrEqual(190);
+
+    // Clause 1c: the individual control that was setting the row's height.
+    // Asserted separately because a cluster that fits while one child is
+    // enormous means the others merely shrank around it.
+    const themeBox = await page.locator(".theme-toggle").boundingBox();
+    expect(themeBox, "the theme toggle has no layout box at all").not.toBeNull();
+    expect(
+      Math.round(themeBox!.height),
+      "the theme toggle is taller than 36 px, which is the single control that " +
+        "made the header 46 px tall before v0.26 PR1 (it measured 143.6 x 46.0, " +
+        "and 30.0 x 30.0 after)",
+    ).toBeLessThanOrEqual(36);
+  });
+
+  /**
+   * D4, and the browser half of done-when 8. The jsdom suite
+   * (`src/app/components/__tests__/sync-status-badge.test.tsx`) proves the
+   * accessible name does not depend on the viewport by construction; only a
+   * real browser can prove the COLLAPSE happens at all, because it is a media
+   * query and jsdom has no CSS.
+   *
+   * The two halves are asserted together on purpose: "the word is hidden at
+   * 360" alone is satisfied by deleting the word, and "the word is visible at
+   * 1280" alone is satisfied by never collapsing.
+   */
+  test("the sync word is hidden below the 56rem cap and back above it, with one accessible name at both", async ({
+    page,
+  }) => {
+    const word = page.locator(".sync-status-word");
+    const badge = page.locator(`${CLUSTER} > :first-child`);
+
+    await page.setViewportSize({ width: 360, height: 740 });
+    await openDashboard(page);
+
+    await expect(word).toHaveCount(1);
+    expect(
+      (await word.textContent())?.trim(),
+      "the collapsed badge has no word in the DOM at all: it was removed rather " +
+        "than hidden, which takes the state out of the page instead of off the screen",
+    ).toBeTruthy();
+
+    const narrowWord = await word.boundingBox();
+    expect(
+      Math.round(narrowWord?.width ?? 0),
+      "the sync word still paints below the 56rem cap, so the badge did not " +
+        "collapse to its dot and the cluster's width clause above is being met " +
+        "some other way",
+    ).toBeLessThanOrEqual(2);
+
+    const narrowName = await badge.getAttribute("aria-label");
+    expect(narrowName, "the collapsed badge has no accessible name").toBeTruthy();
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    // The media query is the only thing that changed; no navigation, so this
+    // is the same DOM re-laid out, which is exactly the claim being tested.
+    await expect(word).toBeVisible();
+    const wideWord = await word.boundingBox();
+    expect(
+      Math.round(wideWord?.width ?? 0),
+      "the sync word never comes back above the 56rem cap, so the desktop badge " +
+        "is a bare dot and D4's 'keeps its word on desktop' is not what shipped",
+    ).toBeGreaterThan(40);
+
+    expect(
+      await badge.getAttribute("aria-label"),
+      "the badge announces itself differently at 1280 than at 360, so what a " +
+        "screen reader is told about where the data lives depends on the window width",
+    ).toBe(narrowName);
   });
 });
 
