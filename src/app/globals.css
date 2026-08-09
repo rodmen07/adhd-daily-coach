@@ -276,11 +276,10 @@ html[data-theme="dark"] .border-slate-200 {
   white-space: nowrap;
 }
 
-.theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
+/* v0.26 D3: `.theme-toggle`'s box now comes from the shared icon-button rule
+   further down this file (`.keyboard-help-trigger, .theme-toggle`), not from a
+   block of its own. Only the parts that are genuinely the theme control's --
+   its glyph and its pressed border, both below -- still live here. */
 
 .theme-toggle-shell {
   display: flex;
@@ -302,6 +301,15 @@ html[data-theme="dark"] .border-slate-200 {
   margin: 0;
   font-size: 0.82rem;
   color: var(--muted-strong);
+}
+
+/* v0.26 D3: the panel's heading, which is where "Confirm light mode" moved to
+   when the button lost its visible text. Slightly stronger than the sentence
+   under it and nothing more -- the calm tone is the point, so this is not a
+   heading element and does not shout. */
+.theme-toggle-confirmation-title {
+  font-weight: 600;
+  color: var(--foreground);
 }
 
 .theme-toggle-actions {
@@ -1097,7 +1105,21 @@ html[data-theme="dark"] .border-slate-200 {
   gap: 8px;
 }
 
-.keyboard-help-trigger {
+/* The header's icon-button vocabulary: a 30x30 circle with an accessible name
+   and no visible text.
+
+   `.keyboard-help-trigger` shipped this shape alone; v0.26 D3
+   (docs/design/HEADER_ACTIONS.md) gives `.theme-toggle` the SAME rule rather
+   than a second 30x30 circle with its own numbers, so the two controls that
+   sit beside each other in `.site-nav-actions` cannot drift apart. That is why
+   this is one selector list and not a copy: the seam is the rule.
+
+   `.theme-toggle` keeps two declarations of its own, both further up this file
+   and both higher-specificity than this rule, so neither is affected by
+   joining it: `.theme-toggle::before` (the `◐`/`◑` glyph) and
+   `.theme-toggle[aria-pressed="true"]` (the accent border). */
+.keyboard-help-trigger,
+.theme-toggle {
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--surface-strong);
@@ -1114,9 +1136,32 @@ html[data-theme="dark"] .border-slate-200 {
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.keyboard-help-trigger:hover {
+.keyboard-help-trigger:hover,
+.theme-toggle:hover {
   background: color-mix(in srgb, var(--accent) 16%, var(--surface-strong));
   border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+}
+
+/* v0.26 D4: below the `56rem` `.site-nav-inner` cap the sync badge collapses to
+   its dot and the word becomes visually hidden -- HIDDEN, never removed, and
+   never the badge's accessible name either way (that is the `aria-label` on the
+   pill, identical at every width). This is the standard visually-hidden recipe,
+   the same one Tailwind's `sr-only` emits and the same one
+   `src/app/focus/page.tsx:105` already relies on; it is spelled here rather
+   than as a utility because `56rem` is not one of Tailwind's breakpoints and a
+   media query in the stylesheet reads better than an arbitrary variant. */
+@media (max-width: 56rem) {
+  .sync-status-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
 }
 
 .keyboard-help-overlay {

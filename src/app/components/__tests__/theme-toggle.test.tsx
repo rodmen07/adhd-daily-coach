@@ -81,4 +81,57 @@ describe("ThemeToggle", () => {
     expect(window.localStorage.getItem("calm-daily-coach:theme")).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
+
+  /**
+   * v0.26 PR1 (docs/design/HEADER_ACTIONS.md D3, roadmap done-when 3).
+   *
+   * Everything above this comment is UNCHANGED by that milestone, and that is
+   * the clause: all four flow assertions already queried the control by its
+   * accessible name rather than by its text, so dropping the visible label
+   * moved no behaviour. The two tests below are the additions - the first pins
+   * the label being gone (a jsdom test cannot see 30x30, but it can see that
+   * nothing but the accessible name is left to identify the button by), the
+   * second pins where the word the button used to carry now lives.
+   */
+  it("identifies itself by accessible name alone, with no visible text", async () => {
+    document.documentElement.dataset.theme = "dark";
+    window.localStorage.setItem("calm-daily-coach:theme", "dark");
+
+    render(<ThemeToggle />);
+
+    const toggle = await screen.findByRole("button", { name: "Switch to light mode" });
+    expect(
+      toggle.textContent,
+      "the theme toggle still renders visible text, which is the `.secondary-button` " +
+        "padding-around-a-label shape that made it 46 px tall and the tallest control " +
+        "in the header",
+    ).toBe("");
+    // The glyph is a CSS `::before`, so it is not text content and not an
+    // accessible name either - the aria-label is the whole name at both themes.
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("names the confirmation in the panel, now that the button cannot carry it", async () => {
+    document.documentElement.dataset.theme = "dark";
+    window.localStorage.setItem("calm-daily-coach:theme", "dark");
+
+    render(<ThemeToggle />);
+
+    const toggle = await screen.findByRole("button", { name: "Switch to light mode" });
+    fireEvent.click(toggle);
+
+    expect(
+      screen.getByText("Confirm light mode"),
+      "the second step of the light-mode confirmation has no name anywhere: it " +
+        "used to be the button's own text, and a label-less button cannot carry it",
+    ).toBeTruthy();
+    expect(
+      toggle.textContent,
+      "the pending state put text back on the button, which is the 46 px shape again",
+    ).toBe("");
+    // The panel still says what it always said, in the same words.
+    expect(
+      screen.getByText("Dark mode is the default because it is easier to read. Switch to light mode anyway?"),
+    ).toBeTruthy();
+  });
 });

@@ -59,20 +59,37 @@ export function ThemeToggle() {
 
   return (
     <div className="theme-toggle-shell" onKeyDown={handleKeyDown}>
+      {/*
+        v0.26 D3: no visible text. The button is a 30x30 circle sized by the
+        shared `.keyboard-help-trigger, .theme-toggle` rule in globals.css, and
+        its meaning is carried by the `◐`/`◑` glyph `.theme-toggle::before`
+        already rendered (globals.css:315-322) plus the `aria-label` below,
+        which is unchanged. `.secondary-button` is deliberately gone: its
+        `padding: 10px 16px` around a full label is what made this control
+        46.0 px tall and therefore made it the tallest thing in the app's
+        chrome (HEADER_ACTIONS.md 1b).
+      */}
       <button
-        className="secondary-button theme-toggle"
+        className="theme-toggle"
         type="button"
         onClick={handleClick}
         aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
         aria-pressed={theme === "dark"}
         aria-expanded={theme === "dark" ? pendingLightMode : undefined}
         data-theme={theme}
-      >
-        {theme === "dark" ? (pendingLightMode ? "Confirm light mode" : "Dark mode") : "Light mode"}
-      </button>
+      />
 
       {theme === "dark" && pendingLightMode ? (
         <div className="theme-toggle-confirmation" role="status" aria-live="polite">
+          {/*
+            The word "Confirm light mode" MOVED here from the button's own
+            text, which a label-less button cannot carry (D3). It is the
+            panel's heading rather than a replacement for the sentence below,
+            so every existing assertion in theme-toggle.test.tsx still holds
+            byte-for-byte: the confirmation flow did not change, only where its
+            name is written.
+          */}
+          <p className="theme-toggle-confirmation-title">Confirm light mode</p>
           <p>Dark mode is the default because it is easier to read. Switch to light mode anyway?</p>
           <div className="theme-toggle-actions">
             <button className="secondary-button" type="button" onClick={cancelLightMode}>
