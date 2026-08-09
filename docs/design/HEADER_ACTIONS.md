@@ -1,6 +1,6 @@
 # v0.26 - The last row: three actions stop costing a row of their own
 
-Status: **SHIPPED 2026-08-08** (PR1 merged as PR #172, PR2 the completion PR
+Status: **SHIPPED 2026-08-08** (PR1 merged as PR #172, PR2 as PR #174
 the same day). `package.json` reads `0.26.0`. Measured shipped figures, in
 chromium against the real export: phones 137.9 -> 121.9 (PR1) -> 95.2 px
 (PR2, two rows below the 56rem cap), desktop 67.0 -> 55.2 px (PR1, one row,

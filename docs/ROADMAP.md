@@ -236,7 +236,7 @@ is written next to.
   therefore puts the destination's name into Next's route announcer, which had
   been permanently EMPTY on every navigation while one constant title made its
   `previousTitle !== currentTitle` condition unreachable. v0.26 (PR #172 +
-  the PR2 that closed it, 2026-08-08) left the nav alone entirely and took the
+  PR #174, 2026-08-08) left the nav alone entirely and took the
   header's last own-row strip: PR1 made the sync/help/theme controls compact
   (phones 137.9 -> 121.9 px, desktop 67.0 -> 55.2 px), PR2 moved the cluster
   onto the title row (phones 121.9 -> 95.2 px, two rows below the 56rem cap,
