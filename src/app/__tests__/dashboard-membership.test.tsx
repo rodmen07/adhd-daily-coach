@@ -19,12 +19,45 @@ import type { UserAccount } from "@/lib/firestore-user";
  * `getUserAccount` is stubbed (it is the network call) but the trial arithmetic
  * and `resolveEntitlement` stay REAL, so the card under test is driven by the
  * same computation production runs.
+ *
+ * `firebase/firestore` is stubbed for a TIMING reason, not a behavioural one,
+ * and the last test in this file guards it. This is the only suite that flips
+ * `isFirebaseConfigured` to true while keeping the planner's check-in store
+ * REAL, so the store resolves its firestore backend and the real
+ * `@/lib/firestore-checkins` bodies run - and their first act is
+ * `await import("firebase/firestore")`, the real SDK. Compiling that chunk is
+ * a ~250-400ms SYNCHRONOUS block that the ESM loader schedules AFTER the
+ * first test's assertion has already resolved, so it lands inside the SECOND
+ * test's 5000ms budget (measured with an in-test CPU profile: the stall window
+ * is `compileSourceTextModule`/`wrapSafe`, and a 10ms interval ticker fired
+ * once, at +275ms). Under wave-parallel load that block multiplied past 5000ms
+ * and timed the second test out - four independent occurrences filed in the
+ * backlog before the mechanism was found, every one of them naming whichever
+ * test ran second. Every sibling suite that renders signed-in pages already
+ * mocks the `@/lib/firestore-*` modules away; this one stubs the SDK itself so
+ * the store's real fallback arithmetic stays under test.
  */
 
 vi.mock("@/lib/firebase", () => ({
   isFirebaseConfigured: vi.fn(() => true),
   loadFirebaseAuth: vi.fn(async () => null),
   loadFirebaseFirestore: vi.fn(async () => ({ type: "firestore" })),
+}));
+
+// Every function the real `@/lib/firestore-*` bodies destructure from the SDK.
+// Reads resolve empty (matching the empty localStorage each test starts with);
+// writes resolve void. The point is that importing this specifier costs
+// microseconds instead of a ~300ms synchronous compile of the real SDK.
+vi.mock("firebase/firestore", () => ({
+  doc: vi.fn(() => ({})),
+  getDoc: vi.fn(async () => ({ exists: () => false, data: () => undefined })),
+  setDoc: vi.fn(async () => undefined),
+  addDoc: vi.fn(async () => ({ id: "stub-doc" })),
+  collection: vi.fn(() => ({})),
+  getDocs: vi.fn(async () => ({ docs: [] })),
+  query: vi.fn(() => ({})),
+  where: vi.fn(() => ({})),
+  orderBy: vi.fn(() => ({})),
 }));
 
 const signedInUser = { uid: "user-1", email: "me@example.com", displayName: "Me" };
@@ -132,5 +165,18 @@ describe("Dashboard membership card, signed in", () => {
     expect(await screen.findByText("Membership status unavailable - access is unchanged")).toBeTruthy();
     expect(screen.queryByText("Trial ended - membership required")).toBeNull();
     expect(screen.queryByText(/NaN/)).toBeNull();
+  });
+
+  it("never loads the real firebase/firestore SDK, whose compile cost times out whichever test runs second", async () => {
+    // The regression direction is DELETING the `vi.mock("firebase/firestore")`
+    // above: the signed-in check-in store then imports the real SDK, and its
+    // ~250-400ms synchronous compile lands in the next test's 5000ms budget -
+    // the mechanism behind four load-multiplied timeouts of this suite's
+    // second test (2026-08-04 through 2026-08-08). `vi.isMockFunction` is the
+    // discriminator because it cannot be satisfied by the real module: it
+    // answers "who provided this export", not "what is its value".
+    const sdk = await import("firebase/firestore");
+    expect(vi.isMockFunction(sdk.getDocs)).toBe(true);
+    expect(vi.isMockFunction(sdk.addDoc)).toBe(true);
   });
 });
