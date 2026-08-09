@@ -177,7 +177,10 @@ is written next to.
   insights, plan editor, browser reminders, offline/sync status) are complete as of
   2026-07-18.
 - New surfaces since the 2026-07-18 snapshot above (this bullet last extended
-  2026-08-07): `/trends`, a 4-week
+  2026-08-08, and its own "last extended" date had read 2026-08-07 while the
+  bullet already carried the v0.23-v0.26 text written 2026-08-08 — a
+  self-contradiction the L-043 self-sweep caught, corrected by the v0.27
+  definition): `/trends`, a 4-week
   check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
   calm focus-session timer (NF-6, PR #104) backed by a local-first
   `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
@@ -1967,18 +1970,109 @@ context (a DevSecOps item with its own evidence bar - now eligible on that bar,
 but a dev milestone should not be the increment that decides its own gate
 becomes required).
 
+### v0.27 - Thirteen rooms, one business card: per-route descriptions and link previews (DEFINED, not started)
+
+Defined 2026-08-08. Design doc:
+[docs/design/ROUTE_PREVIEWS.md](design/ROUTE_PREVIEWS.md), every decision an
+overridable default, section 6 empty until the owner weighs in.
+
+**The finding, measured on the deployed artifact 2026-08-08 (all thirteen
+routes, not a sample):** every route serves the IDENTICAL
+`<meta name="description">` — the root layout's sentence, once per page,
+saying nothing about the page — and zero Open Graph or Twitter tags exist
+anywhere (`grep -cE 'property="og:|name="twitter:'` = 0 on all thirteen). So
+a search result or pasted link for `/breathe` and one for `/pricing` read
+word-for-word the same. This is v0.25's finding one level out: v0.25 gave
+every room a name and made the browser announce it; nothing yet tells the
+world what any room IS. Structural, not an oversight: every `page.tsx` is
+`"use client"`, and `metadataForRoute()` returns `{ title }` only — its own
+doc comment names this milestone as where descriptions land, additively.
+
+**v0.27 = a distinct description and an Open Graph block on all thirteen
+routes, derived from the same registry that already names them.** One PR
+(D8). `RouteEntry` gains a required `description` on every entry (D1); the
+thirteen sentences are drafted in D6 as overridable defaults, calm-tone,
+each ≤160 characters; `metadataForRoute()` widens its return so the twelve
+segment layouts pick everything up with zero edits (D2); `/` keeps its
+sentence byte-for-byte (D3); `openGraph` carries title, description, url,
+type and siteName with the project-pages basePath trap named and guarded
+(D4); no og:image (D5, owner asset, additive later).
+
+Done-when, all CI-checkable:
+
+1. The built `out/<route>/index.html` for each of the thirteen routes
+   carries exactly one `<meta name="description">`, and the thirteen
+   contents are pairwise DISTINCT — the pre-v0.27 state (thirteen
+   identical) is the red, and control A reproduces it on demand.
+2. Each non-root route's served description equals its registry entry's
+   `description`, with expectations composed from `ROUTES[i].description`
+   and literals, never from `metadataForRoute()` (L-054); `/`'s served
+   description stays BYTE-IDENTICAL to today's root sentence.
+3. Every route's built HTML carries `og:title` equal to its served
+   `<title>`, `og:description` equal to its served description, and
+   `og:url` equal to the route's canonical deployed URL in the
+   trailing-slash form the export serves, INCLUDING the
+   `/adhd-daily-coach/` base path — control C drops the base path and the
+   clause must red showing the origin-resolved URL, so "an og:url exists"
+   cannot satisfy it (L-033).
+4. The registry clauses ride `route-registry-guard.test.ts`: `description`
+   present and non-empty on every entry, pairwise distinct, ≤160
+   characters, and free of the calm-tone banned vocabulary in BOTH
+   polarities (a "no streaks" denial still puts the word in copy — L-079).
+5. The export clauses ride `route-title-contract.test.ts`, which already
+   parses every route's built HTML. **No new `.test.ts` under
+   `src/__tests__` or `src/app/__tests__`, so the guard-count word stays
+   Twenty-two** (D7); if the implementation adds a suite anyway it owes
+   Twenty-two → Twenty-three plus the names-list entry in the SAME PR
+   (L-042 — `NUMBER_WORDS` already carries `"twenty-three"` and the claim
+   regex already accepts hyphens, so only the sentence moves).
+6. Controls per D8, implementation committed first (L-035), both halves
+   quoted (L-037): (A) derivation narrowed to `{ title }` → distinctness
+   clause red reproducing the shipped-today state; (B) one segment
+   layout's metadata deleted → per-route equality red naming exactly that
+   route; (C) the basePath dropped from `og:url` → clause 3 red. A
+   perturbed registry `description` is NOT a control — it moves both
+   sides and a green there is the failure signal (L-054).
+7. No rendered-DOM change: `e2e/nav-shape.spec.ts` passes byte-for-byte
+   unchanged, and the diff touches no `page.tsx`.
+8. `package.json` reads `0.27.0` with both lockfile copies
+   (`lockfile-version-parity`), this heading reads DONE, and the
+   Current-state version sentence reads `0.27.0`, all in the same commit
+   (`roadmap-milestone-status`, `roadmap-version-claim`).
+9. Live proof after the Pages deploy: at least three sampled routes serve
+   their distinct description and `og:url` with the base path intact.
+
+**Chosen over** (each reason at source in ROUTE_PREVIEWS.md section 4): the
+two-Escape-owners interaction and the `role="img"` taste call (single
+decisions, not milestones), the `src/app/**` behaviour-coverage MED and the
+rendered-DOM theme-guard gap (QA-stream, own cadence slots), the
+silent-migration question (a product decision the analyst may not make
+unilaterally), FCM push (console-gated), promoting `e2e` to required
+(DevSecOps, own evidence bar), and the surviving `background-color: --var`
+(blocked on the `agents/dev-agent/` boundary). Descriptions + OG was named
+the strongest candidate by the v0.25 AND v0.26 definitions, blocked only on
+owner copy — and drafting the thirteen sentences as overridable defaults in
+a review-gate PR is exactly the mechanism v0.24 used for its group names.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.26 have all landed, nothing above this section is still open, and
-the dev queue is therefore EMPTY - the next product slot defines v0.27 rather
-than a dev slot picking a direction unilaterally.** (Until v0.26 PR2 this
-clause read "v0.26 is DEFINED above (2026-08-08) but not started, so the dev
-queue holds exactly its PR1" - already one PR stale when PR2 picked the work
-up, since PR1 had shipped as PR #172 without rewriting it, and retired here by
-the completion PR. The uncounted-edit lesson below applies to PR1's miss of
-this clause too.) v0.22
+through v0.26 have all landed, and v0.27 is now DEFINED above (2026-08-08)
+but not started, so the dev queue holds exactly its one PR and a dev slot
+takes it rather than picking a direction of its own.** (The 2026-08-08 v0.27
+definition retired the previous opening clause here — the one declaring the
+dev queue EMPTY and assigning the v0.27 definition to a product slot — a
+sentence true when v0.26 PR2 wrote it and made false by the very edit it
+asked for, the same self-falsifying shape as every definition before it; the
+superseded wording is quoted verbatim in the 2026-08-08 run report per the
+tombstone rule rather than here, because its phrasing is one of the two
+token shapes preflight C12 greps for and a verbatim quote would re-create
+the false positive this same edit clears below. Until v0.26 PR2 the clause
+before THAT read "v0.26 is DEFINED above (2026-08-08) but not started, so
+the dev queue holds exactly its PR1" - already one PR stale when PR2 picked
+the work up, since PR1 had shipped as PR #172 without rewriting it. The
+uncounted-edit lesson below applies to PR1's miss of this clause too.) v0.22
 completed 2026-08-07 (PR #156 the `src/lib/routes.ts` registry with the nav
 derived from it, PR #157 the keyboard dialog derived from it), so the four
 independent hardcoded route lists are one, `/now` is reachable from every page
@@ -2016,7 +2110,7 @@ two rows at 95.2 px, down from 264 px when v0.23 started this arc, and the
 desktop header stays one row at 55.2 px.
 This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected twenty-three times now, three on
+therefore is most likely to go stale. (Corrected twenty-four times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -2032,9 +2126,13 @@ the seventeenth by the 2026-08-08 product pass that defined v0.24 hours
 after v0.23 shipped, the eighteenth by v0.24 PR2, the completion PR,
 which flips the heading and this sentence together for the third milestone
 running, the nineteenth by the 2026-08-08 product pass that defined v0.25
-hours after v0.24 shipped - which is also the edit that retired the "the dev
-queue is EMPTY and the next product slot defines v0.25" clause opening this
-paragraph, a sentence that was true when written and that this same edit made
+hours after v0.24 shipped - which is also the edit that retired the clause
+then opening this paragraph (the one declaring the dev queue EMPTY and
+assigning the v0.25 definition to the coming product slot; its verbatim
+wording was reworded here 2026-08-08 because preflight C12 greps
+non-completed lines for exactly that token shape and had flagged this
+historical quote on every run since v0.26 shipped), a sentence that was true
+when written and that this same edit made
 false - a **twentieth by v0.25 PR1**, which rewrote the opening clause to
 "v0.25 is IN PROGRESS, PR1 shipped" and did NOT increment this counter, so
 the count itself was understated by one for as long as the sentence it counts
@@ -2057,7 +2155,13 @@ this sentence together for the fifth milestone running - and which found the
 opening clause already one PR stale, because v0.26 PR1 (PR #172) shipped
 without rewriting "the dev queue holds exactly its PR1": the same uncounted
 class as the twentieth edition's miss, caught at the next edit rather than
-lived with, and repaired in the same pass that retires the clause.
+lived with, and repaired in the same pass that retires the clause. This
+**twenty-fourth** is the 2026-08-08 product pass that defined v0.27 hours
+after v0.26 shipped — the same queue-describing clause falsified by filling
+the queue, retired by the definition PR that filled it, with the superseded
+wording quoted in that day's run report rather than here because its token
+shape is one preflight C12 greps for (see the parenthetical above about the
+nineteenth edition's quote, reworded the same day for the same reason).
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
