@@ -245,7 +245,7 @@ is written next to.
   onto the title row (phones 121.9 -> 95.2 px, two rows below the 56rem cap,
   desktop unchanged one row). v0.27 (PR #177, 2026-08-09) gave each of the
   thirteen routes its own description and Open Graph block from the route
-  registry; v0.28 (PR #PENDING, 2026-08-10) gave the guest migration a
+  registry; v0.28 (PR #179, 2026-08-10) gave the guest migration a
   `migrated-locally` result, so a copy that lands in this browser stops
   borrowing the cloud's sentence on `/`, `/now` and `/trends`. **package.json
   reads
