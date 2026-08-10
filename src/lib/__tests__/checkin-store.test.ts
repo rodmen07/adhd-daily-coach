@@ -11,6 +11,7 @@ import {
   getFirestoreWeeklySummary,
 } from "@/lib/firestore-checkins";
 import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
+import { guestMigrationMarker } from "@/lib/guest-migration";
 import type { Firestore } from "firebase/firestore";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -337,27 +338,97 @@ describe("checkin-store", () => {
     });
   });
 
+  const guestCheckin = {
+    id: "1",
+    createdAt: "2026-06-27T10:00:00.000Z",
+    date: "2026-06-27",
+    focus: "Deep Work",
+    dose: "light",
+    minutes: 5,
+    status: "done",
+  } as const;
+
   it("retries migration locally when the Firestore migration fails", async () => {
     mockFirebase({} as Firestore);
     vi.mocked(addFirestoreCheckin).mockRejectedValueOnce(new Error("offline"));
-    vi.mocked(listCheckins).mockReturnValue([
-      {
-        id: "1",
-        createdAt: "2026-06-27T10:00:00.000Z",
-        date: "2026-06-27",
-        focus: "Deep Work",
-        dose: "light",
-        minutes: 5,
-        status: "done",
-      },
-    ]);
+    vi.mocked(listCheckins).mockReturnValue([{ ...guestCheckin }]);
 
     const store = createCheckinStore(undefined, { signedIn: true });
     const result = await store.migrateGuestCheckins("user-123");
 
-    expect(result.status).toBe("migrated");
+    // v0.28 clause 1 (MIGRATION_DESTINATION.md D2). The retry is still correct
+    // - a thrown Firestore write must not strand half a history - but it
+    // landed in this browser, and reporting plain "migrated" is what let `/`
+    // say "Migrated 1 guest check-in to your account."
+    expect(result.status).toBe("migrated-locally");
     expect(result.migratedCount).toBe(1);
     expect(vi.mocked(addCheckin)).toHaveBeenCalledTimes(1);
+    // The records are in the local TARGET scope, not left in guest.
+    expect(vi.mocked(addCheckin).mock.calls[0]?.[1]).toBe("user-123");
+    // Asserted on the marker keys themselves, not inferred from the status:
+    // only the local backend's marker is written, which is what makes the
+    // next load retry the cloud copy (D6).
+    expect(
+      window.localStorage.getItem(guestMigrationMarker("user-123", "firestore")),
+    ).toBeNull();
+    expect(
+      window.localStorage.getItem(guestMigrationMarker("user-123", "local")),
+    ).toBe("1");
+  });
+
+  // v0.28 clause 2 (MIGRATION_DESTINATION.md D6): D3's sentence promises the
+  // copy "will be copied to your account next time it can be reached". That
+  // promise is the marker asymmetry above, so it is pinned by a test rather
+  // than asserted in prose.
+  it("still reaches the account on the load after a local landing", async () => {
+    mockFirebase({} as Firestore);
+    vi.mocked(addFirestoreCheckin).mockRejectedValueOnce(new Error("offline"));
+    vi.mocked(listCheckins).mockReturnValue([{ ...guestCheckin }]);
+
+    const store = createCheckinStore(undefined, { signedIn: true });
+    const first = await store.migrateGuestCheckins("user-123");
+    expect(first.status).toBe("migrated-locally");
+
+    // Second load, cloud write working this time.
+    const second = await store.migrateGuestCheckins("user-123");
+
+    expect(second.status).toBe("migrated");
+    expect(second.migratedCount).toBe(1);
+    // Written to the account scope, which is what the sentence promised.
+    expect(vi.mocked(addFirestoreCheckin)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(addFirestoreCheckin).mock.calls[1]?.[2]).toBe("user-123");
+    expect(
+      window.localStorage.getItem(guestMigrationMarker("user-123", "firestore")),
+    ).toBe("1");
+  });
+
+  it("reports a firestore-fallback copy as landing in this browser", async () => {
+    // Explicit firestore setting with Firebase unconfigured: a
+    // firestore-RESOLVED adapter whose writes are local (D2).
+    vi.mocked(listCheckins).mockReturnValue([{ ...guestCheckin }]);
+
+    const store = createCheckinStore("firestore");
+    expect(store.backend).toBe("firestore-fallback");
+
+    const result = await store.migrateGuestCheckins("user-123");
+
+    expect(result.status).toBe("migrated-locally");
+    expect(result.migratedCount).toBe(1);
+    expect(vi.mocked(addFirestoreCheckin)).not.toHaveBeenCalled();
+  });
+
+  it("leaves a plain local backend saying plain migrated", async () => {
+    // D2's exclusion, held by a test so the mapping cannot creep: with no
+    // cloud configured the browser is the destination by CONFIGURATION, and
+    // "will be copied to your account" would promise a cloud that does not
+    // exist.
+    vi.mocked(listCheckins).mockReturnValue([{ ...guestCheckin }]);
+
+    const store = createCheckinStore("local");
+    const result = await store.migrateGuestCheckins("user-123");
+
+    expect(result.status).toBe("migrated");
+    expect(result.migratedCount).toBe(1);
   });
 
   it("migrates guest checkins into signed-in scope once", async () => {

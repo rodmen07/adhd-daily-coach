@@ -301,8 +301,13 @@ describe("focus-session-store", () => {
       const store = createFocusSessionStore(undefined, { signedIn: true });
       const result = await store.migrateGuestFocusSessions("user-123");
 
-      expect(result).toEqual({ status: "migrated", migratedCount: 2 });
+      // v0.28 clause 1 (MIGRATION_DESTINATION.md D2): the copy completed in
+      // this browser, and the status now says so.
+      expect(result).toEqual({ status: "migrated-locally", migratedCount: 2 });
       expect(vi.mocked(putFocusSession)).toHaveBeenCalledTimes(2);
+      for (const [, scopeKey] of vi.mocked(putFocusSession).mock.calls) {
+        expect(scopeKey).toBe("user-123");
+      }
       // The failed firestore attempt left its own marker unset, so a later
       // online load can still sync; only the local marker is set here.
       expect(
@@ -324,9 +329,38 @@ describe("focus-session-store", () => {
 
       const result = await store.migrateGuestFocusSessions("user-123");
 
-      expect(result).toEqual({ status: "migrated", migratedCount: 2 });
+      // v0.28 D2: firestore-RESOLVED, local writes - the destination is
+      // reported even though live this adapter cannot carry a signed-in scope.
+      expect(result).toEqual({ status: "migrated-locally", migratedCount: 2 });
       expect(vi.mocked(putFocusSession)).toHaveBeenCalledTimes(2);
       expect(vi.mocked(putFirestoreFocusSession)).not.toHaveBeenCalled();
+    });
+
+    // v0.28 clause 2 (MIGRATION_DESTINATION.md D6): the D3 sentence's future
+    // tense is the marker asymmetry, pinned rather than promised.
+    it("firestore: the next load after a local landing still reaches the account", async () => {
+      mockFirebase({} as Firestore);
+      vi.mocked(putFirestoreFocusSession).mockRejectedValueOnce(
+        new Error("permission-denied"),
+      );
+      seedGuest();
+
+      const store = createFocusSessionStore(undefined, { signedIn: true });
+      const first = await store.migrateGuestFocusSessions("user-123");
+      expect(first.status).toBe("migrated-locally");
+
+      const second = await store.migrateGuestFocusSessions("user-123");
+
+      expect(second).toEqual({ status: "migrated", migratedCount: 2 });
+      expect(vi.mocked(putFirestoreFocusSession)).toHaveBeenCalledTimes(3);
+      for (const [, , scopeKey] of vi.mocked(putFirestoreFocusSession).mock.calls) {
+        expect(scopeKey).toBe("user-123");
+      }
+      expect(
+        window.localStorage.getItem(
+          guestMigrationMarker("user-123", "firestore", "focusSessions"),
+        ),
+      ).toBe("1");
     });
 
     it("stays a no-op for a signed-out visitor", async () => {

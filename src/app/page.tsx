@@ -841,11 +841,22 @@ export default function Home() {
           <StatusMessage
             tone="success"
             className="mt-3"
+            data-testid="checkin-migration-note"
             message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+          />
+          {/* v0.28 (MIGRATION_DESTINATION.md D3/D4): the copy completed in this
+              browser rather than in the account. A notice, not an error -
+              nothing failed and nothing is asked of the person. */}
+          <StatusMessage
+            tone="notice"
+            className="mt-3"
+            data-testid="checkin-migration-local"
+            message={migrationStatus.type === "notice" ? migrationStatus.message : null}
           />
           <StatusMessage
             tone="error"
             className="mt-3"
+            data-testid="checkin-migration-error"
             message={migrationStatus.type === "error" ? migrationStatus.message : null}
           />
         </section>

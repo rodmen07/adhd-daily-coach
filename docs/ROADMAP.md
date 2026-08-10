@@ -243,8 +243,13 @@ is written next to.
   header's last own-row strip: PR1 made the sync/help/theme controls compact
   (phones 137.9 -> 121.9 px, desktop 67.0 -> 55.2 px), PR2 moved the cluster
   onto the title row (phones 121.9 -> 95.2 px, two rows below the 56rem cap,
-  desktop unchanged one row). **package.json reads
-  0.27.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  desktop unchanged one row). v0.27 (PR #177, 2026-08-09) gave each of the
+  thirteen routes its own description and Open Graph block from the route
+  registry; v0.28 (PR #179, 2026-08-10) gave the guest migration a
+  `migrated-locally` result, so a copy that lands in this browser stops
+  borrowing the cloud's sentence on `/`, `/now` and `/trends`. **package.json
+  reads
+  0.28.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
   2026-08-07 and v0.22 itself shipped hours later and made it wrong again. It
@@ -2054,7 +2059,7 @@ the strongest candidate by the v0.25 AND v0.26 definitions, blocked only on
 owner copy — and drafting the thirteen sentences as overridable defaults in
 a review-gate PR is exactly the mechanism v0.24 used for its group names.
 
-### v0.28 - The honest arrival: a migration that lands in the browser says so (agent-doable now)
+### v0.28 - The honest arrival: a migration that lands in the browser says so (DONE)
 
 Defined 2026-08-09. Design doc:
 [docs/design/MIGRATION_DESTINATION.md](design/MIGRATION_DESTINATION.md),
@@ -2097,6 +2102,26 @@ Done-when, all CI-checkable:
    state through `StatusMessage` `tone="notice"` with their D3 sentence;
    the `error` state still renders `tone="error"` with today's exact
    sentences.
+   **SCOPE REDUCED by the implementation: the PLANNER half of this clause
+   is unshippable as written and was cut rather than faked.** D3 listed two
+   sentences for `/`, one for check-ins and one for the planner. The planner
+   one has no producer and no place to render, falsified by four commands
+   before the cut: (a) `grep -rln "planner" src/lib/firestore-*.ts` returns
+   NOTHING, so no cloud planner store exists; (b) `migrateGuestPlannerState`
+   pins its marker to the `local` backend (`planner-state.ts:180`) and writes
+   through `persistPlannerState`, which D2 excludes from the mapping ON
+   PURPOSE - "will be copied to your account" would promise a cloud that does
+   not exist; (c) even given a producer, `planner-session.ts:73` renders the
+   planner sentence only when `migrationStatus.type === "idle"`, and any
+   check-in fallback has already set `notice`, so it could never appear in
+   the outcome D3 wrote it for; (d) making it reachable needs a NEW
+   discriminator ("is this app cloud-backed at all?") that no D-number names,
+   which is a product decision, not an implementation detail. The reasoning
+   is pinned by `planner-session.test.ts` → "keeps the local-landing notice
+   rather than the planner's account sentence", and the open question is
+   filed in the project backlog. Same class as the v0.22 PR1/PR2 split that
+   PR #156 falsified: a definition clause is a hypothesis about the code,
+   and the code is the authority.
 4. No fallback outcome can reach an account-claiming sentence: control A
    (store mapping reverted) reds both the store clause and its page's
    notice test.

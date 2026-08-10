@@ -37,6 +37,19 @@ export async function hydratePlannerSession({
         type: "ok",
         message: `Migrated ${migration.migratedCount} guest check-in${migration.migratedCount === 1 ? "" : "s"} to your account.`,
       };
+    } else if (migration.status === "migrated-locally" && migration.migratedCount > 0) {
+      // v0.28 (docs/design/MIGRATION_DESTINATION.md D3): the copy completed,
+      // but a firestore-resolved store fell back to its local twin, so the
+      // records are in this browser and not in the account the sentence above
+      // would have claimed. No count and no instruction: there is nothing for
+      // the person to do, and the cloud copy retries itself on the next load
+      // because only the local marker was written (D6, pinned by the retry
+      // test in checkin-store.test.ts).
+      migrationStatus = {
+        type: "notice",
+        message:
+          "Your earlier check-ins are safe in this browser. They will be copied to your account next time it can be reached.",
+      };
     } else if (migration.status === "error") {
       migrationStatus = {
         type: "error",

@@ -94,6 +94,59 @@ describe("hydratePlannerSession", () => {
     }
   });
 
+  // v0.28 (docs/design/MIGRATION_DESTINATION.md D3/D4): the same completed
+  // copy, landed in this browser. `/` used to render "Migrated 2 guest
+  // check-ins to your account." for this result, because the store returned
+  // plain `migrated`; the account claim was the defect.
+  it("returns a notice, not a success, when the copy landed in this browser", async () => {
+    const { store } = makeStore();
+    vi.mocked(store.migrateGuestCheckins).mockResolvedValueOnce({
+      status: "migrated-locally",
+      migratedCount: 2,
+    });
+
+    const result = await hydratePlannerSession({
+      initialState: baseState(),
+      authEmail: null,
+      storageScope: "uid-123",
+      checkinStore: store,
+    });
+
+    // Composed from a literal rather than from planner-session's own string,
+    // which would agree with itself however it changed (L-054).
+    expect(result.migrationStatus).toEqual({
+      type: "notice",
+      message:
+        "Your earlier check-ins are safe in this browser. They will be copied to your account next time it can be reached.",
+    });
+  });
+
+  it("keeps the account claim off every fallback outcome", async () => {
+    // The contract clause, stated as a property rather than as one example:
+    // no `migrated-locally` result may produce a sentence claiming the
+    // records reached the account.
+    for (const migratedCount of [1, 2, 9]) {
+      const { store } = makeStore();
+      vi.mocked(store.migrateGuestCheckins).mockResolvedValueOnce({
+        status: "migrated-locally",
+        migratedCount,
+      });
+
+      const result = await hydratePlannerSession({
+        initialState: baseState(),
+        authEmail: null,
+        storageScope: "uid-123",
+        checkinStore: store,
+      });
+
+      expect(result.migrationStatus.type).toBe("notice");
+      if (result.migrationStatus.type !== "idle") {
+        expect(result.migrationStatus.message).not.toMatch(/to your account\./);
+        expect(result.migrationStatus.message).toContain("safe in this browser");
+      }
+    }
+  });
+
   it("returns migration error status and null summary on summary failure", async () => {
     const { store } = makeStore();
     vi.mocked(store.migrateGuestCheckins).mockResolvedValueOnce({
@@ -187,6 +240,42 @@ describe("hydratePlannerSession", () => {
       if (result.migrationStatus.type === "ok") {
         expect(result.migrationStatus.message).toContain("Migrated 2 guest check-ins");
       }
+      expect(result.nextState.checkedIn).not.toBeNull();
+    });
+
+    // v0.28, and the reason this milestone ships ONE new sentence on `/`
+    // rather than the two MIGRATION_DESTINATION.md D3 listed. The planner's
+    // own copy is local by construction - `migrateGuestPlannerState` pins the
+    // marker to the `local` backend (planner-state.ts:180) and no
+    // `firestore-*` module mentions the planner at all - so it can never
+    // produce `migrated-locally`, and D2 excludes the plain local backend on
+    // purpose. This test pins the OTHER half of that reasoning: even when
+    // both migrations move data, the planner's account sentence is
+    // unreachable behind the check-in notice, so a planner-specific line
+    // would have nowhere to render. The roadmap's clause 3 records the
+    // scope reduction.
+    it("keeps the local-landing notice rather than the planner's account sentence", async () => {
+      seedGuestDay();
+      const { store } = makeStore();
+      vi.mocked(store.migrateGuestCheckins).mockResolvedValueOnce({
+        status: "migrated-locally",
+        migratedCount: 2,
+      });
+
+      const result = await hydratePlannerSession({
+        initialState: baseState(),
+        authEmail: null,
+        storageScope: "uid-123",
+        checkinStore: store,
+      });
+
+      expect(result.migrationStatus.type).toBe("notice");
+      if (result.migrationStatus.type !== "idle") {
+        expect(result.migrationStatus.message).toBe(
+          "Your earlier check-ins are safe in this browser. They will be copied to your account next time it can be reached.",
+        );
+      }
+      // The planner state still crossed, which is what the ring renders.
       expect(result.nextState.checkedIn).not.toBeNull();
     });
 

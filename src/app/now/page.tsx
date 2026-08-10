@@ -108,8 +108,14 @@ export default function NowPage() {
       // expects them was the only one they could not tell apart. `/` has
       // announced its own migration failures since v0.4; this closes the gap
       // on the two pages that never did.
+      //
+      // "migrated-locally" is v0.28's third outcome (MIGRATION_DESTINATION.md
+      // D3/D4): the copy completed, but in this browser, so `migrationNote`'s
+      // "here now" would be read as "in your account". A notice, not an error.
       if (migration.status === "migrated" && migration.migratedCount > 0) {
         setMigrationStatus({ type: "ok", message: C.migrationNote });
+      } else if (migration.status === "migrated-locally" && migration.migratedCount > 0) {
+        setMigrationStatus({ type: "notice", message: C.migrationLocalNote });
       } else if (migration.status === "error") {
         setMigrationStatus({ type: "error", message: C.migrationErrorNote });
       }
@@ -202,6 +208,12 @@ export default function NowPage() {
         className="mb-4"
         data-testid="focus-migration-note"
         message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+      />
+      <StatusMessage
+        tone="notice"
+        className="mb-4"
+        data-testid="focus-migration-local"
+        message={migrationStatus.type === "notice" ? migrationStatus.message : null}
       />
       <StatusMessage
         tone="error"
