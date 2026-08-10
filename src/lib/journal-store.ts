@@ -32,6 +32,7 @@ import {
 } from "@/lib/checkin-store";
 import {
   GUEST_SCOPE_KEY,
+  guestMigrationLandedLocally,
   guestMigrationMarker,
   migrateGuestRecords,
   type GuestMigrationPlan,
@@ -136,9 +137,15 @@ export function createJournalStore(
 
   if (backend === "firestore") {
     if (!configured) {
+      // v0.28 D2, mirroring checkin-store: firestore-RESOLVED with local
+      // semantics, so a completed copy landed in the browser and says so.
       return {
         ...localStore,
         backend: "firestore-fallback",
+        migrateGuestJournalEntries: async (targetScopeKey) =>
+          guestMigrationLandedLocally(
+            await localStore.migrateGuestJournalEntries(targetScopeKey),
+          ),
       };
     }
 
@@ -166,7 +173,9 @@ export function createJournalStore(
         // loaded lazily.
         const db = await loadFirebaseFirestore().catch(() => null);
         if (!db) {
-          return localStore.migrateGuestJournalEntries(targetScopeKey);
+          return guestMigrationLandedLocally(
+            await localStore.migrateGuestJournalEntries(targetScopeKey),
+          );
         }
 
         // Deliberately unguarded, mirroring migrateGuestCheckins: a thrown
@@ -184,7 +193,11 @@ export function createJournalStore(
         );
 
         if (result.status === "error") {
-          return localStore.migrateGuestJournalEntries(targetScopeKey);
+          // v0.28 D2: the local retry succeeds, but in this browser - see the
+          // note in checkin-store.
+          return guestMigrationLandedLocally(
+            await localStore.migrateGuestJournalEntries(targetScopeKey),
+          );
         }
 
         return result;

@@ -275,6 +275,45 @@ describe("Now page", () => {
   // only way `migrateGuestFocusSessions` returns `error` is the local write
   // failing too - a full or disabled localStorage - which is exactly the
   // condition where the sessions really are not where the person expects.
+  // v0.28 (docs/design/MIGRATION_DESTINATION.md D3/D4). Between "here now" and
+  // "could not be copied" sits the outcome neither described: the copy RAN and
+  // completed, but a thrown Firestore write sent it to the local twin, so the
+  // sessions are in this browser while the success line implied the account.
+  // Observed failing against origin/main before the fix landed - the page had
+  // no notice branch at all and rendered `migrationNote`.
+  it("tells a signed-in person when the copy landed in this browser instead", async () => {
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    mockFirebase({} as Firestore);
+    vi.mocked(putFirestoreFocusSession).mockRejectedValueOnce(
+      new DOMException("permission-denied", "FirebaseError"),
+    );
+
+    render(<NowPage />);
+
+    const note = await screen.findByTestId("focus-migration-local");
+    // Composed from a literal, not from the copy module the page imports: a
+    // shared constant on both sides would agree with itself (L-054).
+    expect(note.textContent).toBe(
+      "Your earlier focus sessions are safe in this browser. They will be copied to your account next time it can be reached.",
+    );
+    // D4: nothing failed and nothing is asked of the person, so the line waits
+    // for a pause in the reading order rather than interrupting.
+    expect(note.getAttribute("role")).toBeNull();
+    expect(note.getAttribute("aria-live")).toBe("polite");
+    expect(note.className).toContain("text-amber-700");
+    // Neither of the two sentences this one replaces may appear beside it.
+    expect(screen.queryByTestId("focus-migration-note")).toBeNull();
+    expect(screen.queryByTestId("focus-migration-error")).toBeNull();
+    // The sessions really are in the local account scope, which is what the
+    // sentence claims.
+    expect(listFocusSessions("user-123")).toHaveLength(1);
+    expect(listFocusSessions("guest")).toHaveLength(1);
+  });
+
   it("tells a signed-in person, assertively, when the copy could not be made", async () => {
     addFocusSession(
       { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },

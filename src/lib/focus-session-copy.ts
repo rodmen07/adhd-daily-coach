@@ -40,6 +40,16 @@ export const FOCUS_SESSION_COPY = {
   // error - and it says plainly that the sessions are safe where they are.
   migrationErrorNote:
     "Your earlier focus sessions could not be copied to your account yet. They are still saved in this browser.",
+  // v0.28 (docs/design/MIGRATION_DESTINATION.md D3). Between the two lines
+  // above sits the outcome neither could describe: the copy RAN and completed,
+  // but a firestore-resolved store fell back to its local twin, so the
+  // sessions are in this browser and `migrationNote`'s "here now" would be
+  // read as "in your account". Same shape as the error line - it says where
+  // the sessions are and asks for nothing - but future tense rather than
+  // apology, because the cloud copy is retried on the next load without the
+  // person doing anything (D6).
+  migrationLocalNote:
+    "Your earlier focus sessions are safe in this browser. They will be copied to your account next time it can be reached.",
 } as const;
 
 /**

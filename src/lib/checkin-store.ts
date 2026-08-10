@@ -44,6 +44,7 @@ import {
 } from "@/lib/firestore-checkins";
 import {
   GUEST_SCOPE_KEY,
+  guestMigrationLandedLocally,
   guestMigrationMarker,
   migrateGuestRecords,
   type GuestMigrationPlan,
@@ -200,9 +201,16 @@ export function createCheckinStore(
 
   if (backend === "firestore") {
     if (!configured) {
+      // v0.28 D2: this adapter is firestore-RESOLVED with local semantics, so
+      // a completed copy landed in the browser and says so. Live it cannot
+      // carry a signed-in scope (auth needs the same config the probe just
+      // found missing), which is why the honesty is in the type and the tests
+      // rather than on anyone's screen.
       return {
         ...localStore,
         backend: "firestore-fallback",
+        migrateGuestCheckins: async (targetScopeKey) =>
+          guestMigrationLandedLocally(await localStore.migrateGuestCheckins(targetScopeKey)),
       };
     }
 
@@ -238,7 +246,9 @@ export function createCheckinStore(
         // loaded lazily.
         const db = await loadFirebaseFirestore().catch(() => null);
         if (!db) {
-          return localStore.migrateGuestCheckins(targetScopeKey);
+          return guestMigrationLandedLocally(
+            await localStore.migrateGuestCheckins(targetScopeKey),
+          );
         }
 
         // Deliberately unguarded: a thrown Firestore write must surface as
@@ -252,7 +262,15 @@ export function createCheckinStore(
         );
 
         if (result.status === "error") {
-          return localStore.migrateGuestCheckins(targetScopeKey);
+          // v0.28 D2: the retry is still correct - a thrown Firestore write
+          // must not strand half a history - but its success is a LOCAL
+          // landing, not the cloud copy the caller asked for, and saying
+          // "migrated" here is what let `/` claim the records reached the
+          // account. The firestore marker stays unwritten, so the next load
+          // retries the cloud copy (D6).
+          return guestMigrationLandedLocally(
+            await localStore.migrateGuestCheckins(targetScopeKey),
+          );
         }
 
         return result;

@@ -19,6 +19,18 @@
  * - `migrated`         the copy ran to completion. `migratedCount` is the
  *                      number of records actually written, which can legally
  *                      be 0 when the conflict guard skipped every record.
+ * - `migrated-locally` the copy ran to completion, but it landed in THIS
+ *                      BROWSER rather than in the account's cloud collection,
+ *                      because a firestore-resolved store fell back to its
+ *                      local twin (v0.28, docs/design/MIGRATION_DESTINATION.md
+ *                      D1/D2). `migrateGuestRecords` NEVER returns this: the
+ *                      primitive does not know where its `write` lands, so the
+ *                      mapping belongs to the store adapter that just swapped a
+ *                      firestore plan for a local one - see
+ *                      `guestMigrationLandedLocally` below. The cloud copy is
+ *                      retried on the next load, because only the `local`
+ *                      backend's marker was written (see D6 and the marker
+ *                      note above).
  * - `error`            a write threw. The marker is deliberately NOT set, so
  *                      the next load retries; already-written records are
  *                      protected from duplication by the conflict guard when
@@ -38,6 +50,7 @@
 
 export type GuestMigrationStatus =
   | "migrated"
+  | "migrated-locally"
   | "already-migrated"
   | "skipped"
   | "error";
@@ -46,6 +59,27 @@ export type GuestMigrationResult = {
   status: GuestMigrationStatus;
   migratedCount: number;
 };
+
+/**
+ * Re-label a completed migration whose writes landed in this browser (v0.28,
+ * docs/design/MIGRATION_DESTINATION.md D2).
+ *
+ * A new union member rather than a `destination` field is deliberate: every
+ * existing `status === "migrated"` check would keep compiling and keep reading
+ * a local landing as a cloud success - the defect, preserved by the type
+ * system. Widening the union forces each consumer to decide.
+ *
+ * Only `migrated` is re-labelled. `skipped` and `already-migrated` describe a
+ * copy that did not happen, so they carry no destination claim, and `error` is
+ * already the loudest thing this vocabulary can say.
+ */
+export function guestMigrationLandedLocally(
+  result: GuestMigrationResult,
+): GuestMigrationResult {
+  return result.status === "migrated"
+    ? { ...result, status: "migrated-locally" }
+    : result;
+}
 
 /**
  * Records written while signed out always live in local storage under this

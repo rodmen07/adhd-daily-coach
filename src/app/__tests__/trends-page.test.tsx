@@ -517,6 +517,38 @@ describe("Trends page", () => {
   // the local storage write for the reason now-page.test.tsx records: a
   // rejected Firestore write falls back to the local migration and reports
   // "migrated", so it never reaches this branch.
+  // v0.28 (MIGRATION_DESTINATION.md D3/D4), the /trends half of the same new
+  // branch: a thrown Firestore write completes the copy in this browser, so
+  // the page must stop borrowing the cloud's sentence. Observed failing
+  // against origin/main before the fix landed.
+  it("tells a signed-in person when the copy landed in this browser instead", async () => {
+    vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
+    vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([]);
+    addFocusSession(
+      { task: "guest work", plannedMinutes: 25, focusedSeconds: 1500, outcome: "wrapped-up" },
+      "guest",
+    );
+    mockFirebase({} as Firestore);
+    vi.mocked(putFirestoreFocusSession).mockRejectedValueOnce(
+      new DOMException("permission-denied", "FirebaseError"),
+    );
+
+    render(<TrendsPage />);
+
+    const note = await screen.findByTestId("focus-migration-local");
+    // Literal, not the shared copy constant both sides would agree with.
+    expect(note.textContent).toBe(
+      "Your earlier focus sessions are safe in this browser. They will be copied to your account next time it can be reached.",
+    );
+    expect(note.getAttribute("role")).toBeNull();
+    expect(note.getAttribute("aria-live")).toBe("polite");
+    expect(note.className).toContain("text-amber-700");
+    expect(screen.queryByTestId("focus-migration-note")).toBeNull();
+    expect(screen.queryByTestId("focus-migration-error")).toBeNull();
+    expect(listFocusSessions("user-123")).toHaveLength(1);
+    expect(listFocusSessions("guest")).toHaveLength(1);
+  });
+
   it("tells a signed-in person, assertively, when the copy could not be made", async () => {
     vi.mocked(useCoachAuth).mockReturnValue(signedInAuthMock as never);
     vi.mocked(getFirestoreCheckinsInRange).mockResolvedValue([]);

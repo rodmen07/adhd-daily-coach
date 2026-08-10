@@ -1,6 +1,10 @@
 # v0.28 - The honest arrival: a migration that lands in the browser stops borrowing the cloud's sentence
 
-Status: DEFINED 2026-08-09 (product pass). Implementation not started.
+Status: **SHIPPED 2026-08-10** on the defaults (section 6 was still empty at
+implementation time, so every D-number below applied as written) with ONE
+documented reduction: **D3's planner sentence was cut, not shipped** - see the
+status note appended to D3 and the roadmap's clause 3, which carry the four
+commands that falsified it. Defined 2026-08-09 (product pass).
 Every decision below is an **overridable default**: the owner can accept the
 lot with one word or override any D-number in section 6, and the
 implementation follows section 6 over the defaults wherever they disagree.
@@ -105,6 +109,21 @@ One new line per surface, future tense earned by clause 2's retry proof:
   will be copied to your account next time it can be reached."
 - `/` (planner): "Today's plan is safe in this browser. It will be copied
   to your account next time it can be reached."
+  **NOT SHIPPED (2026-08-10, v0.28 implementation).** Quoted verbatim above
+  because the reasoning is worth keeping, but this sentence has no producer
+  and nowhere to render, and the implementation cut it rather than write copy
+  no code path can reach. Falsified by four commands: no `firestore-*` module
+  mentions the planner at all (`grep -rln "planner" src/lib/firestore-*.ts`
+  returns nothing); `migrateGuestPlannerState` pins its marker to the `local`
+  backend (`planner-state.ts:180`) and writes through `persistPlannerState`,
+  which **D2 excludes on purpose**; `planner-session.ts:73` renders the
+  planner line only when the status is still `idle`, and any check-in
+  fallback has already set `notice`; and making it reachable needs a
+  discriminator ("is this app cloud-backed at all?") that no D-number names.
+  The last of those is a product question, so it is filed in the backlog
+  rather than answered here. Section 1's reading of `planner-session.ts:63`
+  as a false account claim is the half that did not survive: the planner has
+  no cloud destination to miss.
 - `/now` + `/trends` (focus sessions, in `FOCUS_SESSION_COPY` where the
   existing tone guard reads): "Your earlier focus sessions are safe in this
   browser. They will be copied to your account next time it can be

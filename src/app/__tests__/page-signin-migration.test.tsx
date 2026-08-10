@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "@/app/page";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { getInitialPlannerState } from "@/lib/planner-state";
+import { addCheckin } from "@/lib/browser-checkins";
+import { addFirestoreCheckin } from "@/lib/firestore-checkins";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
+import type { Firestore } from "firebase/firestore";
 
 // v0.17 PR2 "Sign-in keeps your workspace": the dashboard ring must NOT reset
 // at the moment sign-in resolves. These are wiring proofs through the rendered
@@ -20,6 +24,18 @@ vi.mock("@/lib/firebase", () => ({
 
 vi.mock("@/app/hooks/use-coach-auth", () => ({
   useCoachAuth: vi.fn(),
+}));
+
+// v0.28 only: the cloud half of the check-in store, so a signed-in load can be
+// given a THROWING cloud write and the local fallback observed end to end.
+// The v0.17 tests above never reach it - Firebase stays unconfigured there,
+// which pins every store to the local backend.
+vi.mock("@/lib/firestore-checkins", () => ({
+  addFirestoreCheckin: vi.fn(),
+  getFirestoreWeeklySummary: vi.fn(async () => {
+    throw new Error("not used");
+  }),
+  getFirestoreCheckinsInRange: vi.fn(async () => []),
 }));
 
 const guestAuth = {
@@ -133,5 +149,93 @@ describe("Dashboard ring across sign-in (v0.17 PR2)", () => {
     // The one calm line the design allows for this outcome (D5).
     expect(screen.getByText("Brought today's plan along to your account.")).toBeTruthy();
     expect(getInitialPlannerState("user-123").checkedIn).toEqual({ date: today, status: "done" });
+  });
+});
+
+// v0.28 (docs/design/MIGRATION_DESTINATION.md). `/` is the surface that made
+// the explicit claim - "Migrated N guest check-ins to your account." - on a
+// copy that never left the browser. These are wiring proofs through the
+// rendered page: the store is firestore-RESOLVED, its cloud write throws, and
+// the local retry succeeds, which is the exact live shape of the defect.
+describe("A guest copy that lands in this browser says so on / (v0.28)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    window.localStorage.setItem(
+      "calm-daily-coach:onboarding",
+      JSON.stringify({ defaultFocus: "Deep Work", defaultDose: "light", defaultTheme: "dark" }),
+    );
+    (window as unknown as { __ANIMATE_COUNTERS__?: boolean }).__ANIMATE_COUNTERS__ = false;
+    vi.mocked(useCoachAuth).mockReturnValue(guestAuth as never);
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: true,
+        media: "(prefers-reduced-motion: reduce)",
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  /** Firebase present and a client available, so the store resolves firestore. */
+  function cloudConfigured() {
+    vi.mocked(isFirebaseConfigured).mockReturnValue(true);
+    vi.mocked(loadFirebaseFirestore).mockResolvedValue({} as Firestore);
+  }
+
+  it("renders a calm notice instead of the account claim", async () => {
+    addCheckin(
+      { date: "2026-08-09", focus: "Deep Work", dose: "light", minutes: 5, status: "done" },
+      "guest",
+    );
+    cloudConfigured();
+    vi.mocked(addFirestoreCheckin).mockRejectedValue(new Error("permission-denied"));
+    signIn();
+
+    render(<Home />);
+
+    const note = await screen.findByTestId("checkin-migration-local");
+    // Composed from a literal, never from the module the page imports.
+    expect(note.textContent).toBe(
+      "Your earlier check-ins are safe in this browser. They will be copied to your account next time it can be reached.",
+    );
+    // D4: a notice waits for a pause in the reading order; only an error
+    // claims the alert role.
+    expect(note.getAttribute("role")).toBeNull();
+    expect(note.getAttribute("aria-live")).toBe("polite");
+    expect(note.className).toContain("text-amber-700");
+    // The sentence this replaces is gone, and no error appeared either.
+    expect(screen.queryByTestId("checkin-migration-note")).toBeNull();
+    expect(screen.queryByTestId("checkin-migration-error")).toBeNull();
+    expect(screen.queryByText(/Migrated 1 guest check-in to your account\./)).toBeNull();
+  });
+
+  it("still says 'to your account' when the copy really reached it", async () => {
+    // The other half of the behaviour difference: with the cloud write
+    // working, nothing about the old sentence changes.
+    addCheckin(
+      { date: "2026-08-09", focus: "Deep Work", dose: "light", minutes: 5, status: "done" },
+      "guest",
+    );
+    cloudConfigured();
+    vi.mocked(addFirestoreCheckin).mockResolvedValue(undefined);
+    signIn();
+
+    render(<Home />);
+
+    const note = await screen.findByTestId("checkin-migration-note");
+    expect(note.textContent).toBe("Migrated 1 guest check-in to your account.");
+    expect(note.getAttribute("aria-live")).toBe("polite");
+    expect(screen.queryByTestId("checkin-migration-local")).toBeNull();
   });
 });

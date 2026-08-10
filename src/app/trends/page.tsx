@@ -81,8 +81,14 @@ export default function TrendsPage() {
       // The error branch mirrors /now's exactly (v0.21 PR2,
       // STATUS_VOCABULARY.md D4) - and the marker is NOT written on error, so
       // the next load genuinely retries rather than reporting a stale failure.
+      // The "migrated-locally" branch mirrors /now's exactly (v0.28,
+      // MIGRATION_DESTINATION.md D3/D4): a completed copy that landed in this
+      // browser is a notice, and the marker rule above is why its sentence can
+      // promise the cloud copy in the future tense.
       if (migration.status === "migrated" && migration.migratedCount > 0) {
         setMigrationStatus({ type: "ok", message: FOCUS_SESSION_COPY.migrationNote });
+      } else if (migration.status === "migrated-locally" && migration.migratedCount > 0) {
+        setMigrationStatus({ type: "notice", message: FOCUS_SESSION_COPY.migrationLocalNote });
       } else if (migration.status === "error") {
         setMigrationStatus({ type: "error", message: FOCUS_SESSION_COPY.migrationErrorNote });
       }
@@ -151,6 +157,12 @@ export default function TrendsPage() {
             className="mb-4"
             data-testid="focus-migration-note"
             message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+          />
+          <StatusMessage
+            tone="notice"
+            className="mb-4"
+            data-testid="focus-migration-local"
+            message={migrationStatus.type === "notice" ? migrationStatus.message : null}
           />
           <StatusMessage
             tone="error"

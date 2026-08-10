@@ -274,7 +274,10 @@ describe("journal-store", () => {
       const store = createJournalStore(undefined, { signedIn: true });
       const result = await store.migrateGuestJournalEntries("user-123");
 
-      expect(result).toEqual({ status: "migrated", migratedCount: 2 });
+      // v0.28 clause 1 (MIGRATION_DESTINATION.md D2): the retry succeeded, but
+      // in this browser. Reporting plain "migrated" here is what let the
+      // surfaces claim the entries reached the account.
+      expect(result).toEqual({ status: "migrated-locally", migratedCount: 2 });
       expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledTimes(2);
       // The failed firestore attempt left its own marker unset, so a later
       // online load can still sync; only the local marker is set here.
@@ -295,9 +298,46 @@ describe("journal-store", () => {
 
       const result = await store.migrateGuestJournalEntries("user-123");
 
-      expect(result).toEqual({ status: "migrated", migratedCount: 2 });
+      // v0.28 D2: a firestore-RESOLVED adapter whose writes land in the
+      // browser reports the destination, even though live this adapter cannot
+      // carry a signed-in scope (auth needs the config the probe found
+      // missing) - honesty in the type, exercised here.
+      expect(result).toEqual({ status: "migrated-locally", migratedCount: 2 });
       expect(vi.mocked(saveJournalEntry)).toHaveBeenCalledTimes(2);
       expect(vi.mocked(addFirestoreJournalEntry)).not.toHaveBeenCalled();
+    });
+
+    // v0.28 clause 2 (MIGRATION_DESTINATION.md D6): the future tense in the
+    // D3 sentences - "will be copied to your account next time it can be
+    // reached" - is a promise about the marker asymmetry above, so it is
+    // pinned by a test rather than left as prose. The firestore marker is
+    // still unwritten after the fallback, so the next load retries the cloud
+    // copy and reports a real `migrated`.
+    it("firestore: the next load after a local landing still reaches the account", async () => {
+      mockFirebase({} as Firestore);
+      vi.mocked(listFirestoreJournalEntries).mockResolvedValue([]);
+      vi.mocked(addFirestoreJournalEntry).mockRejectedValueOnce(
+        new Error("permission-denied"),
+      );
+      seedLocal();
+
+      const store = createJournalStore(undefined, { signedIn: true });
+      const first = await store.migrateGuestJournalEntries("user-123");
+      expect(first.status).toBe("migrated-locally");
+
+      // Second load, cloud write working this time.
+      const second = await store.migrateGuestJournalEntries("user-123");
+
+      expect(second).toEqual({ status: "migrated", migratedCount: 2 });
+      expect(vi.mocked(addFirestoreJournalEntry)).toHaveBeenCalledTimes(3);
+      for (const [, , , scopeKey] of vi.mocked(addFirestoreJournalEntry).mock.calls) {
+        expect(scopeKey).toBe("user-123");
+      }
+      expect(
+        window.localStorage.getItem(
+          guestMigrationMarker("user-123", "firestore", "journal"),
+        ),
+      ).toBe("1");
     });
 
     it("stays a no-op for a signed-out visitor", async () => {
