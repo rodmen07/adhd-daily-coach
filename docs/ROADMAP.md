@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-08-08)
+## Current state (2026-08-09)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
@@ -2054,11 +2054,86 @@ the strongest candidate by the v0.25 AND v0.26 definitions, blocked only on
 owner copy — and drafting the thirteen sentences as overridable defaults in
 a review-gate PR is exactly the mechanism v0.24 used for its group names.
 
+### v0.28 - The honest arrival: a migration that lands in the browser says so (agent-doable now)
+
+Defined 2026-08-09. Design doc:
+[docs/design/MIGRATION_DESTINATION.md](design/MIGRATION_DESTINATION.md),
+every decision an overridable default, section 6 empty until the owner
+weighs in.
+
+**The finding, re-verified at source 2026-08-09 (filed 2026-08-07 by
+PR #153):** all three collection stores share one fallback shape — a thrown
+Firestore write during guest migration triggers a LOCAL retry
+(`checkin-store.ts:254`, `journal-store.ts:186`,
+`focus-session-store.ts:192`), and the retry's success returns
+`{ status: "migrated" }`, indistinguishable from a cloud copy. The UI then
+renders the cloud's sentence — `/` literally says "Migrated N guest
+check-ins to your account." (`planner-session.ts:38`) while the records
+live only in this browser. The v0.21 error vocabulary cannot catch it: the
+fallback consumes the error on its way to a local success, so the one
+outcome a person cannot distinguish is exactly the one where their data is
+not where the app said. The idempotency marker is keyed per backend
+(`guest-migration.ts:68`), so the cloud copy already retries on the next
+load — the system self-heals; only its sentence lies in the meantime.
+
+**v0.28 = the result vocabulary gains `migrated-locally`, produced by the
+three stores' fallback paths, and `/`, `/now` and `/trends` render it as a
+calm notice** — "safe in this browser … will be copied to your account next
+time it can be reached" (D3 sentences overridable) — while the raw `error`
+state keeps its bytes and its alert. One PR (D8). `/journal`'s total
+migration silence is deliberately out of scope (D5) and is filed as its own
+bug in the project backlog by the defining run.
+
+Done-when, all CI-checkable:
+
+1. Store contract, each of the three collections: a throwing cloud write
+   yields `migrated-locally` with the records present in the local target
+   scope, the `local` marker set, and the `firestore` marker ABSENT
+   (asserted on the marker key, not inferred).
+2. Retry proof: after that fallback, a second migration with a working
+   cloud write returns `migrated` and the account plan can read the
+   records — the D3 future tense made true by test rather than by hope.
+3. `/` (check-ins and planner), `/now` and `/trends` each render the new
+   state through `StatusMessage` `tone="notice"` with their D3 sentence;
+   the `error` state still renders `tone="error"` with today's exact
+   sentences.
+4. No fallback outcome can reach an account-claiming sentence: control A
+   (store mapping reverted) reds both the store clause and its page's
+   notice test.
+5. The new sentences live in the homes the existing tone guards read
+   (`focus-session-copy.ts`, `planner-session.ts`), and pass the calm-tone
+   vocabulary in both polarities (L-079).
+6. No new `.test.ts` under the two scanned dirs: the guard-count word
+   stays Twenty-two, or the implementation owes Twenty-two → Twenty-three
+   plus the names-list entry in the SAME PR (L-042).
+7. Controls per D8 with implementation committed first (L-035) and both
+   halves quoted (L-037); expectations composed from literals, never from
+   the copy module both sides import (L-054).
+8. `package.json` reads `0.28.0` with both lockfile copies
+   (`lockfile-version-parity`), this heading reads DONE, and the
+   Current-state version sentence reads `0.28.0`, all in the same commit
+   (`roadmap-milestone-status`, `roadmap-version-claim`).
+9. `e2e/nav-shape.spec.ts` passes byte-for-byte unchanged — no rendered
+   navigation or layout change rides along. No live-proof clause: the
+   surface renders only under a Firestore fault that cannot be injected
+   against the deployed site, which is exactly why the unit-level marker
+   and retry proofs in clauses 1-2 carry the evidence instead.
+
+**Chosen over** (each reason at source in MIGRATION_DESTINATION.md
+section 4): the C10-flagged `route-registry-guard.test.ts` split (a
+refactor-trigger increment with its own stricter bar, filed in the
+backlog this run), the `src/app/**` behaviour-coverage MED and rendered-DOM
+theme-guard gap (QA-stream), `/journal`'s silence (D5, filed not folded),
+FCM push (console-gated), and repo-hygiene items (not milestones). v0.27's
+own chosen-over named this "a product decision the analyst may not make
+unilaterally"; this definition is that decision brought to the owner as
+overridable defaults.
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.26 have all landed, and v0.27 is now DEFINED above (2026-08-08)
+through v0.27 have all landed, and v0.28 is now DEFINED above (2026-08-09)
 but not started, so the dev queue holds exactly its one PR and a dev slot
 takes it rather than picking a direction of its own.** (The 2026-08-08 v0.27
 definition retired the previous opening clause here — the one declaring the
@@ -2110,7 +2185,7 @@ two rows at 95.2 px, down from 264 px when v0.23 started this arc, and the
 desktop header stays one row at 55.2 px.
 This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected twenty-four times now, three on
+therefore is most likely to go stale. (Corrected twenty-five times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -2161,7 +2236,15 @@ after v0.26 shipped — the same queue-describing clause falsified by filling
 the queue, retired by the definition PR that filled it, with the superseded
 wording quoted in that day's run report rather than here because its token
 shape is one preflight C12 greps for (see the parenthetical above about the
-nineteenth edition's quote, reworded the same day for the same reason).
+nineteenth edition's quote, reworded the same day for the same reason). This
+**twenty-fifth** is the 2026-08-09 product pass that defined v0.28 the day
+after v0.27 shipped — and it found the clause one completion stale: v0.27's
+completion PR (#177) flipped the heading and the version sentence but did
+not rewrite "v0.27 is now DEFINED above (2026-08-08) but not started", the
+same uncounted class as the twentieth and twenty-third editions' misses,
+caught at this edit and repaired in the same pass that retires the clause
+(full superseded wording in the 2026-08-09 run report per the tombstone
+rule).
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
