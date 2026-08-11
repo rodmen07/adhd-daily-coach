@@ -107,7 +107,7 @@ is written next to.
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
   post a required context.
-  **Twenty-three** guard tests now
+  **Twenty-four** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -169,7 +169,15 @@ is written next to.
   class names are deliberately NOT backticked: this sentence's parser filters
   backticked tokens by shape, and a lower-case hyphenated word is exactly the
   shape of a suite name, so backticking them adds four phantom guards to the
-  count - the third time that filter has bitten a run, after PR #174).
+  count - the third time that filter has bitten a run, after PR #174), and
+  `storage-key-census`
+  (v0.29 PR1, which resolves every localStorage call site in the shipped tree
+  to the key family it writes and fails when a module writes a key the
+  workspace export's manifest neither carries nor excludes, so the file a
+  person downloads cannot quietly go stale the next time a feature adds a
+  store - the twelve families are declared rather than discovered by prefix,
+  because a prefix rule drops the slicer's key, which lives in the app's
+  original namespace, and swallows six siblings of the planner's).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
