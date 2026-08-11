@@ -286,6 +286,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 <button
                   key={area}
                   type="button"
+                  aria-pressed={defaultFocus === area}
                   className={`category-chip justify-center text-center w-full focus:ring-2 focus:ring-(color:--accent) ${
                     defaultFocus === area ? "is-selected border-(--accent)" : "bg-(--field) border-transparent"
                   }`}

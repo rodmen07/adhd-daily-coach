@@ -27,6 +27,25 @@ describe("Onboarding Component", () => {
     expect(screen.getByText("Quick start now")).toBeTruthy();
   });
 
+  it("says which improvement category is chosen, and moves the state when another is picked", () => {
+    const handleComplete = vi.fn();
+    const handleSkip = vi.fn();
+
+    render(<Onboarding onComplete={handleComplete} onSkip={handleSkip} />);
+
+    // The rendered half of `selection-state-guard`: up to `a5a9601` these chips
+    // carried the selection only as the CSS class `is-selected`, so a screen
+    // reader was read fifteen identical buttons with nothing to tell them apart.
+    const chosen = screen.getByRole("button", { name: "Deep Work" });
+    expect(chosen.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Fitness" }).getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Fitness" }));
+
+    expect(screen.getByRole("button", { name: "Fitness" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Deep Work" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("applies a quick-start preset and completes onboarding from step 1", () => {
     const handleComplete = vi.fn();
     const handleSkip = vi.fn();
