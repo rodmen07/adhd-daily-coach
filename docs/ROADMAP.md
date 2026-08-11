@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-08-09)
+## Current state (2026-08-11)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
@@ -40,7 +40,17 @@ is written next to.
   No server routes. **The repo slug rename is DONE** (2026-07-29: the repo and
   the Pages site both return 200 at `adhd-daily-coach`; the old Pages URL 404s,
   because project URLs do not redirect). The localStorage namespace is still
-  `calm-daily-coach` and is frozen forever on purpose. The `basePath`,
+  `calm-daily-coach` and is frozen forever on purpose — **with one exception
+  this sentence had asserted away until the v0.29 definition read the keys
+  instead of the claim (2026-08-11): `src/lib/slicer.ts:185` keys sliced-task
+  history under `focus-adhd-coach:slicer`.**
+  `git log -S "focus-adhd-coach" -- src/lib/slicer.ts` returns one commit,
+  `a668563`, which predates the rename commit `e239298`, so that key is a
+  fossil of the "Focus" era and is frozen for exactly the reason every other
+  key is: renaming it would orphan real people's slicer history. Twelve key
+  families exist in total and they span two namespaces, not one; the table is
+  in [docs/design/WORKSPACE_EXPORT.md](design/WORKSPACE_EXPORT.md) section 1,
+  and v0.29 is what stops the split mattering to a reader. The `basePath`,
   `assetPrefix` and the `.ics` app URL are all derived from
   `GITHUB_REPOSITORY` rather than hardcoded, in one shared `site-base-path.mjs`
   that `next.config.ts`, `playwright.config.ts` and `e2e/serve.mjs` all import,
@@ -186,10 +196,18 @@ is written next to.
   insights, plan editor, browser reminders, offline/sync status) are complete as of
   2026-07-18.
 - New surfaces since the 2026-07-18 snapshot above (this bullet last extended
-  2026-08-08, and its own "last extended" date had read 2026-08-07 while the
-  bullet already carried the v0.23-v0.26 text written 2026-08-08 — a
-  self-contradiction the L-043 self-sweep caught, corrected by the v0.27
-  definition): `/trends`, a 4-week
+  2026-08-11, and the SAME self-contradiction has now been caught TWICE: the
+  date read 2026-08-07 while the bullet carried the v0.23-v0.26 text written
+  2026-08-08 — the L-043 self-sweep caught that one and the v0.27 definition
+  corrected it — and it then read 2026-08-08 while the bullet already carried
+  the v0.27 and v0.28 sentences, written 2026-08-09 and 2026-08-10. Recurrence
+  two is recorded rather than merely fixed, because the two halves have
+  different owners: a completion PR extends the prose and holds the cause in
+  its hand, but the parenthetical about WHEN the prose was last extended is a
+  whole-file claim it has no reason to look at, so unlike the guard-count word
+  — which a disk-scanning suite makes visible to the commit that triggers it —
+  this date has no mechanical owner and belongs to the product truth pass by
+  name): `/trends`, a 4-week
   check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
   calm focus-session timer (NF-6, PR #104) backed by a local-first
   `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
@@ -2163,13 +2181,112 @@ own chosen-over named this "a product decision the analyst may not make
 unilaterally"; this definition is that decision brought to the owner as
 overridable defaults.
 
+### v0.29 - The way out: what this browser holds, in a file you can keep (agent-doable now)
+
+Defined 2026-08-11 on `d0542c3`. Design doc:
+[docs/design/WORKSPACE_EXPORT.md](design/WORKSPACE_EXPORT.md), every decision
+an overridable default, section 6 empty until the owner weighs in.
+
+**The finding, read at the source rather than inherited.** Twelve localStorage
+key families are written by 34 call sites across 13 files (`grep -rnE
+"localStorage\.(getItem|setItem|removeItem)\(" src`, tests excluded), and
+nothing in the app ever reads them back out for the person who created them.
+The absence was checked before it was asserted: `grep -rnE
+"createObjectURL|new Blob|download="` over the whole `src` tree returns exactly
+three lines, all in `src/lib/reminder-ics.ts` (216, 217, 220), the calendar
+file. So the app already knows how to hand someone a file - it has just never
+handed them their own. Two of those twelve families are the reason a shortcut
+would fail: `focus-adhd-coach:slicer` sits outside the `calm-daily-coach`
+namespace (see the corrected Current-state bullet above), so an exporter that
+found its stores by prefix would silently drop the history of the route the
+product names itself after.
+
+**What v0.29 is:** one capability and one guard. A person can download
+everything this browser holds for them, in one JSON file, and the app says
+plainly what that file does and does not contain - because for a signed-in
+person on a Firebase-configured deployment the browser holds only half the
+story, and a file labelled "your data" that quietly contained one backend's
+half would repeat exactly the defect v0.28 removed from `/`.
+
+**PR1 - the manifest and the file.** `src/lib/workspace-export.ts` carries a
+DECLARED `STORE_MANIFEST` (one entry per key family, each with its owning
+module and a `kind`), plus `src/__tests__/storage-key-census.test.ts`, which
+reads the manifest against every localStorage call site in the shipped tree and
+fails when a module writes a key family the manifest neither carries nor
+explicitly excludes with a reason. A census is a token match over source files,
+which a comment can satisfy, so it ships PAIRED with a round-trip suite that
+seeds jsdom through each store's real public write function and asserts the
+exported value comes back.
+
+**PR2 - the door.** A "Your data" panel on `/`, below the reminder settings,
+in its own component file rather than inline (`src/app/page.tsx` measures 973
+lines at `d0542c3` against a 1000-line hard candidate line, so an inline panel
+would cross it in the same commit that adds a feature). It carries the standing
+sentence, the signed-in-only sentence about what is NOT in the file, and a
+transient confirmation delivered through the shared `StatusMessage` primitive;
+a chromium `e2e/` spec parses the real downloaded file; then the milestone
+close.
+
+**Done when** (each clause a command, not an opinion):
+
+1. `storage-key-census` is green on the tree as it stands, and RED under
+   control A: a new module under `src/lib/` writes a new localStorage key while
+   `STORE_MANIFEST` is untouched. The PR quotes the perturbation as a diff and
+   the run's own failure text, not a summary of it.
+2. The round-trip suite is RED under control B, which is shaped to satisfy the
+   cheap clause while breaking the behaviour: one manifest entry AND its key
+   constant are removed together, so the census stays green and only the
+   round-trip fails. This is what proves the census alone was insufficient
+   rather than merely redundant.
+3. The census names two keys from two different directories as blindness
+   anchors, and control C narrows the walker to one directory and observes the
+   anchor assertion redden rather than the suite passing on a shorter list.
+4. The exported envelope carries every one of the twelve manifest ids for a
+   seeded scope, asserted id by id rather than by length.
+5. Only the CURRENT scope is exported: with a guest workspace and a signed-in
+   workspace both seeded in one jsdom localStorage, the file contains exactly
+   one of them, and the test asserts the other scope's marker value is ABSENT
+   by value, not by count.
+6. The signed-in-only sentence renders when the deployment is
+   Firebase-configured and a user is present, and does not render otherwise -
+   both directions asserted on the rendered DOM.
+7. `status-message-guard` stays green with the new panel in the tree, and the
+   transient confirmation goes through `StatusMessage` rather than an inline
+   alert.
+8. A chromium `e2e/` spec clicks the control against the real static export,
+   captures the download, and parses it - the half no jsdom test can prove.
+9. PR1 (not PR2) moves the guard-count sentence to **Twenty-four** with the new
+   suite named, AND adds `"twenty-four": 24` to `NUMBER_WORDS` in
+   `roadmap-guard-count.test.ts`, whose map ends at twenty-three and fails
+   loudly on an unknown word. Both belong to the commit that adds the file
+   because that guard reads the filesystem, not this plan.
+10. PR2 flips this heading to DONE, bumps `package.json` to `0.29.0` with both
+    `package-lock.json` copies, and updates the Current-state version sentence
+    in the same commit.
+
+**Chosen over** (each reason re-read at its source and its stated condition
+re-tested, per WORKSPACE_EXPORT.md section 4, rather than the verdict being
+repeated): FCM push (still console-gated - a VAPID key is minted in the
+Firebase console and console actions are USER-ONLY, so the condition the
+2026-07-26 re-check named is structural and unchanged); paid value expansion
+(its reason is CONDITIONAL - "deferred until entitlement automation ships" - so
+it was tested: v0.5 is still DEPRIORITIZED, entitlement flips are still manual,
+and a static export still cannot receive a webhook); a PR template (still real,
+`.github/` holds no `PULL_REQUEST_TEMPLATE*`, and still one file of repo
+hygiene rather than a milestone); the C10-flagged `route-registry-guard.test.ts`
+split (1036 lines - a refactor-trigger increment with a stricter bar and no new
+capability, standing candidate since the v0.28 definition); an empty-state pass
+(checked before proposing it and already shipped - `CalmEmptyState` renders on
+`/trends`, `/journal` and `/review`); and `/focus`'s two controls for one value
+(a UX decision for the owner, filed by PR #180 and left in the backlog).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.27 have all landed, and v0.28 is now DEFINED above (2026-08-09)
-but not started, so the dev queue holds exactly its one PR and a dev slot
-takes it rather than picking a direction of its own.** (The 2026-08-08 v0.27
+through v0.28 have all landed - v0.28 shipped 2026-08-10 as PR #179 - and
+v0.29 is now DEFINED above (2026-08-11) but not started, so a dev slot takes
+its PR1 rather than picking a direction of its own.** (The 2026-08-08 v0.27
 definition retired the previous opening clause here — the one declaring the
 dev queue EMPTY and assigning the v0.27 definition to a product slot — a
 sentence true when v0.26 PR2 wrote it and made false by the very edit it
@@ -2219,7 +2336,7 @@ two rows at 95.2 px, down from 264 px when v0.23 started this arc, and the
 desktop header stays one row at 55.2 px.
 This sentence is
 the part `roadmap-milestone-status.test.ts` cannot mechanically check and
-therefore is most likely to go stale. (Corrected twenty-five times now, three on
+therefore is most likely to go stale. (Corrected twenty-six times now, three on
 2026-07-26; the ninth edition by the v0.19 completion PR that flips the
 heading alongside the flip, closing the "one increment late" gap the
 2026-07-27 note above first asked for, the tenth by the increment that
@@ -2278,7 +2395,17 @@ not rewrite "v0.27 is now DEFINED above (2026-08-08) but not started", the
 same uncounted class as the twentieth and twenty-third editions' misses,
 caught at this edit and repaired in the same pass that retires the clause
 (full superseded wording in the 2026-08-09 run report per the tombstone
-rule).
+rule). This **twenty-sixth** is the 2026-08-11 product pass that defined v0.29
+the day after v0.28 shipped, and it found the clause stale in the OTHER
+direction for the first time: not one milestone behind but one PHASE behind -
+"v0.28 is now DEFINED above but not started" survived v0.28 being defined,
+implemented and merged, so the sentence described a queue state that had been
+false since PR #179 landed on 2026-08-10. Every previous edition was retired by
+the definition that filled the queue; this one was retired by the definition
+AFTER the one that emptied it, which is the longest this clause has ever been
+wrong. The superseded wording is quoted verbatim in the 2026-08-11 run report
+per the tombstone rule rather than here, because its token shape is one
+preflight C12 greps for.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
@@ -2304,8 +2431,26 @@ one is still unguarded.)
   "code-split tuning" half of the original wording is carried forward in v0.19's
   D4 (defer Firebase, split Firestore from Auth); "bundle analysis" is carried
   forward as D5's attribution gate rather than as an end in itself.
-- Security hardening: replace the untouched template SECURITY.md with a real policy,
-  secret scanning, dependency review (AUTONOMOUS plan Phase 5).
+- ~~Security hardening: replace the untouched template SECURITY.md with a real
+  policy, secret scanning, dependency review (AUTONOMOUS plan Phase 5).~~
+  **Two of the three halves are DONE and this line had not said so; the
+  original wording is kept struck through above per the tombstone rule,
+  corrected 2026-08-11 by the v0.29 product pass.** SECURITY.md is a real
+  59-line policy that deliberately names no version number and is held to
+  package.json by the security-policy-truth guard inside the quality gate, so
+  "untouched template" has been false for some time. Secret scanning is not a
+  wish either: `gh api repos/rodmen07/adhd-daily-coach --jq
+  '.security_and_analysis'` returned, live on 2026-08-11,
+  `secret_scanning: enabled`, `secret_scanning_push_protection: enabled` and
+  `dependabot_security_updates: enabled` (`secret_scanning_validity_checks` and
+  `secret_scanning_non_provider_patterns` are both `disabled`, which is a
+  posture question for the DevSecOps stream, not a milestone). **What genuinely
+  remains is dependency review alone:** no workflow references
+  `actions/dependency-review-action`, verified by grep over all six workflows on
+  2026-08-11. That remainder is a one-workflow DevSecOps increment and is filed
+  in the backlog's DevSecOps stream rather than left here as a milestone
+  candidate, because a roadmap candidate list is not a place a stream item gets
+  picked up from.
 - ~~Playwright E2E smoke test for the daily loop~~ (AUTONOMOUS plan Phase 6):
   **promoted into v0.16 above (2026-07-26)**; no longer just a candidate. The
   PR-template half of this entry's original wording was deliberately NOT
