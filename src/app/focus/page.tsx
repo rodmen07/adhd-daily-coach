@@ -80,7 +80,7 @@ export default function FocusPage() {
 
             <div>
               <p className="label mb-2">Improvement categories</p>
-              <div className="category-grid" role="list" aria-label="Improvement categories">
+              <div className="category-grid" role="group" aria-label="Improvement categories">
                 {FOCUS_AREAS.map((area) => {
                   const icon = FOCUS_METADATA[area].icon;
 
@@ -88,6 +88,7 @@ export default function FocusPage() {
                     <button
                       key={area}
                       type="button"
+                      aria-pressed={focus === area}
                       disabled={isPlanningLocked}
                       className={`category-chip flex items-center gap-1.5 cursor-pointer hover:border-(--accent)/60 transition-all ${
                         focus === area 

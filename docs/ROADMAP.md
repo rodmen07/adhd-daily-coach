@@ -97,7 +97,7 @@ is written next to.
   (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
   post a required context.
-  **Twenty-two** guard tests now
+  **Twenty-three** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -150,7 +150,16 @@ is written next to.
   boundary drifts in one place but not the others - by PR2 that number was
   written three times: the inner cap, the sync-word collapse and the desktop
   one-row rule, and the e2e clauses measure at 360 and 1280, both too far from
-  the boundary to notice it moving).
+  the boundary to notice it moving), and `selection-state-guard`
+  (2026-08-10 QA pass, which reads every `<button>` opening tag in the shipped
+  `src/app` tree and fails when one applies the is-selected class without
+  aria-pressed, aria-checked or aria-current - the state two of the app's five
+  chip surfaces shipped in, where the only carrier of "this is the category you
+  picked" was a CSS border a screen reader cannot see. Those four attribute and
+  class names are deliberately NOT backticked: this sentence's parser filters
+  backticked tokens by shape, and a lower-case hyphenated word is exactly the
+  shape of a suite name, so backticking them adds four phantom guards to the
+  count - the third time that filter has bitten a run, after PR #174).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
