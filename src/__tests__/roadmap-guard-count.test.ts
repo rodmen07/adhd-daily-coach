@@ -121,6 +121,11 @@ const NUMBER_WORDS: Record<string, number> = {
   "twenty-one": 21,
   "twenty-two": 22,
   "twenty-three": 23,
+  // v0.29 PR1 is the first milestone whose count word runs off the end of this
+  // map. An unknown word throws by design, so the entry has to arrive in the
+  // same commit that adds the suite - which is invisible from the roadmap
+  // sentence itself, and is why the v0.29 design doc says so out loud.
+  "twenty-four": 24,
 };
 
 interface RoadmapClaim {
