@@ -47,6 +47,17 @@ test.describe("v0.29: the workspace export", () => {
   test("the button writes a real file whose JSON carries the envelope and the seeded stores", async ({
     page,
   }) => {
+    // The longest journey in this suite: two full navigations, the onboarding
+    // settle, a download, and a file read. Measured on the dev box 2026-08-12,
+    // it runs in 4.7s warm and took 30.6s on the FIRST run of a cold browser
+    // against a cold server under load - i.e. it blew the 30s default by 0.6s
+    // and reported the symptom as `download.path: canceled`, because a context
+    // torn down mid-download cancels it. CI always takes the cold path
+    // (`reuseExistingServer` is false there), so the default leaves no headroom
+    // at all. `test.slow()` triples the budget rather than papering over a
+    // hang: the assertions are unchanged and a genuine wedge still fails.
+    test.slow();
+
     // 1. Seed one store from a route that is not the dashboard, so the file
     //    cannot be explained by whatever `/` itself happens to write.
     await page.goto(JOURNAL_PATH);
