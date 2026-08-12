@@ -1,0 +1,71 @@
+# Dependency review: the second, independent opinion on a dependency change.
+#
+# WHAT THIS ADDS THAT THE QUALITY GATE DOES NOT
+# ---------------------------------------------
+# ci.yml already runs `npm audit --audit-level=high` and that step BLOCKS a
+# merge, so it is fair to ask what a second dependency check buys. Three
+# things, and they are the reason this is a separate workflow rather than
+# another step in the gate:
+#
+#   1. A DIFFERENT ADVISORY SOURCE. `npm audit` queries the npm registry's
+#      advisory endpoint; this action queries GitHub's Advisory Database
+#      through the repository's dependency graph. The two databases are
+#      curated separately and do not publish at the same moment, so either can
+#      be the first to know. This repo's most frequent CI incident is a NEW
+#      advisory landing against an unchanged lockfile (PRs #99, #101, #102,
+#      #107, #142, #147), which is exactly the case where "who knew first"
+#      decides whether a PR merges clean.
+#   2. DIFF SCOPE. `npm audit` reports on the whole resolved tree, so its
+#      output says nothing about which change introduced what. This reports
+#      only what the pull request ADDS, which is the question a reviewer has.
+#   3. A LICENCE SURFACE that `npm audit` has no concept of. Not enforced
+#      today (no allow-licenses / deny-licenses is set), but this is where it
+#      would go, and having the action here is what makes that a config line
+#      rather than a new workflow.
+#
+# WHY IT IS NOT A REQUIRED CONTEXT (yet)
+# --------------------------------------
+# Declared `observational` in .github/required-checks.json, the same route
+# lighthouse.yml took before PR #161 promoted it on 58 observed runs. The
+# accepted risk is written out in that file rather than here, because that is
+# the file a later audit reads.
+#
+# THE SEVERITY MUST NOT DRIFT FROM THE GATE
+# -----------------------------------------
+# `fail-on-severity: high` is the same bar as ci.yml's `--audit-level=high`.
+# If one is tightened and the other is not, this workflow starts reporting
+# green about a threshold the blocking gate no longer uses - the exact failure
+# security-audit.yml was given a parity test for. The same test file,
+# src/__tests__/workflow-audit-parity.test.ts, now holds this pair too, and it
+# also fails if `warn-only: true` ever appears here, which would silently make
+# the whole check advisory-inside-advisory.
+#
+# The action pins an EXACT version rather than a floating major on purpose:
+# actions/dependency-review-action publishes no `v4` or `v5` moving tag (only
+# the legacy v1/v2/v3 exist), so `@v5` does not resolve at all.
+
+name: Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: dependency-review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v5.0.0
+        with:
+          fail-on-severity: high
