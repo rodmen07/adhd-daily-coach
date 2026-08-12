@@ -67,6 +67,30 @@
  * returned an empty set for the one file that had drifted, and the repo read
  * clean. If this repo ever moves to SHA pinning, that is a deliberate
  * posture change and this guard should be rewritten in the same commit.
+ *
+ * DEPENDENCY-REVIEW SEVERITY PARITY (added 2026-08-12)
+ * ----------------------------------------------------
+ * `.github/workflows/dependency-review.yml` is a THIRD reader of the same
+ * question — "does this dependency carry a known advisory?" — asked of a
+ * different database (GitHub's, via the dependency graph) and scoped to the
+ * pull request's diff rather than the whole tree. It is a second opinion, not
+ * a second gate: it is declared observational in `.github/required-checks.json`
+ * and the blocking cover stays `npm audit --audit-level=high` in ci.yml.
+ *
+ * A second opinion is worth exactly nothing at a bar nobody else uses. So the
+ * same reasoning that made this file compare ci.yml with security-audit.yml
+ * applies once more: `fail-on-severity:` must equal ci.yml's
+ * `--audit-level=`, or a tightening on one side leaves the other reporting
+ * green about a threshold the gate no longer holds.
+ *
+ * Two more ways it could go inert without anything noticing, both mirrored
+ * from the assertions already written above for ci.yml's audit step:
+ * `warn-only: true` (the action's own documented way to always exit success,
+ * i.e. `continue-on-error` by another name), and a `paths:` filter narrowing
+ * the pull_request trigger. The second is not hypothetical — it is the exact
+ * shape `security-audit.yml` has, which is why THAT check can never be
+ * required, and a check quietly acquiring it would still read green on every
+ * PR it no longer runs on.
  */
 
 import { describe, expect, it } from "vitest";
@@ -351,6 +375,109 @@ describe("shared-action major parity across every workflow in .github/workflows"
       "an action shared by several workflows drifted apart: the workflows now run DIFFERENT code for the same " +
         "step, and the stale major keeps receiving none of the fixes the current one gets — exactly how " +
         "dev-agent-runner.yml sat on checkout@v4/setup-node@v4 until 2026-08-08 with no gate noticing",
+    ).toEqual([]);
+  });
+});
+
+const DEPENDENCY_REVIEW_FILE = "dependency-review.yml";
+const DEPENDENCY_REVIEW = readWorkflow(path.join(WORKFLOW_DIR, DEPENDENCY_REVIEW_FILE));
+
+/** The distinct `fail-on-severity:` values a workflow sets. A SET for the same
+ * reason `auditLevels` is one: the value can legitimately be written more than
+ * once, and it is DISAGREEMENT that matters, not repetition. Single and double
+ * quotes both matched — `node-version: '20'` is this file's own recorded proof
+ * that an extractor which knows only one quoting style returns EMPTY for the
+ * offending file and reads exactly like agreement. */
+function failOnSeverities(source: string): string[] {
+  const matches = withoutComments(source).matchAll(/fail-on-severity:\s*['"]?([a-z]+)['"]?/g);
+  return [...new Set([...matches].map((m) => m[1]))].sort();
+}
+
+/** The action's documented "always complete with success" switch. Present-and-
+ * false is fine; present-and-true makes `fail-on-severity` decorative. */
+function warnOnlyEnabled(source: string): boolean {
+  return /warn-only:\s*['"]?true['"]?/i.test(withoutComments(source));
+}
+
+/** The lines of the top-level `on:` block: everything after it until the next
+ * line at indent 0. Empty when the workflow writes `on:` in the inline form,
+ * which the caller treats as "the trigger shape could not be read". */
+function triggerBlock(source: string): string[] {
+  const lines = withoutComments(source).split("\n");
+  const start = lines.findIndex((line) => /^on:\s*$/.test(line));
+  if (start === -1) {
+    return [];
+  }
+
+  const block: string[] = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.trim().length > 0 && line.length === line.trimStart().length) {
+      break;
+    }
+    block.push(line);
+  }
+  return block;
+}
+
+describe("dependency review holds the same bar as the blocking audit", () => {
+  it("is a workflow this repository actually carries, running the dependency-review action", () => {
+    // Named rather than derived: if the file is renamed or deleted, every
+    // assertion below would otherwise read its absence as agreement.
+    expect(
+      discoverWorkflows().map((workflow) => workflow.file),
+      `${DEPENDENCY_REVIEW_FILE} is no longer in .github/workflows/; the dependency-review check is gone and ` +
+        ".github/required-checks.json still declares it",
+    ).toContain(DEPENDENCY_REVIEW_FILE);
+
+    expect(
+      actionUses(DEPENDENCY_REVIEW).map((use) => use.action),
+      `${DEPENDENCY_REVIEW_FILE} no longer uses actions/dependency-review-action, so the workflow posts a ` +
+        "check that reviews nothing",
+    ).toContain("actions/dependency-review-action");
+  });
+
+  it("fails at the same severity the required audit fails at", () => {
+    const reviewLevels = failOnSeverities(DEPENDENCY_REVIEW);
+
+    expect(
+      reviewLevels,
+      `${DEPENDENCY_REVIEW_FILE} sets no readable fail-on-severity:, so it silently falls back to the action's ` +
+        "own default (`low`) and this comparison has nothing to compare",
+    ).toHaveLength(1);
+
+    expect(
+      reviewLevels,
+      "dependency review blocks at a different severity than the blocking gate, so one of the two reports " +
+        "green about a bar the other no longer uses — the same drift this file was written to stop between " +
+        "ci.yml and security-audit.yml",
+    ).toEqual(auditLevels(CI));
+  });
+
+  it("is not neutered by warn-only", () => {
+    expect(
+      warnOnlyEnabled(DEPENDENCY_REVIEW),
+      "dependency-review.yml sets `warn-only: true`, which the action documents as always completing with " +
+        "success: the check would stay permanently green and fail-on-severity would decide nothing. This is " +
+        "the same failure as marking ci.yml's audit step continue-on-error, one workflow over",
+    ).toBe(false);
+  });
+
+  it("runs on every pull request rather than a filtered subset", () => {
+    const on = triggerBlock(DEPENDENCY_REVIEW);
+
+    expect(
+      on.some((line) => /^\s{2}pull_request:/.test(line)),
+      "dependency-review.yml has no pull_request: trigger under a top-level `on:` block, so either it no " +
+        "longer reviews pull requests or this parser cannot read its trigger shape",
+    ).toBe(true);
+
+    const filters = on.filter((line) => /^\s*paths(-ignore)?:/.test(line));
+    expect(
+      filters.map((line) => line.trim()),
+      "dependency-review.yml's trigger acquired a paths filter, so a pull request that touches nothing " +
+        "matching it never receives this check — and an absent check is indistinguishable from a passing one. " +
+        "That is precisely why security-audit.yml's `audit` job can never be a required context",
     ).toEqual([]);
   });
 });

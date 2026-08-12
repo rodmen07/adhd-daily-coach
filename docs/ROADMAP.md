@@ -102,9 +102,12 @@ is written next to.
   added `src/__tests__/lockfile-version-parity.test.ts`. PR #136 (2026-08-01)
   added `.github/workflows/lighthouse.yml`, the v0.18 Web Vitals gate, which
   gated nothing by design until 2026-08-08. PR #161 (2026-08-08) promoted it and
-  declared the whole contract in `.github/required-checks.json`. The repo now
-  carries six workflows in total
-  (`ci.yml`, `deploy-pages.yml`, `e2e.yml`, `lighthouse.yml`, `security-audit.yml`,
+  declared the whole contract in `.github/required-checks.json`. PR #183
+  (2026-08-12) added `.github/workflows/dependency-review.yml`, observational
+  by decision. The repo now
+  carries seven workflows in total
+  (`ci.yml`, `deploy-pages.yml`, `dependency-review.yml`, `e2e.yml`,
+  `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
   post a required context.
   **Twenty-four** guard tests now
@@ -2452,13 +2455,27 @@ one is still unguarded.)
   `secret_scanning: enabled`, `secret_scanning_push_protection: enabled` and
   `dependabot_security_updates: enabled` (`secret_scanning_validity_checks` and
   `secret_scanning_non_provider_patterns` are both `disabled`, which is a
-  posture question for the DevSecOps stream, not a milestone). **What genuinely
-  remains is dependency review alone:** no workflow references
+  posture question for the DevSecOps stream, not a milestone). ~~**What
+  genuinely remains is dependency review alone:** no workflow references
   `actions/dependency-review-action`, verified by grep over all six workflows on
   2026-08-11. That remainder is a one-workflow DevSecOps increment and is filed
   in the backlog's DevSecOps stream rather than left here as a milestone
   candidate, because a roadmap candidate list is not a place a stream item gets
-  picked up from.
+  picked up from.~~ **The third half is DONE and this candidate is now CLOSED,
+  2026-08-12 by PR #183 (DevSecOps).** `.github/workflows/dependency-review.yml`
+  runs `actions/dependency-review-action@v5.0.0` at `fail-on-severity: high`
+  on every pull request. It ships OBSERVATIONAL, not required, and the accepted
+  risk plus the promotion evidence are written into
+  `.github/required-checks.json`'s entry for it rather than here — a red
+  dependency-review check does not block a merge, and what covers that gap is
+  ci.yml's required `npm audit --audit-level=high` resolving the same tree.
+  `src/__tests__/workflow-audit-parity.test.ts` holds the two severities equal,
+  so tightening one and not the other reddens the gate instead of drifting
+  quietly. The two 2026-08-07/08-11 observations struck through above stay
+  verbatim: they were true on the dates they name, which is what the tombstone
+  rule preserves. Still open and deliberately untouched:
+  `secret_scanning_validity_checks` and `secret_scanning_non_provider_patterns`
+  both read `disabled`, a posture question rather than a gap.
 - ~~Playwright E2E smoke test for the daily loop~~ (AUTONOMOUS plan Phase 6):
   **promoted into v0.16 above (2026-07-26)**; no longer just a candidate. The
   PR-template half of this entry's original wording was deliberately NOT

@@ -52,6 +52,12 @@
       "why": "The daily advisory detector. Its pull_request trigger is path-filtered to the workflow file itself, so most PRs never receive this check. It can therefore NEVER be a required context - requiring it would block every PR that does not touch security-audit.yml. Its gate value is already required: ci.yml runs the identical `npm audit --audit-level=high`, and workflow-audit-parity.test.ts holds the two to the same threshold."
     },
     {
+      "context": "dependency-review",
+      "postedBy": "dependency-review.yml",
+      "kind": "job",
+      "why": "actions/dependency-review-action@v5.0.0 at `fail-on-severity: high` (2026-08-12, PR #183). DECISION, so a later sweep does not re-file it: it ships OBSERVATIONAL on purpose, the same route lighthouse.yml took before PR #161 promoted it on 58 observed runs. THE ACCEPTED RISK, stated plainly: a pull request that adds a dependency with a HIGH GitHub advisory shows a RED `dependency-review` check and is still mergeable, and nothing here will stop it. What makes that acceptable is not that the risk is small but that it is COVERED TWICE: ci.yml's `npm audit --audit-level=high` resolves the same tree and IS required, so the only gap this leaves is an advisory GitHub's database carries and the npm registry's does not yet. If that overlap ever went away - the audit step scoped to `--omit=dev`, or moved out of the required job - this decision flips to required immediately, because the advisory check would then be the only one. PROMOTE IT when the evidence lighthouse produced exists here too: at least 30 runs of dependency-review.yml with no failure that was not a real dependency finding, read from `gh run list --workflow dependency-review.yml`. Promotion edits this entry, `.github/required-checks.json`'s required[] array, and the live branch protection in one PR."
+    },
+    {
       "context": "GitGuardian Security Checks",
       "postedBy": "external",
       "kind": "app",
