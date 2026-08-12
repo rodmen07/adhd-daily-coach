@@ -140,11 +140,28 @@ read off disk), so the controls are stated at the layer that can actually fail:
 - **Control A (census fires):** add a module under `src/lib/` that writes a new
   `localStorage` key, leave `STORE_MANIFEST` untouched, and quote the census's
   red plus the `git diff` that produced it.
-- **Control B (round-trip fires, census stays green):** delete one entry from
+- **Control B (round-trip fires, census stays green):** flip the slicer row's
+  `scoping` from `"scoped"` to `"global"`, so the collector reads
+  `focus-adhd-coach:slicer` instead of the scoped key. The census stays green
+  (8/8 - it checks that every call site resolves to a declared family, and the
+  family is unchanged) while the round-trip reddens with 5 failures. That is
+  the shape that proves the census alone was genuinely insufficient rather than
+  merely redundant.
+
+  **CORRECTED 2026-08-12 by the v0.29 milestone close, because the original
+  clause was FALSIFIED when PR1 ran it.** It read: "delete one entry from
   `STORE_MANIFEST` **and** delete its call site's key constant so the census is
   satisfied - the cheap clause met, the behaviour broken. The round-trip must
-  redden. This is the control shape that proves the census alone was genuinely
-  insufficient rather than merely redundant.
+  redden." Run verbatim on the slicer store, the census did NOT stay green: it
+  reddened on `resolves every call site to a key family or a declared
+  indirection`, because deleting the key constant makes `getScopedSlicerKey(scope)`
+  unresolvable, and the census treats an UNRESOLVED call site as a failure
+  rather than as a satisfied clause - an unresolved key is indistinguishable
+  from an unexported store, which is the whole reason it is a failure. So the
+  original control could not have separated the two suites: it reddened both.
+  The paragraph below anticipated exactly this and said to correct the clause
+  rather than report it met; this is that correction, kept in place rather than
+  rewritten silently so the falsification stays legible.
 - **Control C (blindness):** narrow the walker to one directory and confirm the
   anchor assertion reddens rather than the suite silently passing on a shorter
   list.
@@ -190,8 +207,24 @@ The panel carries one standing sentence and one transient confirmation.
 - Transient, after the click: **"Copy downloaded."**, delivered through the
   shared `StatusMessage` primitive with `tone="notice"` (so politeness is
   derived, not hand-spelled), never a bare `alert()` and never an inline
-  `role="alert"` - `status-message-guard` fails a `page.tsx` that spells one
-  inline, and the new panel is held to the same bar by construction.
+  `role="alert"`.
+
+  **CORRECTED 2026-08-12 by PR2, which implemented this and found the last
+  clause false.** It read: "`status-message-guard` fails a `page.tsx` that
+  spells one inline, and the new panel is held to the same bar by
+  construction." The first half is true and the second does not follow from it:
+  that guard's corpus is `PAGE_FILES`, glob-discovered `page.tsx` files under
+  `src/app`, and D6 puts the panel in `src/app/components/`, which the guard
+  never reads. Proven rather than argued - PR2 spelled `role="alert"` inline in
+  the new component and `status-message-guard` came back **green, 5 passed**,
+  so the panel is genuinely unguarded by it. Widening the corpus to components
+  is NOT a free fix and was not smuggled into this milestone: `auth-message.tsx`
+  and `reminder-settings.tsx` both spell `role="alert"` inline today, so the
+  wider scan reddens on pre-existing code and needs its own increment with its
+  own decision about each site (filed in the backlog). What holds the panel
+  instead is its own suite, which asserts the confirmation's RENDERED
+  `aria-live="polite"`, the absence of a `role`, and the `text-amber-700` tone
+  class - a rendered-DOM check, which is the stronger of the two anyway.
 
 The second sentence is the one this milestone exists to get right. It is a
 condition on the rendered output, not a comment: the implementing PR asserts

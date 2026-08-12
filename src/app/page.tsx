@@ -17,6 +17,7 @@ import { StatusMessage } from "@/app/components/status-message";
 import { AffirmationCard } from "@/app/components/AffirmationCard";
 import ProgressRing from "@/app/components/ProgressRing";
 import { ReminderSettingsPanel } from "@/app/components/reminder-settings";
+import { WorkspaceExportPanel } from "@/app/components/workspace-export-panel";
 
 function subscribeMonetization(callback: () => void) {
   if (typeof window === "undefined") {
@@ -730,6 +731,12 @@ export default function Home() {
             }}
             draftStatus={reminderStatus}
             canSendDraft={hasPlan}
+          />
+
+          <WorkspaceExportPanel
+            storageScope={storageScope}
+            firebaseConfigured={authConfigured}
+            signedIn={authUser !== null}
           />
 
           <div className="monetization-panel mt-4" aria-label="Membership status">

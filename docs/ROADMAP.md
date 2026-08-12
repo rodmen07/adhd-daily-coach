@@ -285,9 +285,14 @@ is written next to.
   thirteen routes its own description and Open Graph block from the route
   registry; v0.28 (PR #179, 2026-08-10) gave the guest migration a
   `migrated-locally` result, so a copy that lands in this browser stops
-  borrowing the cloud's sentence on `/`, `/now` and `/trends`. **package.json
+  borrowing the cloud's sentence on `/`, `/now` and `/trends`; v0.29 (PR #182,
+  2026-08-11, and PR2 2026-08-12) gave a person the way out - a
+  declared manifest of all twelve localStorage key families, the census that
+  fails CI when a thirteenth appears, and a "Your data" panel on `/` that
+  downloads the current scope's workspace as one JSON file and says plainly
+  what that file leaves out. **package.json
   reads
-  0.28.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  0.29.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
   2026-08-07 and v0.22 itself shipped hours later and made it wrong again. It
@@ -2192,7 +2197,7 @@ own chosen-over named this "a product decision the analyst may not make
 unilaterally"; this definition is that decision brought to the owner as
 overridable defaults.
 
-### v0.29 - The way out: what this browser holds, in a file you can keep (agent-doable now)
+### v0.29 - The way out: what this browser holds, in a file you can keep (DONE)
 
 Defined 2026-08-11 on `d0542c3`. Design doc:
 [docs/design/WORKSPACE_EXPORT.md](design/WORKSPACE_EXPORT.md), every decision
