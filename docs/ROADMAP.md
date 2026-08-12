@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-08-11)
+## Current state (2026-08-12)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
@@ -2296,12 +2296,136 @@ capability, standing candidate since the v0.28 definition); an empty-state pass
 `/trends`, `/journal` and `/review`); and `/focus`'s two controls for one value
 (a UX decision for the owner, filed by PR #180 and left in the backlog).
 
+### v0.30 - Every copy speaks: one migration voice, and the two surfaces that never had one
+
+Defined 2026-08-12 on `4dad1c7`. Design doc:
+[docs/design/MIGRATION_VOICE.md](design/MIGRATION_VOICE.md), every decision an
+overridable default, section 6 empty until the owner weighs in.
+
+**The finding, read at the source rather than inherited.** Five surfaces in the
+shipped app await a guest-to-account migration on load (`grep -rn
+'migrateGuest[A-Za-z]*(' src/app src/lib`, tests excluded): `/` through
+`planner-session.ts:33` and `:69`, `/now:93`, `/trends:68`, `/journal:58` and
+`/slicer:65`. Three report the outcome; **two report nothing.** `/journal`
+does not even bind the result - the line is `await
+journalStore.migrateGuestJournalEntries(scope);` - so a copy that succeeded,
+failed, or landed only in this browser produces the identical page. `/slicer`
+binds it and then returns early on every outcome but one, which is the same
+silence with an extra line; that half was NOT previously filed anywhere, and
+its own comment at `:59-60` says the quiet outcomes "change no state at all,
+matching how /journal stays silent". **The second silent surface was written by
+copying the first, and the copy is recorded in a comment as if `/journal`'s
+silence were a convention rather than an open MED bug.**
+
+The three speaking surfaces say it three times by hand: `/trends:84` describes
+its own code as mirroring `/now`'s "exactly", two of the three read
+`src/lib/focus-session-copy.ts` and the third inlines four string literals.
+There is no shared unit - the mapping from `GuestMigrationResult` to
+`AsyncStatus` exists three times and is absent twice - and nothing in the gate
+holds a surface to reporting what it ran, which is why the silence spread by
+imitation. `status-message-guard` is not that check and does not claim to be:
+it forbids an inline `role="alert"` in a `page.tsx`, and a page that renders
+nothing at all satisfies it perfectly.
+
+**What v0.30 is:** one seam and two voices. `migrationNotice(result, copy)`
+becomes the single home for a decision written three times, `/journal` and
+`/slicer` start saying what happened to a person's entries and tasks, and a
+guard holds every `src/app` migration call site to routing its result through
+that seam so a sixth surface cannot be added silently.
+
+**The asymmetry the milestone turns on.** `migrated-locally` is minted only by
+`guestMigrationLandedLocally`, whose nine call sites are all in
+`checkin-store.ts`, `focus-session-store.ts` and `journal-store.ts`.
+`slicer.ts` and `planner-state.ts` never call it and have no Firestore twin, so
+`/journal` needs three sentences and `/slicer` needs **two** - a "will be
+copied to your account" line there would promise a cloud that does not exist,
+which is `MIGRATION_DESTINATION.md` D2's rule applied rather than restated.
+`MigrationCopy.local` is therefore optional, and the seam must return `idle`
+rather than invent a sentence when it is absent.
+
+**PR1 - the seam, behaviour-preserving.** `src/lib/migration-notice.ts` plus
+its unit suite; `/now`, `/trends` and `planner-session.ts` rewired through it,
+with `planner-session.ts`'s inline strings lifted into a named record. No page
+changes what it renders, so this takes the stricter refactor bar: the existing
+suites for those three surfaces pass unchanged.
+
+**PR2 - the two voices, the guard, and the close.** `/journal` and `/slicer`
+gain their copy records and their `StatusMessage` lines;
+`src/app/__tests__/migration-voice-guard.test.ts` lands on the tree that
+satisfies it; then the milestone close.
+
+**Done when** (each clause a command, not an opinion):
+
+1. `migrationNotice` is the only place in `src/` that maps a
+   `GuestMigrationResult` to an `AsyncStatus`: after PR1, `grep -rn
+   'status === "migrated-locally"' src --include=*.ts --include=*.tsx` with
+   tests excluded returns exactly one file, `src/lib/migration-notice.ts`.
+2. PR1 is behaviour-preserving on the three surfaces it rewires: the existing
+   `now-page`, `trends-page` and `planner-session` suites pass **unchanged**,
+   and the PR body states so with the diff proving no test file was edited. If
+   one had to change, the refactor changed behaviour and the PR says so or
+   undoes it.
+3. `/journal` renders its three outcomes and `/slicer` its two, each asserted
+   on the rendered DOM by `data-testid` rather than by page text, in both the
+   fires and the stays-silent direction.
+4. A `migrated-locally` result reaching a `MigrationCopy` with no `local`
+   string yields `{ type: "idle" }` and renders nothing - asserted directly on
+   `migrationNotice`, because the combination is unreachable in the shipped
+   tree and is exactly what stands between "this store has no cloud" and a
+   false promise.
+5. `skipped`, `already-migrated` and any zero-count outcome stay silent on all
+   five surfaces, asserted rather than assumed - the one-directional rule from
+   `GUEST_DATA_MIGRATION.md` D5, preserved byte for byte.
+6. `migration-voice-guard` is green on PR2's tree and RED under a control
+   shaped to satisfy its cheap clause while breaking the behaviour: the
+   `migrationNotice` call is kept and its return value dropped on the floor,
+   exactly as `/journal` does today. The call-site scan must stay GREEN under
+   that control and the behaviour test must redden; if both redden, the scan
+   was never the binding half and the PR body says so.
+7. The guard names two call sites in two different route directories as
+   blindness anchors, and a control narrowing its walker to one directory
+   reddens the anchor assertion rather than passing on a shorter list.
+8. PR2 (not PR1) moves the Current-state guard-count sentence to
+   **Twenty-five** with `migration-voice-guard` named, AND adds
+   `"twenty-five": 25` to `NUMBER_WORDS` in `roadmap-guard-count.test.ts`,
+   whose map ends at `"twenty-four": 24` and fails loudly on an unknown word.
+   Both belong to the commit that adds the guard file, because that guard reads
+   the filesystem and not this plan.
+9. PR2 flips this heading to DONE, bumps `package.json` to `0.30.0` with both
+   `package-lock.json` copies, and updates the Current-state version sentence
+   in the same commit.
+10. The `/` planner sentence is NOT shipped and NOT re-decided: its open item
+    keeps its clearing condition verbatim, and the PR body states that D6 only
+    lowers the cost of the owner's (a) branch to one optional string.
+
+**Chosen over** (each reason re-read at its source and its stated condition
+re-tested this pass, per MIGRATION_VOICE.md section 4, rather than the verdict
+being repeated): import/restore - **the backlog had recorded its reopen
+condition backwards**, offering it as a candidate the exporter now satisfies
+while `WORKSPACE_EXPORT.md` section 5 says "reopen when an owner asks for
+restore, or when a support question arrives that only restore answers - not
+merely because the exporter exists", which excludes that exact fact; widening
+`status-message-guard` to components (real and proven by PR #184, but the
+guard's own header declares the components exclusion deliberate and
+`reminder-settings.tsx:253` is a live instance, so it is a re-decision needing
+its own increment, not a fix); FCM push (`grep -rn 'vapid|firebase/messaging'
+src` returns nothing, the VAPID key is minted in the Firebase console and
+console actions are USER-ONLY); paid value expansion (its condition was tested:
+v0.5 still DEPRIORITIZED, entitlement flips still manual, a static export still
+cannot receive a webhook); a PR template (`ls .github/PULL_REQUEST_TEMPLATE*`
+still errors, still one file of repo hygiene); the C10-flagged
+`route-registry-guard.test.ts` split (re-measured at 1036 lines, a
+refactor-trigger with a stricter bar and no capability); `/focus`'s two
+controls for one value (the `sr-only` `<select>` is still at `focus/page.tsx:108`
+beside the announcing chips - an owner call); and the theme key's three
+spellings (a one-home rule on a single key, sized like the onboarding fix).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.28 have all landed - v0.28 shipped 2026-08-10 as PR #179 - and
-v0.29 is now DEFINED above (2026-08-11) but not started, so a dev slot takes
+through v0.29 have all landed - v0.29 completed 2026-08-12 with PR #184 - and
+v0.30 is now DEFINED above (2026-08-12) but not started, so a dev slot takes
 its PR1 rather than picking a direction of its own.** (The 2026-08-08 v0.27
 definition retired the previous opening clause here — the one declaring the
 dev queue EMPTY and assigning the v0.27 definition to a product slot — a
@@ -2421,7 +2545,23 @@ the definition that filled the queue; this one was retired by the definition
 AFTER the one that emptied it, which is the longest this clause has ever been
 wrong. The superseded wording is quoted verbatim in the 2026-08-11 run report
 per the tombstone rule rather than here, because its token shape is one
-preflight C12 greps for.
+preflight C12 greps for. This **twenty-seventh** is the 2026-08-12 product pass
+that defined v0.30 hours after v0.29 completed, and it found the clause stale
+in BOTH of the two ways this list has recorded, at once: one milestone behind
+on its landed-through claim ("v0.2 through v0.28") and one phase behind on its
+queue claim ("v0.29 is now DEFINED above but not started"), which had survived
+v0.29 being defined, implemented as PR #182, completed as PR #184 and merged.
+Neither of the two v0.29 PRs rewrote it, which is the same uncounted class as
+the twentieth, twenty-third and twenty-fifth editions' misses - so the miss is
+now the RULE rather than the exception, four editions out of the last eight,
+and the honest reading is that "the completion PR owes this clause" has been
+tried and does not hold. What holds instead is what has caught it every time:
+the next definition pass reads the clause before writing its own. That is the
+convention worth stating, because it names an author who can actually observe
+that they triggered it - a product pass is looking at this paragraph anyway,
+while a completion PR is looking at a heading three hundred lines up. The
+superseded wording is quoted verbatim in the 2026-08-12 run report per the
+tombstone rule rather than here, for the token-shape reason above.
 `roadmap-milestone-status.test.ts`
 guards the milestone HEADINGS mechanically but cannot read this sentence,
 which is why it is the half that keeps going stale. Its sibling half - the
