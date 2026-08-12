@@ -285,8 +285,8 @@ is written next to.
   thirteen routes its own description and Open Graph block from the route
   registry; v0.28 (PR #179, 2026-08-10) gave the guest migration a
   `migrated-locally` result, so a copy that lands in this browser stops
-  borrowing the cloud's sentence on `/`, `/now` and `/trends`; v0.29 (PR #182,
-  2026-08-11, and PR2 2026-08-12) gave a person the way out - a
+  borrowing the cloud's sentence on `/`, `/now` and `/trends`; v0.29 (PR #182
+  2026-08-11 and PR #184 2026-08-12) gave a person the way out - a
   declared manifest of all twelve localStorage key families, the census that
   fails CI when a thirteenth appears, and a "Your data" panel on `/` that
   downloads the current scope's workspace as one JSON file and says plainly
