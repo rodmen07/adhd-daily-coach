@@ -216,8 +216,10 @@ The panel carries one standing sentence and one transient confirmation.
   that guard's corpus is `PAGE_FILES`, glob-discovered `page.tsx` files under
   `src/app`, and D6 puts the panel in `src/app/components/`, which the guard
   never reads. Proven rather than argued - PR2 spelled `role="alert"` inline in
-  the new component and `status-message-guard` came back **green, 5 passed**,
-  so the panel is genuinely unguarded by it. Widening the corpus to components
+  the new component and `status-message-guard` came back **green, 4 passed**,
+  so the panel is genuinely unguarded by it. (That guard is not broken: its own
+  negative control, "catches an inline alert and forgives prose", still fires.
+  Its CORPUS is what excludes this file.) Widening the corpus to components
   is NOT a free fix and was not smuggled into this milestone: `auth-message.tsx`
   and `reminder-settings.tsx` both spell `role="alert"` inline today, so the
   wider scan reddens on pre-existing code and needs its own increment with its
