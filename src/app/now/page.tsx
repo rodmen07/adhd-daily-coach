@@ -17,10 +17,12 @@ import {
 } from "@/lib/focus-session-store";
 import {
   FOCUS_SESSION_COPY as C,
+  FOCUS_SESSION_MIGRATION_COPY,
   FOCUS_SESSION_NOTIFICATION_BODY,
   FOCUS_SESSION_NOTIFICATION_TAG,
   FOCUS_SESSION_NOTIFICATION_TITLE,
 } from "@/lib/focus-session-copy";
+import { migrationNotice } from "@/lib/migration-notice";
 import { showNotification } from "@/lib/reminder-notifications";
 
 const DURATIONS = [5, 15, 25] as const;
@@ -97,28 +99,20 @@ export default function NowPage() {
       }
 
       setSessions(stored);
-      // Calm and one-directional (GUEST_DATA_MIGRATION.md D5): only a copy
-      // that actually moved something says anything. "skipped" and
-      // "already-migrated" stay silent, because a person who never used the
-      // app signed out should never be told about a migration.
-      //
-      // "error" no longer stays silent (v0.21 PR2, STATUS_VOCABULARY.md D4).
-      // Silence there is indistinguishable from "there was nothing to bring
-      // across", so the one outcome where sessions are NOT where the person
-      // expects them was the only one they could not tell apart. `/` has
-      // announced its own migration failures since v0.4; this closes the gap
-      // on the two pages that never did.
-      //
-      // "migrated-locally" is v0.28's third outcome (MIGRATION_DESTINATION.md
-      // D3/D4): the copy completed, but in this browser, so `migrationNote`'s
-      // "here now" would be read as "in your account". A notice, not an error.
-      if (migration.status === "migrated" && migration.migratedCount > 0) {
-        setMigrationStatus({ type: "ok", message: C.migrationNote });
-      } else if (migration.status === "migrated-locally" && migration.migratedCount > 0) {
-        setMigrationStatus({ type: "notice", message: C.migrationLocalNote });
-      } else if (migration.status === "error") {
-        setMigrationStatus({ type: "error", message: C.migrationErrorNote });
-      }
+      // v0.30 (MIGRATION_VOICE.md D1): the mapping from outcome to sentence
+      // lives in `migrationNotice` now. It was written by hand here, on
+      // /trends, and in planner-session.ts, and was missing entirely on
+      // /journal and /slicer - which is how the silence spread by imitation.
+      // The rules it carries are unchanged: calm and one-directional, so
+      // "skipped", "already-migrated" and any zero count stay silent
+      // (GUEST_DATA_MIGRATION.md D5); "error" speaks since v0.21 PR2
+      // (STATUS_VOCABULARY.md D4) because silence there was indistinguishable
+      // from "there was nothing to bring across"; and "migrated-locally" is a
+      // notice rather than an error or an ok (v0.28,
+      // MIGRATION_DESTINATION.md D3/D4), since the copy completed but in this
+      // browser, where `migrationNote`'s "here now" would read as "in your
+      // account".
+      setMigrationStatus(migrationNotice(migration, FOCUS_SESSION_MIGRATION_COPY));
     }
 
     void loadSessions();

@@ -1,3 +1,5 @@
+import type { MigrationCopy } from "@/lib/migration-notice";
+
 /**
  * User-facing copy for the "one thing now" focus session, kept in one place so
  * a test can assert the whole surface stays calm and pressure-free (no streaks,
@@ -51,6 +53,28 @@ export const FOCUS_SESSION_COPY = {
   migrationLocalNote:
     "Your earlier focus sessions are safe in this browser. They will be copied to your account next time it can be reached.",
 } as const;
+
+/**
+ * The three focus-session sentences arranged as the record `migrationNotice`
+ * takes (v0.30, docs/design/MIGRATION_VOICE.md D2).
+ *
+ * `/now` and `/trends` both await the SAME migration
+ * (`migrateGuestFocusSessions`) and so have always said the same three things;
+ * the marker is what keeps the line to once across both pages. One record they
+ * share is therefore the honest shape - it was already one surface's copy
+ * duplicated at two call sites.
+ *
+ * Deliberately a separate top-level const rather than a nested key of
+ * `FOCUS_SESSION_COPY`: the calm-tone guard reads that record with
+ * `Object.values(...).join(" ")` (`focus-session.test.ts`), so a nested object
+ * would join as "[object Object]" and quietly stop the tone check from seeing
+ * these three sentences at all.
+ */
+export const FOCUS_SESSION_MIGRATION_COPY: MigrationCopy = {
+  ok: FOCUS_SESSION_COPY.migrationNote,
+  local: FOCUS_SESSION_COPY.migrationLocalNote,
+  error: FOCUS_SESSION_COPY.migrationErrorNote,
+};
 
 /**
  * The weekly focus recap sentence rendered on /trends.
