@@ -13,7 +13,12 @@ import {
   createFocusSessionStore,
   type FocusSessionStoreAdapter,
 } from "@/lib/focus-session-store";
-import { FOCUS_SESSION_COPY, focusWeekRecap } from "@/lib/focus-session-copy";
+import {
+  FOCUS_SESSION_COPY,
+  FOCUS_SESSION_MIGRATION_COPY,
+  focusWeekRecap,
+} from "@/lib/focus-session-copy";
+import { migrationNotice } from "@/lib/migration-notice";
 
 // A fixed 28-day / 4-week window (docs/design/TRENDS_OVER_TIME.md section
 // 3.1): an overridable default, not a hard product decision. A selectable
@@ -75,23 +80,17 @@ export default function TrendsPage() {
 
       setCheckins(inRange);
       setFocusSessions(sessions);
-      // Same calm rule as /now (GUEST_DATA_MIGRATION.md D5), and the marker is
-      // what keeps the line to ONCE across both pages: whichever loads first
-      // does the copy, the other sees "already-migrated" and stays silent.
-      // The error branch mirrors /now's exactly (v0.21 PR2,
-      // STATUS_VOCABULARY.md D4) - and the marker is NOT written on error, so
-      // the next load genuinely retries rather than reporting a stale failure.
-      // The "migrated-locally" branch mirrors /now's exactly (v0.28,
-      // MIGRATION_DESTINATION.md D3/D4): a completed copy that landed in this
-      // browser is a notice, and the marker rule above is why its sentence can
-      // promise the cloud copy in the future tense.
-      if (migration.status === "migrated" && migration.migratedCount > 0) {
-        setMigrationStatus({ type: "ok", message: FOCUS_SESSION_COPY.migrationNote });
-      } else if (migration.status === "migrated-locally" && migration.migratedCount > 0) {
-        setMigrationStatus({ type: "notice", message: FOCUS_SESSION_COPY.migrationLocalNote });
-      } else if (migration.status === "error") {
-        setMigrationStatus({ type: "error", message: FOCUS_SESSION_COPY.migrationErrorNote });
-      }
+      // v0.30 (MIGRATION_VOICE.md D1): this block used to mirror /now's by
+      // hand, and its own comment said so - "mirrors /now's exactly", twice.
+      // Both now route through `migrationNotice` with the same record, so the
+      // mirroring is structural instead of asserted in a comment. The rules
+      // are unchanged: the marker is what keeps the line to ONCE across both
+      // pages (whichever loads first does the copy, the other sees
+      // "already-migrated" and stays silent), the marker is NOT written on
+      // error so the next load genuinely retries rather than reporting a stale
+      // failure, and that same marker rule is why the "migrated-locally"
+      // sentence can promise the cloud copy in the future tense.
+      setMigrationStatus(migrationNotice(migration, FOCUS_SESSION_MIGRATION_COPY));
       setLoaded(true);
     }
 
