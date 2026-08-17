@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { CalmEmptyState } from "@/app/components/empty-state";
+import { StatusMessage } from "@/app/components/status-message";
+import type { AsyncStatus } from "@/lib/async-status";
 import {
   JOURNAL_ENTRY_MAX_LENGTH,
   formatJournalDate,
@@ -10,7 +12,9 @@ import {
   localDateKey,
   type JournalEntry,
 } from "@/lib/journal";
+import { JOURNAL_MIGRATION_COPY } from "@/lib/journal-copy";
 import { createJournalStore } from "@/lib/journal-store";
+import { migrationNotice } from "@/lib/migration-notice";
 
 // Earlier entries surface in small, finite steps: never an endless feed.
 const HISTORY_CHUNK = 7;
@@ -39,6 +43,7 @@ export default function JournalPage() {
   const [draft, setDraft] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [visibleCount, setVisibleCount] = useState(HISTORY_CHUNK);
+  const [migrationStatus, setMigrationStatus] = useState<AsyncStatus>({ type: "idle" });
 
   // Load (or reload) persisted entries whenever the auth scope (and so the
   // resolved store) changes. The store is async now that Firestore may be in
@@ -55,7 +60,13 @@ export default function JournalPage() {
       // read exactly as planner-session.ts sequences the check-in migration
       // ahead of the weekly summary. A no-op for the guest scope, for an
       // empty guest journal, and after the first successful run.
-      await journalStore.migrateGuestJournalEntries(scope);
+      //
+      // v0.30: the result is BOUND now. This line spent seventeen milestones
+      // as `await ...` with no assignment - the open MED bug filed by
+      // PR #179 - so a person whose entries were copied, failed to copy, or
+      // landed only in this browser saw the identical page in all three
+      // cases, and /slicer's silence was later written by copying this one.
+      const migration = await journalStore.migrateGuestJournalEntries(scope);
 
       const loaded = await journalStore.listJournalEntries(scope);
       if (!active) {
@@ -65,6 +76,11 @@ export default function JournalPage() {
       setDraft(loaded.find((entry) => entry.date === todayKey)?.text ?? "");
       setIsEditing(false);
       setVisibleCount(HISTORY_CHUNK);
+      // The mapping from outcome to sentence lives in `migrationNotice`
+      // (MIGRATION_VOICE.md D1); the rules are the standing ones - calm and
+      // one-directional, so "skipped", "already-migrated" and any zero count
+      // stay silent (GUEST_DATA_MIGRATION.md D5).
+      setMigrationStatus(migrationNotice(migration, JOURNAL_MIGRATION_COPY));
     }
 
     void loadEntries();
@@ -112,6 +128,29 @@ export default function JournalPage() {
             One small entry a day, only if you feel like it. Nothing here counts
             days, keeps score, or asks you to catch up.
           </p>
+
+          {/* v0.30 (MIGRATION_VOICE.md D4): directly below the intro, above
+              the editor - the same place /now and /trends put theirs, so a
+              person who signs in and visits two pages finds the same kind of
+              sentence in the same place. */}
+          <StatusMessage
+            tone="success"
+            className="mb-4"
+            data-testid="journal-migration-note"
+            message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+          />
+          <StatusMessage
+            tone="notice"
+            className="mb-4"
+            data-testid="journal-migration-local"
+            message={migrationStatus.type === "notice" ? migrationStatus.message : null}
+          />
+          <StatusMessage
+            tone="error"
+            className="mb-4"
+            data-testid="journal-migration-error"
+            message={migrationStatus.type === "error" ? migrationStatus.message : null}
+          />
 
           {!todayEntry || isEditing ? (
             <form onSubmit={handleSave} aria-label="Today's journal entry">

@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import JournalPage from "@/app/journal/page";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
+import { isFirebaseConfigured, loadFirebaseFirestore } from "@/lib/firebase";
+import { addFirestoreJournalEntry } from "@/lib/firestore-journal";
 import {
   getJournalPrompt,
   listJournalEntries,
@@ -11,6 +13,20 @@ import {
 
 vi.mock("@/app/hooks/use-coach-auth", () => ({
   useCoachAuth: vi.fn(),
+}));
+
+// Firebase stays unconfigured by default, exactly as the real module reports
+// in tests - only the v0.30 migrated-locally branch flips it on, because that
+// outcome is minted precisely when a firestore-RESOLVED store falls back to
+// its local twin (journal-store.ts:146/176/198).
+vi.mock("@/lib/firebase", () => ({
+  isFirebaseConfigured: vi.fn(() => false),
+  loadFirebaseFirestore: vi.fn(() => Promise.resolve(null)),
+}));
+
+vi.mock("@/lib/firestore-journal", () => ({
+  addFirestoreJournalEntry: vi.fn((_db: unknown, entry: unknown) => Promise.resolve(entry)),
+  listFirestoreJournalEntries: vi.fn(() => Promise.resolve([])),
 }));
 
 const authMock = {
@@ -31,6 +47,12 @@ describe("Journal page", () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.mocked(useCoachAuth).mockReturnValue(authMock as never);
+    // Re-armed EVERY test, the now-page pattern: `vi.clearAllMocks()` in the
+    // afterEach clears calls but keeps implementations, so a branch test that
+    // flipped Firebase on would otherwise leak "configured" into every test
+    // after it.
+    vi.mocked(isFirebaseConfigured).mockReturnValue(false);
+    vi.mocked(loadFirebaseFirestore).mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -195,6 +217,121 @@ describe("Journal page", () => {
       await screen.findByText("Written before signing in.");
       // Nothing was copied anywhere: the guest scope is the only one used.
       expect(listJournalEntries("user-123")).toHaveLength(0);
+    });
+  });
+
+  // v0.30 (MIGRATION_VOICE.md D3/D4): the page SAYS what happened to a
+  // person's entries. This surface awaited its migration without binding the
+  // result for seventeen milestones - the MED bug PR #179 filed - so these
+  // are the behaviour half the migration-voice-guard's call-site scan is
+  // paired with: they redden if the page keeps the call and drops the return.
+  describe("the migration speaks (v0.30)", () => {
+    function signIn(uid = "user-123") {
+      vi.mocked(useCoachAuth).mockReturnValue({
+        ...authMock,
+        authUser: { uid },
+      } as never);
+    }
+
+    let storageWriteSpy: { mockRestore: () => void } | null = null;
+
+    /**
+     * Make ONE localStorage key unwritable, the way a full quota does. Every
+     * other key keeps working, so the only failing thing is the write under
+     * test - the now-page suite's shape, for the now-page suite's reason.
+     */
+    function failWritesTo(key: string) {
+      const real = Storage.prototype.setItem;
+      storageWriteSpy = vi
+        .spyOn(Storage.prototype, "setItem")
+        .mockImplementation(function (this: Storage, writtenKey: string, value: string) {
+          if (writtenKey === key) {
+            throw new DOMException("exceeded the quota", "QuotaExceededError");
+          }
+          real.call(this, writtenKey, value);
+        });
+    }
+
+    afterEach(() => {
+      storageWriteSpy?.mockRestore();
+      storageWriteSpy = null;
+    });
+
+    it("says the entries are here after a copy that reached the account", async () => {
+      saveJournalEntry(pastDateKey(1), "Written before signing in.", "guest");
+      signIn();
+
+      render(<JournalPage />);
+
+      const note = await screen.findByTestId("journal-migration-note");
+      // Composed from a literal, not from the copy module the page imports:
+      // a shared constant on both sides would agree with itself (L-054).
+      expect(note.textContent).toBe("Your earlier journal entries are here now.");
+      // Nothing failed and nothing is asked of the person, so the line waits
+      // for a pause in the reading order rather than interrupting.
+      expect(note.getAttribute("role")).toBeNull();
+      expect(note.getAttribute("aria-live")).toBe("polite");
+      // Only the outcome that happened is rendered.
+      expect(screen.queryByTestId("journal-migration-local")).toBeNull();
+      expect(screen.queryByTestId("journal-migration-error")).toBeNull();
+    });
+
+    it("tells a signed-in person when the copy landed in this browser instead", async () => {
+      saveJournalEntry(pastDateKey(1), "Written before signing in.", "guest");
+      signIn();
+      // Firestore-resolved, then the cloud write refuses: journal-store falls
+      // back to its local twin and mints "migrated-locally" - the outcome
+      // "here now" would misdescribe as "in your account".
+      vi.mocked(isFirebaseConfigured).mockReturnValue(true);
+      vi.mocked(loadFirebaseFirestore).mockResolvedValue({} as never);
+      vi.mocked(addFirestoreJournalEntry).mockRejectedValueOnce(
+        new DOMException("permission-denied", "FirebaseError"),
+      );
+
+      render(<JournalPage />);
+
+      const note = await screen.findByTestId("journal-migration-local");
+      expect(note.textContent).toBe(
+        "Your earlier journal entries are safe in this browser. They will be copied to your account next time it can be reached.",
+      );
+      expect(note.getAttribute("role")).toBeNull();
+      expect(note.getAttribute("aria-live")).toBe("polite");
+      expect(screen.queryByTestId("journal-migration-note")).toBeNull();
+      expect(screen.queryByTestId("journal-migration-error")).toBeNull();
+    });
+
+    it("tells a signed-in person, assertively, when the copy could not be made", async () => {
+      saveJournalEntry(pastDateKey(1), "Written before signing in.", "guest");
+      signIn();
+      failWritesTo("calm-daily-coach-journal:user-123");
+
+      render(<JournalPage />);
+
+      const note = await screen.findByTestId("journal-migration-error");
+      expect(note.textContent).toBe("Could not bring your earlier journal entries across.");
+      // A failed copy is the one outcome a person may need to act on, so it
+      // interrupts rather than waiting for a pause in the reading order.
+      expect(note.getAttribute("role")).toBe("alert");
+      expect(note.getAttribute("aria-live")).toBe("assertive");
+      expect(screen.queryByTestId("journal-migration-note")).toBeNull();
+      // Nothing was lost: the guest copy is exactly where it was, which is
+      // what the sentence promises.
+      expect(listJournalEntries("guest")).toHaveLength(1);
+    });
+
+    it("stays silent for a signed-in person with nothing to bring", async () => {
+      // Account data only: the load has something to wait for, and the
+      // migration has nothing to move - the "skipped"/zero-count direction
+      // of GUEST_DATA_MIGRATION.md D5, asserted rather than assumed.
+      saveJournalEntry(pastDateKey(1), "Written while signed in.", "user-123");
+      signIn();
+
+      render(<JournalPage />);
+
+      await screen.findByText("Written while signed in.");
+      expect(screen.queryByTestId("journal-migration-note")).toBeNull();
+      expect(screen.queryByTestId("journal-migration-local")).toBeNull();
+      expect(screen.queryByTestId("journal-migration-error")).toBeNull();
     });
   });
 

@@ -173,4 +173,103 @@ describe("ADHD Task Slicer Page", () => {
       expect(loadSlicedTasks("user-123")).toHaveLength(0);
     });
   });
+
+  // v0.30 (MIGRATION_VOICE.md D3/D4): the page SAYS what happened to a
+  // person's tasks. This surface's silence was written by copying /journal's,
+  // with a comment citing that silence as a convention - the exact spread-by-
+  // imitation the migration-voice-guard now exists against. These are the
+  // behaviour half that guard's call-site scan is paired with: they redden if
+  // the page keeps the migrationNotice call and drops its return.
+  describe("the migration speaks (v0.30)", () => {
+    function buildTask(id: string, title: string): SlicedTask {
+      return {
+        id,
+        title,
+        domain: "general",
+        intimidation: "medium",
+        steps: [
+          { id: "step-1", text: "Set a micro countdown timer.", minutes: 1, completed: false },
+        ],
+        createdAt: "2026-07-01T12:00:00.000Z",
+      };
+    }
+
+    function signIn(uid = "user-123") {
+      vi.mocked(useCoachAuth).mockReturnValue({
+        ...authMock,
+        authUser: { uid },
+      } as never);
+    }
+
+    /**
+     * Make ONE localStorage key unwritable, the way a full quota does - the
+     * now-page suite's shape. `vi.restoreAllMocks` in the file-level afterEach
+     * restores it.
+     */
+    function failWritesTo(key: string) {
+      const real = Storage.prototype.setItem;
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+        this: Storage,
+        writtenKey: string,
+        value: string,
+      ) {
+        if (writtenKey === key) {
+          throw new DOMException("exceeded the quota", "QuotaExceededError");
+        }
+        real.call(this, writtenKey, value);
+      });
+    }
+
+    it("says the tasks are here after a copy that reached the account", async () => {
+      saveSlicedTasks([buildTask("task-guest-1", "Sort the garage paperwork")], "guest");
+      signIn();
+
+      render(<SlicerPage />);
+
+      const note = await screen.findByTestId("slicer-migration-note");
+      // Composed from a literal, not from the copy module the page imports:
+      // a shared constant on both sides would agree with itself (L-054).
+      expect(note.textContent).toBe("Your earlier sliced tasks are here now.");
+      expect(note.getAttribute("role")).toBeNull();
+      expect(note.getAttribute("aria-live")).toBe("polite");
+      expect(screen.queryByTestId("slicer-migration-error")).toBeNull();
+      // TWO lines, not three: slicer.ts has no cloud twin, so no
+      // "migrated-locally" sentence exists on this surface at all - the
+      // omission is the decision (MIGRATION_VOICE.md D3).
+      expect(screen.queryByTestId("slicer-migration-local")).toBeNull();
+    });
+
+    it("tells a signed-in person, assertively, when the copy could not be made", async () => {
+      saveSlicedTasks([buildTask("task-guest-1", "Sort the garage paperwork")], "guest");
+      signIn();
+      failWritesTo("focus-adhd-coach:slicer:user-123");
+
+      render(<SlicerPage />);
+
+      const note = await screen.findByTestId("slicer-migration-error");
+      expect(note.textContent).toBe("Could not bring your earlier sliced tasks across.");
+      // A failed copy is the one outcome a person may need to act on.
+      expect(note.getAttribute("role")).toBe("alert");
+      expect(note.getAttribute("aria-live")).toBe("assertive");
+      expect(screen.queryByTestId("slicer-migration-note")).toBeNull();
+      // Nothing was lost: the guest copy is exactly where it was.
+      expect(loadSlicedTasks("guest")).toHaveLength(1);
+    });
+
+    it("stays silent for a signed-in person with nothing to bring", async () => {
+      // Account data only: the load has something to wait for, and the
+      // migration has nothing to move - the zero-count direction of
+      // GUEST_DATA_MIGRATION.md D5, asserted rather than assumed.
+      saveSlicedTasks([buildTask("task-own-1", "Repot the kitchen herbs")], "user-123");
+      signIn();
+
+      render(<SlicerPage />);
+
+      const shown = await screen.findAllByText("Repot the kitchen herbs");
+      expect(shown.length).toBeGreaterThan(0);
+      expect(screen.queryByTestId("slicer-migration-note")).toBeNull();
+      expect(screen.queryByTestId("slicer-migration-local")).toBeNull();
+      expect(screen.queryByTestId("slicer-migration-error")).toBeNull();
+    });
+  });
 });
