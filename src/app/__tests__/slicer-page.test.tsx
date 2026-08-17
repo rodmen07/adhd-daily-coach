@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SlicerPage from "@/app/slicer/page";
+import { BROKEN_FORM, renderedClassNames } from "@/__tests__/helpers/rendered-theme";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { loadSlicedTasks, saveSlicedTasks, type SlicedTask } from "@/lib/slicer";
 
@@ -271,5 +272,43 @@ describe("ADHD Task Slicer Page", () => {
       expect(screen.queryByTestId("slicer-migration-local")).toBeNull();
       expect(screen.queryByTestId("slicer-migration-error")).toBeNull();
     });
+  });
+
+  // The rendered-DOM half of the theme guard (see ambient-page.test.tsx and
+  // css-var-syntax-guard.test.ts): the selected-domain classes
+  // (slicer/page.tsx ~line 381) exist in the DOM only on the chip currently
+  // chosen, so driving the selection is the only way to reach that branch.
+  // Unlike the other pages this one spells its tokens as `[var(--x)]`
+  // arbitrary values (and carries known slate-literal debt, tracked in the
+  // backlog), so there is no WORKING_FORM floor to assert here - the policy
+  // this test pins is the ban on the bare broken spelling plus proof that the
+  // driven branch actually rendered.
+  it("emits no broken theme tokens as the domain selection is driven", () => {
+    const { container } = render(<SlicerPage />);
+
+    const idle = renderedClassNames(container);
+    expect(
+      idle.match(BROKEN_FORM) ?? [],
+      "the creation form renders Tailwind v3 CSS-variable utilities, which " +
+        "v4 compiles to invalid declarations a browser drops",
+    ).toEqual([]);
+
+    // "general" is the default, so the Programming chip starts unselected.
+    const domainChip = () => {
+      const button = screen.getByText("Programming").closest("button");
+      if (!button) throw new Error("no domain chip button found around Programming");
+      return button;
+    };
+    const unselected = domainChip().getAttribute("class") ?? "";
+    fireEvent.click(domainChip());
+
+    const selected = renderedClassNames(container);
+    expect(
+      selected.match(BROKEN_FORM) ?? [],
+      "the selected-domain branch renders Tailwind v3 CSS-variable " +
+        "utilities; this branch paints on a chip only once it is chosen",
+    ).toEqual([]);
+    // The branch actually rendered: the chosen chip paints differently now.
+    expect(domainChip().getAttribute("class")).not.toBe(unselected);
   });
 });
