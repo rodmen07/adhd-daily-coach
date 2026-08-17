@@ -4,6 +4,9 @@ import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { CalmEmptyState } from "@/app/components/empty-state";
+import { StatusMessage } from "@/app/components/status-message";
+import type { AsyncStatus } from "@/lib/async-status";
+import { migrationNotice } from "@/lib/migration-notice";
 import {
   SlicingDomain,
   IntimidationLevel,
@@ -14,6 +17,7 @@ import {
   migrateGuestSlicedTasks,
   saveSlicedTasks,
 } from "@/lib/slicer";
+import { SLICED_TASK_MIGRATION_COPY } from "@/lib/slicer-copy";
 
 export default function SlicerPage() {
   const { authUser } = useCoachAuth();
@@ -29,6 +33,7 @@ export default function SlicerPage() {
   const [tasks, setTasks] = useState<SlicedTask[]>([]);
   const [activeTask, setActiveTask] = useState<SlicedTask | null>(null);
   const [focusMode, setFocusMode] = useState(true);
+  const [migrationStatus, setMigrationStatus] = useState<AsyncStatus>({ type: "idle" });
 
   // Timer states
   const [timerSeconds, setTimerSeconds] = useState<number | null>(null);
@@ -55,15 +60,25 @@ export default function SlicerPage() {
   // synchronous render-phase load above; it runs here on scope change, and
   // when the copy actually moved tasks the list is re-read so they appear in
   // the same load rather than after a manual refresh - the /journal
-  // sequencing (PR #113) in the form this page's load pattern allows. The
-  // quiet outcomes (skipped / already-migrated / error / migrated-nothing)
-  // change no state at all, matching how /journal stays silent.
+  // sequencing (PR #113) in the form this page's load pattern allows.
+  //
+  // v0.30: every outcome is REPORTED now. The comment that stood here cited
+  // /journal's silence as the convention to match; that silence was an open
+  // MED bug, and citing it is exactly how the defect spread by imitation
+  // (MIGRATION_VOICE.md section 1). The one-directional rule is unchanged -
+  // skipped / already-migrated / migrated-nothing stay silent - but that
+  // decision lives in `migrationNotice` now, not in an early return that
+  // also swallowed `error`.
   useEffect(() => {
     let cancelled = false;
 
     async function bringGuestTasksAlong() {
       const result = await migrateGuestSlicedTasks(scope);
-      if (cancelled || result.status !== "migrated" || result.migratedCount === 0) {
+      if (cancelled) {
+        return;
+      }
+      setMigrationStatus(migrationNotice(result, SLICED_TASK_MIGRATION_COPY));
+      if (result.status !== "migrated" || result.migratedCount === 0) {
         return;
       }
       const merged = loadSlicedTasks(scope);
@@ -305,6 +320,23 @@ export default function SlicerPage() {
           ← Back to Dashboard
         </Link>
       </div>
+
+      {/* v0.30 (MIGRATION_VOICE.md D4): below the intro, above the task
+          input, matching where every other surface reports its migration.
+          TWO lines, not three - slicer.ts has no cloud twin, so there is no
+          honest "migrated-locally" sentence to render (see slicer-copy.ts). */}
+      <StatusMessage
+        tone="success"
+        className="mb-4"
+        data-testid="slicer-migration-note"
+        message={migrationStatus.type === "ok" ? migrationStatus.message : null}
+      />
+      <StatusMessage
+        tone="error"
+        className="mb-4"
+        data-testid="slicer-migration-error"
+        message={migrationStatus.type === "error" ? migrationStatus.message : null}
+      />
 
       {/* Layout Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
