@@ -32,7 +32,7 @@ is written next to.
 - Daily dose cap stays enforced.
 - Calm, ADHD friendly UX: opt-in nudges only, no guilt or escalation mechanics.
 
-## Current state (2026-08-12)
+## Current state (2026-08-17)
 
 - App: "ADHD Daily Coach: Your friendly self-improvement coach" (renamed from
   "Focus"; originally Calm Daily Coach, PR #59). Next.js 16 / React 19 TypeScript
@@ -216,19 +216,17 @@ is written next to.
 - All six items of the frontend functionality plan (action rail, onboarding, weekly
   insights, plan editor, browser reminders, offline/sync status) are complete as of
   2026-07-18.
-- New surfaces since the 2026-07-18 snapshot above (this bullet last extended
-  2026-08-11, and the SAME self-contradiction has now been caught TWICE: the
-  date read 2026-08-07 while the bullet carried the v0.23-v0.26 text written
-  2026-08-08 — the L-043 self-sweep caught that one and the v0.27 definition
-  corrected it — and it then read 2026-08-08 while the bullet already carried
-  the v0.27 and v0.28 sentences, written 2026-08-09 and 2026-08-10. Recurrence
-  two is recorded rather than merely fixed, because the two halves have
-  different owners: a completion PR extends the prose and holds the cause in
-  its hand, but the parenthetical about WHEN the prose was last extended is a
-  whole-file claim it has no reason to look at, so unlike the guard-count word
-  — which a disk-scanning suite makes visible to the commit that triggers it —
-  this date has no mechanical owner and belongs to the product truth pass by
-  name): `/trends`, a 4-week
+- New surfaces since the 2026-07-18 snapshot above (this bullet DELIBERATELY
+  CARRIES NO last-extended date as of 2026-08-17: the date contradicted the
+  bullet's own contents a THIRD time — it read 2026-08-11, written by PR
+  #181's `bf69909`, while the v0.29 sentence naming PR #184's 2026-08-12
+  merge had been added by `4dad1c7` without touching it — and the third
+  recurrence is the exact clearing condition the item filed by PR #181 named:
+  it falsifies the periodic-owner answer, because a completion PR extends the
+  prose and holds the cause in its hand while a whole-file freshness claim
+  has no mechanical owner, and a date wrong more often than right is worse
+  than no date. The superseded two-recurrence parenthetical is quoted
+  verbatim in the 2026-08-17 run report per the tombstone rule): `/trends`, a 4-week
   check-in insight view (v0.11, PR #96/#97), and `/now`, the "one thing now"
   calm focus-session timer (NF-6, PR #104) backed by a local-first
   `src/lib/focus-session.ts` store. v0.12 shipped the same day (PR #109 + PR
@@ -300,7 +298,14 @@ is written next to.
   declared manifest of all twelve localStorage key families, the census that
   fails CI when a thirteenth appears, and a "Your data" panel on `/` that
   downloads the current scope's workspace as one JSON file and says plainly
-  what that file leaves out. **package.json
+  what that file leaves out. v0.30 (PR #186 2026-08-13 and PR #187
+  2026-08-17) gave the migration voice one home and the two silent surfaces
+  their sentences: a pure `migrationNotice` seam whose copy records are the
+  only place the mapping is written, `/journal`'s three sentences and
+  `/slicer`'s honest two (`migrated-locally` is unproducible there, so a
+  third would promise a cloud that does not exist), and a
+  `migration-voice-guard` that fails when a migration call site drops its
+  result on the floor. **package.json
   reads
   0.30.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
@@ -2431,13 +2436,89 @@ controls for one value (the `sr-only` `<select>` is still at `focus/page.tsx:108
 beside the announcing chips - an owner call); and the theme key's three
 spellings (a one-home rule on a single key, sized like the onboarding fix).
 
+### v0.31 - The last inline voice: the status vocabulary reaches the components
+
+Defined 2026-08-17 on `8ad1a1b` (product slot; design doc
+`docs/design/STATUS_REACH.md`, every decision an overridable default, section
+6 empty until the owner writes in it). v0.21 put every page-level transient
+status behind one `StatusMessage` primitive, but its guard's corpus is
+`page.tsx` files only by declared intent, and PR #184 proved the consequence:
+an inline `role="alert"` in a component passes the guard green. The census run
+at definition time found exactly ONE live inline alert left in the shipped
+tree - `reminder-settings.tsx:253`, half of a hand-spelled `draftStatus`
+ok/error pair that predates the vocabulary - plus a hand-copied success line
+at `:277`, while `workspace-export-panel.tsx` already consumes the primitive
+(the existence proof for components) and `auth-message.tsx` has delegated
+since v0.21. Two PRs, delegation before widening, because the widened scan is
+red on today's tree and a guard must land green on its own PR (the v0.30 D7
+shape). Done when:
+
+1. PR1 delegates all three hand-spelled status lines in
+   `src/app/components/reminder-settings.tsx` (the `draftStatus` pair at
+   `:248`/`:253` and the `calendarSaved` line at `:277`, line numbers as of
+   `8ad1a1b`) to `StatusMessage` per STATUS_REACH.md D1/D2, each with a
+   `data-testid`. Verified on the rendered DOM, never by source grep alone:
+   `reminder-settings.test.tsx` gains assertions in BOTH directions per
+   surface - the error branch renders `role="alert"` with assertive
+   politeness and the exact message, the ok branches render politely with NO
+   alert role, and the stays-silent direction renders none of the testids.
+2. PR1 is behaviour-preserving on rendered semantics: the definition's
+   byte-compatibility claim is re-checked at implementation time against
+   `status-message.tsx`'s tone table rather than inherited, and no existing
+   assertion in `reminder-settings.test.tsx` is weakened or deleted.
+3. PR1's consumer-perturbing control (the L-054 shape): with the
+   implementation committed, flipping the error call site's `tone="error"` to
+   `tone="notice"` reds the rendered-DOM error assertions while the message
+   still paints - quoted in the PR body.
+4. PR2 widens `status-message-guard.test.ts`'s corpus to
+   `src/app/components/*.tsx` beside the pages (D4), exempting exactly
+   `status-message.tsx` by name with an existence assertion on the exemption.
+   The widened scan is observed RED against the pre-PR1 tree naming exactly
+   `src/app/components/reminder-settings.tsx`, and that red is quoted in
+   PR2's body (D6).
+5. PR2's fresh-plant control: a new inline `role="alert"` planted in a
+   component file on the post-PR1 tree reds the widened scan naming that
+   file, while the same literal in a comment stays green - the
+   forgives-prose half re-run on the widened corpus.
+6. PR2's blindness control: narrowing the walk or filter so the components
+   directory vanishes reds the named anchor assertion
+   (`reminder-settings.tsx` joins the anchor list per D7) rather than passing
+   on a shorter list.
+7. The guard's header clause - its components-exclusion sentence, quoted
+   verbatim in STATUS_REACH.md section 1 - is rewritten in the SAME commit
+   that widens the corpus (D5), so the file never disagrees with itself.
+8. Neither PR adds or removes a `.test.ts` under `src/__tests__` or
+   `src/app/__tests__` (D8), so the Current-state guard-suite word stays
+   **Twenty-five** in both PRs and `roadmap-guard-count` stays green
+   throughout - by construction, not by prose.
+9. PR2 flips this heading to DONE, bumps `package.json` to `0.31.0` with both
+   `package-lock.json` copies, and updates the Current-state version sentence
+   in the same commit, with `roadmap-milestone-status`,
+   `lockfile-version-parity` and `roadmap-version-claim` all green on it.
+10. Prohibition: the D3 census sites (the two permission explainers, the
+    nudge banner, the theme confirmation, the swipe hint, the affirmation)
+    are NOT delegated and NOT re-decided here, and PR1 touches no component
+    source file but `reminder-settings.tsx`.
+
+**Chosen over** (each reason re-read at its source this pass; full list with
+receipts in STATUS_REACH.md section 4): the theme key's three spellings (a
+storage-key contract, a different subject with its own open item);
+`/focus`'s two controls (an owner taste call by its item's own words);
+the C10 `route-registry-guard.test.ts` split (re-measured at 1036 lines, a
+refactor-trigger, not a milestone); import/restore (its reopen condition
+quoted verbatim excludes "merely because the exporter exists"; no owner has
+asked); FCM push (console-gated, USER-ONLY); a PR template (one file of
+hygiene).
+
 ## Later / candidates (unscheduled)
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.30 have all landed - v0.30 completed 2026-08-16 with PR #187 - and
-no next milestone is defined yet, so the next definition is the next
-product-slot question.** (The 2026-08-08 v0.27
+through v0.30 have all landed - v0.30 completed 2026-08-17 with PR #187
+(merged 2026-08-17T15:14:07Z per `gh pr view 187 --json mergedAt`; the
+previous "completed 2026-08-16" here dated the wave, not the merge) - and
+v0.31 is now DEFINED (2026-08-17, this edit) and not started, so the dev
+queue holds exactly its two PRs and the next dev slot takes PR1.** (The 2026-08-08 v0.27
 definition retired the previous opening clause here — the one declaring the
 dev queue EMPTY and assigning the v0.27 definition to a product slot — a
 sentence true when v0.26 PR2 wrote it and made false by the very edit it
