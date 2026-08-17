@@ -126,6 +126,10 @@ const NUMBER_WORDS: Record<string, number> = {
   // same commit that adds the suite - which is invisible from the roadmap
   // sentence itself, and is why the v0.29 design doc says so out loud.
   "twenty-four": 24,
+  // v0.30 PR2, same clause: arrives in the commit that adds
+  // migration-voice-guard, because this guard reads the filesystem and not
+  // the plan (MIGRATION_VOICE.md D7).
+  "twenty-five": 25,
 };
 
 interface RoadmapClaim {

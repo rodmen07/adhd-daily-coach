@@ -110,7 +110,7 @@ is written next to.
   `lighthouse.yml`, `security-audit.yml`,
   `dev-agent-runner.yml`), of which exactly two, `ci.yml` and `lighthouse.yml`,
   post a required context.
-  **Twenty-four** guard tests now
+  **Twenty-five** guard tests now
   run inside the gate and compare two sources of truth rather than restating
   either: `theme-token-guard` (widened by PR #128 to the `dark:`-paired shade
   pattern it previously missed), `static-export-surface`, `workflow-audit-parity`,
@@ -180,7 +180,17 @@ is written next to.
   person downloads cannot quietly go stale the next time a feature adds a
   store - the twelve families are declared rather than discovered by prefix,
   because a prefix rule drops the slicer's key, which lives in the app's
-  original namespace, and swallows six siblings of the planner's).
+  original namespace, and swallows six siblings of the planner's), and
+  `migration-voice-guard`
+  (v0.30 PR2, which glob-discovers every migration await in the shipped
+  src/app tree and fails when a call site does not bind its result and hand it
+  to the one shared mapping - the exact shape /journal shipped in for
+  seventeen milestones and /slicer then copied, comment and all. A token scan
+  alone is satisfied by dropping the mapping's return on the floor, so it
+  ships PAIRED with page-suite DOM tests in both the fires and the
+  stays-silent direction, and carries two named call-site anchors in two
+  route directories so a narrowed walker reddens instead of passing on a
+  shorter list).
   (This count was the file's most reliable staleness generator: written as "five"
   by the v0.15 definition, corrected to "six" by the v0.16 definition after PR
   #123 landed the same evening, corrected to "seven" by the v0.17 definition
@@ -292,7 +302,7 @@ is written next to.
   downloads the current scope's workspace as one JSON file and says plainly
   what that file leaves out. **package.json
   reads
-  0.29.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
+  0.30.0** (this sentence read "0.16.0" until 2026-08-01, two milestones stale,
   then "0.18.0" until 2026-08-07, three milestones stale, then "0.21.0" until
   2026-08-08, one milestone stale - the v0.22 definition corrected it on
   2026-08-07 and v0.22 itself shipped hours later and made it wrong again. It
@@ -2296,9 +2306,10 @@ capability, standing candidate since the v0.28 definition); an empty-state pass
 `/trends`, `/journal` and `/review`); and `/focus`'s two controls for one value
 (a UX decision for the owner, filed by PR #180 and left in the backlog).
 
-### v0.30 - Every copy speaks: one migration voice, and the two surfaces that never had one
+### v0.30 - Every copy speaks: one migration voice, and the two surfaces that never had one (DONE)
 
-Defined 2026-08-12 on `4dad1c7`. Design doc:
+Defined 2026-08-12 on `4dad1c7`. Completed 2026-08-16: PR #186 the seam,
+PR #187 the two voices, the guard, and this close. Design doc:
 [docs/design/MIGRATION_VOICE.md](design/MIGRATION_VOICE.md), every decision an
 overridable default, section 6 empty until the owner weighs in.
 
@@ -2424,9 +2435,9 @@ spellings (a one-home rule on a single key, sized like the onboarding fix).
 
 Valid direction from AUTONOMOUS_IMPLEMENTATION_PLAN.md Phases 4 to 6 and the
 monetization ladder, plus housekeeping. Nothing here is scheduled; **v0.2
-through v0.29 have all landed - v0.29 completed 2026-08-12 with PR #184 - and
-v0.30 is now DEFINED above (2026-08-12) but not started, so a dev slot takes
-its PR1 rather than picking a direction of its own.** (The 2026-08-08 v0.27
+through v0.30 have all landed - v0.30 completed 2026-08-16 with PR #187 - and
+no next milestone is defined yet, so the next definition is the next
+product-slot question.** (The 2026-08-08 v0.27
 definition retired the previous opening clause here — the one declaring the
 dev queue EMPTY and assigning the v0.27 definition to a product slot — a
 sentence true when v0.26 PR2 wrote it and made false by the very edit it
