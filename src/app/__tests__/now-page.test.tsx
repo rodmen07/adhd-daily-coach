@@ -1,6 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NowPage from "@/app/now/page";
+import {
+  BROKEN_FORM,
+  renderedClassNames,
+  tokenClasses,
+  WORKING_FORM,
+} from "@/__tests__/helpers/rendered-theme";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { addFocusSession, listFocusSessions } from "@/lib/focus-session";
 import {
@@ -349,5 +355,39 @@ describe("Now page", () => {
     view.unmount();
 
     expect(listFocusSessions("guest")).toHaveLength(0);
+  });
+
+  // The rendered-DOM half of the theme guard (see ambient-page.test.tsx and
+  // css-var-syntax-guard.test.ts): the selected-duration classes -
+  // `border-(--accent) bg-(--accent)/15 text-(--accent)` (now/page.tsx ~line
+  // 244) - exist in the DOM only on the chip currently pressed, so driving the
+  // selection is the only way to prove the branch paints on another chip.
+  it("emits only paintable theme tokens as the duration selection is driven", () => {
+    const { container } = render(<NowPage />);
+
+    const idle = renderedClassNames(container);
+    expect(idle.match(WORKING_FORM)?.length ?? 0).toBeGreaterThan(5);
+    expect(
+      idle.match(BROKEN_FORM) ?? [],
+      "the setup page renders Tailwind v3 CSS-variable utilities, which v4 " +
+        "compiles to invalid declarations a browser drops",
+    ).toEqual([]);
+
+    // 15 is the default, so 25 starts unselected.
+    const chip = screen.getByRole("button", { name: "25 min" });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    const unselected = tokenClasses(chip);
+    fireEvent.click(chip);
+
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+    const selected = renderedClassNames(container);
+    expect(
+      selected.match(BROKEN_FORM) ?? [],
+      "the selected-duration branch renders Tailwind v3 CSS-variable " +
+        "utilities; this branch paints on a chip only once it is pressed",
+    ).toEqual([]);
+    // The branch actually rendered: the pressed chip paints differently now.
+    expect(tokenClasses(chip)).not.toEqual(unselected);
+    expect(tokenClasses(chip).length).toBeGreaterThan(0);
   });
 });

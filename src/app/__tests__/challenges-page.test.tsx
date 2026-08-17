@@ -1,6 +1,12 @@
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ChallengesPage from "@/app/challenges/page";
+import {
+  BROKEN_FORM,
+  renderedClassNames,
+  tokenClasses,
+  WORKING_FORM,
+} from "@/__tests__/helpers/rendered-theme";
 
 // The page seeds its date-based "daily recommendation" spotlight from
 // `new Date().getDate()` (challenges/page.tsx) and always renders that
@@ -50,5 +56,36 @@ describe("Challenges Page", () => {
 
     // Let's verify that a productivity-category item is filtered out
     expect(screen.queryByText("Tomorrow's Top Three")).toBeNull();
+  });
+
+  // The rendered-DOM half of the theme guard (see ambient-page.test.tsx and
+  // css-var-syntax-guard.test.ts): the active-filter classes -
+  // `border-(--accent) bg-(--accent)/10 text-(--accent)` (challenges/page.tsx
+  // ~line 161) - do not exist in the DOM until a filter other than the default
+  // is clicked, so a source scan proves nothing about what this branch paints.
+  it("emits only paintable theme tokens, before and after a filter is driven", () => {
+    const { container } = render(<ChallengesPage />);
+
+    const idle = renderedClassNames(container);
+    expect(idle.match(WORKING_FORM)?.length ?? 0).toBeGreaterThan(10);
+    expect(
+      idle.match(BROKEN_FORM) ?? [],
+      "the idle page renders Tailwind v3 CSS-variable utilities, which v4 " +
+        "compiles to invalid declarations a browser drops",
+    ).toEqual([]);
+
+    const mindfulBtn = screen.getByRole("button", { name: "🧘 Mindful" });
+    const unselected = tokenClasses(mindfulBtn);
+    fireEvent.click(mindfulBtn);
+
+    const filtered = renderedClassNames(container);
+    expect(
+      filtered.match(BROKEN_FORM) ?? [],
+      "the active-filter branch renders Tailwind v3 CSS-variable utilities; " +
+        "this branch has no markup until a non-default filter is clicked",
+    ).toEqual([]);
+    // The branch actually rendered: the clicked chip paints differently now.
+    expect(tokenClasses(mindfulBtn)).not.toEqual(unselected);
+    expect(tokenClasses(mindfulBtn).length).toBeGreaterThan(0);
   });
 });

@@ -1,6 +1,11 @@
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ExecutePage from "@/app/execute/page";
+import {
+  BROKEN_FORM,
+  renderedClassNames,
+  WORKING_FORM,
+} from "@/__tests__/helpers/rendered-theme";
 import { useCoachAuth } from "@/app/hooks/use-coach-auth";
 import { useCoachPlanner } from "@/app/hooks/use-coach-planner";
 
@@ -102,5 +107,44 @@ describe("Execute Page plan adjustments", () => {
       action: "Run 15 mins focus",
       reflection: activePlan.reflection,
     });
+  });
+
+  // The rendered-DOM half of the theme guard (see ambient-page.test.tsx and
+  // css-var-syntax-guard.test.ts): the constrained-edits form only exists in
+  // the DOM after "Adjust plan targets" is toggled, so a source scan cannot
+  // see what that branch paints.
+  it("emits only paintable theme tokens, collapsed and with the edit form open", () => {
+    vi.mocked(useCoachAuth).mockReturnValue(authMock as never);
+    vi.mocked(useCoachPlanner).mockReturnValue({
+      plan: activePlan,
+      checkinStatus: { type: "idle" },
+      submitCheckin: vi.fn(),
+      skipReason: "",
+      setSkipReason: vi.fn(),
+      startNextDay: vi.fn(),
+      updatePlan: vi.fn(),
+    } as never);
+
+    const { container } = render(<ExecutePage />);
+
+    const collapsed = renderedClassNames(container);
+    expect(collapsed.match(WORKING_FORM)?.length ?? 0).toBeGreaterThan(5);
+    expect(
+      collapsed.match(BROKEN_FORM) ?? [],
+      "the plan surface renders Tailwind v3 CSS-variable utilities, which v4 " +
+        "compiles to invalid declarations a browser drops",
+    ).toEqual([]);
+
+    fireEvent.click(screen.getByText("Adjust plan targets"));
+    expect(screen.getByText("Customize plan targets (constrained edits)")).toBeTruthy();
+
+    const expanded = renderedClassNames(container);
+    expect(
+      expanded.match(BROKEN_FORM) ?? [],
+      "the edit-targets branch renders Tailwind v3 CSS-variable utilities; " +
+        "this branch has no markup until the toggle is clicked",
+    ).toEqual([]);
+    // The branch actually rendered: the tree paints more than it did collapsed.
+    expect(expanded).not.toBe(collapsed);
   });
 });
