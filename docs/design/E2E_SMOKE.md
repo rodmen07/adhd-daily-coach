@@ -143,10 +143,11 @@ speed. Declined: it un-tests the prerender/hydrate boundary, which is half the
 reason this milestone exists (Fact B).
 
 **D4 - CI placement: runs on every PR and main push, is NOT a required
-context.** *(The earn-it clause below completed 2026-08-18: `e2e` was promoted
-to a required context on 144 post-merge runs / 22 days / zero failures —
-evidence in `.github/required-checks.json`. The text below is the decision as
-made, kept verbatim.)* A new `e2e` job (in `ci.yml` or a sibling workflow, PR1's call)
+context.** *(Status 2026-08-18: the earn-it clause below is satisfied — 144
+post-merge runs, 22 days, zero failures — and the promotion decision with its
+evidence and pending execution step is recorded in
+`.github/required-checks.json`, the authority on protection status. The text
+below is the decision as made, kept verbatim.)* A new `e2e` job (in `ci.yml` or a sibling workflow, PR1's call)
 runs alongside the quality gate, visible red or green on every PR. Branch
 protection stays exactly `["lint-and-build"]`. This is Fact D's precedent:
 requiredness is earned by observed stability, and flipping a protection

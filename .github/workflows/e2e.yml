@@ -1,10 +1,11 @@
 # E2E smoke suite (v0.16, docs/design/E2E_SMOKE.md).
 #
-# Runs on every PR and every main push. REQUIRED branch-protection context
-# since 2026-08-18: design decision D4 shipped it deliberately non-required so
-# a browser suite would earn requiredness through observed stability, and it
-# did - 144 post-merge runs over 22 days with zero failures (the evidence is
-# recorded in .github/required-checks.json's `e2e` entry).
+# Runs on every PR and every main push. Design decision D4 shipped it
+# deliberately non-required so a browser suite would earn requiredness through
+# observed stability, and it has: 144 post-merge runs over 22 days with zero
+# failures. The promotion decision, its evidence, and its pending execution
+# step are recorded in .github/required-checks.json's `e2e` entry, which is
+# the authority on this check's protection status.
 #
 # The suite walks the REAL static export (out/ from a production build)
 # served under the production basePath - which is the repo name, derived from
