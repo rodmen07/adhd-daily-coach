@@ -34,16 +34,16 @@
   ],
   "observational": [
     {
+      "context": "e2e",
+      "postedBy": "e2e.yml",
+      "kind": "job",
+      "why": "Playwright smoke journeys over the real static export (v0.16, PR #126). Runs unfiltered on every PR, so it is eligible for promotion. DECISION 2026-08-18 (PR #190): the evidence bar lighthouse set IS MET - the post-merge window (since #126 merged 2026-07-27T01:54Z, 22 days) holds 144 runs of e2e.yml with ZERO failures: 139 success plus 5 cancelled, every cancellation a supersession by the workflow's own cancel-in-progress concurrency group (each has a green run on the same branch within a minute), 64 main-push runs all green. The only failure in the workflow's life (run 30230736206) was on the PR branch that introduced it, BEFORE it merged - the identical shape to lighthouse's one red at its promotion. PROMOTION IS DECIDED AND PENDING EXECUTION: the live PATCH of required_status_checks was denied by the session permission classifier (2026-08-18, tried twice), and this file never claims a protection GitHub does not enforce. To execute: run the readme's PATCH command with contexts lint-and-build, lighthouse, e2e and strict=true, then move this entry to required[] with requiredSince set to that day."
+    },
+    {
       "context": "quality-gate",
       "postedBy": "ci.yml",
       "kind": "job",
       "why": "The job that DOES the work behind the required `lint-and-build` status. Not itself required, so that the protected name stays a single stable string while the job behind it is free to be renamed or split."
-    },
-    {
-      "context": "e2e",
-      "postedBy": "e2e.yml",
-      "kind": "job",
-      "why": "Playwright smoke journeys (v0.16, PR #126). Runs unfiltered on every PR, so it is eligible for promotion; still observational because a browser suite's failure modes are partly external. Promotion needs the same evidence lighthouse just produced."
     },
     {
       "context": "audit",
