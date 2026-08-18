@@ -30,6 +30,13 @@
       "kind": "job",
       "requiredSince": "2026-08-08",
       "why": "The Web Vitals regression gate (v0.18, PR #136), shipped deliberately non-required per WEB_VITALS_BASELINE.md D4 so it could earn requiredness through observed stability. Evidence at promotion: 58 runs of lighthouse.yml since 2026-08-01, exactly 1 failure, and that one was on the PR branch that introduced the workflow, BEFORE it merged (run 30707624249). 55 consecutive green runs post-merge across 7 days, 28 of them on main pushes. Zero noise-only reds, so the `numberOfRuns: 5` tightening the backlog held in reserve was never needed."
+    },
+    {
+      "context": "e2e",
+      "postedBy": "e2e.yml",
+      "kind": "job",
+      "requiredSince": "2026-08-18",
+      "why": "Playwright smoke journeys over the real static export (v0.16, PR #126), shipped deliberately non-required per E2E_SMOKE.md D4 so a browser suite could earn requiredness through observed stability, the same route lighthouse took. Evidence at promotion: the post-merge window (since #126 merged 2026-07-27T01:54Z, 22 days) holds 144 runs of e2e.yml with ZERO failures - 139 success plus 5 cancelled, and every cancellation is a supersession by the workflow's own cancel-in-progress concurrency group, each with a green run on the same branch within a minute. 64 of the 144 are main-push runs, all green. The only failure in the workflow's life (run 30230736206) was on the PR branch that introduced it, BEFORE it merged - the identical shape to lighthouse's one red. The partly-external failure modes that kept it observational produced zero noise-only reds in 22 days."
     }
   ],
   "observational": [
@@ -38,12 +45,6 @@
       "postedBy": "ci.yml",
       "kind": "job",
       "why": "The job that DOES the work behind the required `lint-and-build` status. Not itself required, so that the protected name stays a single stable string while the job behind it is free to be renamed or split."
-    },
-    {
-      "context": "e2e",
-      "postedBy": "e2e.yml",
-      "kind": "job",
-      "why": "Playwright smoke journeys (v0.16, PR #126). Runs unfiltered on every PR, so it is eligible for promotion; still observational because a browser suite's failure modes are partly external. Promotion needs the same evidence lighthouse just produced."
     },
     {
       "context": "audit",
