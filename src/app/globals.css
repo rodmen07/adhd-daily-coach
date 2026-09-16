@@ -268,7 +268,7 @@ html[data-theme="dark"] .border-slate-200 {
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
-  box-shadow: 0 12px 28px rgba(3, 8, 20, 0.18);
+  box-shadow: 0 4px 14px rgba(3, 8, 20, 0.14);
 }
 
 /* v0.24 D3/D4: one labelled list per category, so nine peers read as four
@@ -317,7 +317,7 @@ html[data-theme="dark"] .border-slate-200 {
   border-radius: 14px;
   background: var(--panel);
   padding: 10px 12px;
-  box-shadow: 0 10px 24px rgba(3, 8, 20, 0.18);
+  box-shadow: 0 4px 14px rgba(3, 8, 20, 0.14);
 }
 
 .theme-toggle-confirmation p {
@@ -365,9 +365,7 @@ html[data-theme="dark"] .border-slate-200 {
 .today-spotlight {
   border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--line));
   border-radius: 14px;
-  background:
-    radial-gradient(circle at right top, color-mix(in srgb, var(--accent) 20%, transparent), transparent 58%),
-    color-mix(in srgb, var(--surface-strong) 86%, var(--field));
+  background: color-mix(in srgb, var(--surface-strong) 86%, var(--field));
   padding: 14px;
   display: grid;
   gap: 10px;
@@ -419,7 +417,6 @@ html[data-theme="dark"] .border-slate-200 {
   border-radius: 16px;
   background: var(--surface-strong);
   padding: 14px;
-  box-shadow: 0 10px 24px rgba(3, 8, 20, 0.12);
 }
 
 .action-card.is-primary {
@@ -450,9 +447,7 @@ html[data-theme="dark"] .border-slate-200 {
 .monetization-panel {
   border: 1px solid color-mix(in srgb, var(--accent) 44%, var(--line));
   border-radius: 16px;
-  background:
-    linear-gradient(140deg, color-mix(in srgb, var(--accent) 18%, var(--surface-strong)) 0%, var(--surface-strong) 62%),
-    var(--surface-strong);
+  background: var(--surface-strong);
   padding: 16px;
   display: grid;
   gap: 12px;
@@ -487,7 +482,6 @@ html[data-theme="dark"] .border-slate-200 {
 .pricing-card.is-featured {
   border-color: color-mix(in srgb, var(--accent) 54%, var(--line));
   background: color-mix(in srgb, var(--accent) 11%, var(--surface-strong));
-  box-shadow: 0 12px 28px rgba(3, 8, 20, 0.16);
 }
 
 .pricing-amount {
@@ -522,15 +516,14 @@ html[data-theme="dark"] .border-slate-200 {
 .step-card {
   border: 1px solid var(--line);
   border-radius: 20px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, white) 0%, var(--field) 100%);
-  box-shadow: 0 18px 44px rgba(3, 8, 20, 0.28);
+  background: var(--panel);
   padding: 18px;
   touch-action: pan-y;
   outline: none;
 }
 
 .step-card:focus-visible {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent), 0 18px 44px rgba(3, 8, 20, 0.28);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .step-card-header {
@@ -590,17 +583,13 @@ html[data-theme="dark"] .border-slate-200 {
 
 .page-shell {
   min-height: 100dvh;
-  background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--accent) 24%, transparent), transparent 48%),
-    radial-gradient(circle at bottom left, color-mix(in srgb, var(--warning-strong) 18%, transparent), transparent 42%),
-    var(--background);
+  background: var(--background);
 }
 
 .panel {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--panel);
-  box-shadow: 0 12px 36px rgba(3, 8, 20, 0.22);
   padding: 18px;
 }
 
@@ -886,29 +875,16 @@ html[data-theme="dark"] .border-slate-200 {
   overflow: hidden;
 }
 
-.progress-track.is-animated {
-  box-shadow: inset 0 0 0 1px rgba(19, 93, 76, 0.08);
-}
-
 .progress-fill {
   position: relative;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), #1a7f67);
+  background: var(--accent);
   transition: width 220ms ease;
 }
 
 .progress-fill.is-animated {
-  animation: progress-fill-grow 500ms ease-out, progress-fill-glow 1200ms ease-out;
-}
-
-.progress-fill.is-animated::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.38) 45%, transparent 100%);
-  transform: translateX(-100%);
-  animation: progress-sheen 1200ms ease-out;
+  animation: progress-fill-grow 500ms ease-out;
 }
 
 .progress-caption {
@@ -1020,7 +996,7 @@ html[data-theme="dark"] .border-slate-200 {
 }
 
 .status-celebrate {
-  animation: status-rise 200ms ease-out, status-glow 850ms ease-out;
+  animation: status-rise 200ms ease-out;
 }
 
 @keyframes chip-pop {
@@ -1040,18 +1016,6 @@ html[data-theme="dark"] .border-slate-200 {
   100% {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes status-glow {
-  0% {
-    box-shadow: 0 0 0 rgba(19, 93, 76, 0);
-  }
-  45% {
-    box-shadow: 0 0 0 5px rgba(19, 93, 76, 0.14);
-  }
-  100% {
-    box-shadow: 0 0 0 rgba(19, 93, 76, 0);
   }
 }
 
@@ -1076,27 +1040,6 @@ html[data-theme="dark"] .border-slate-200 {
     filter: saturate(1);
     transform: scaleX(1);
     transform-origin: left center;
-  }
-}
-
-@keyframes progress-fill-glow {
-  0% {
-    box-shadow: 0 0 0 rgba(19, 93, 76, 0);
-  }
-  50% {
-    box-shadow: 0 0 0 4px rgba(19, 93, 76, 0.12);
-  }
-  100% {
-    box-shadow: 0 0 0 rgba(19, 93, 76, 0);
-  }
-}
-
-@keyframes progress-sheen {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(130%);
   }
 }
 
@@ -1207,7 +1150,7 @@ html[data-theme="dark"] .border-slate-200 {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--panel);
-  box-shadow: 0 18px 44px rgba(3, 8, 20, 0.32);
+  box-shadow: 0 4px 14px rgba(3, 8, 20, 0.14);
   padding: 18px;
   animation: help-dialog-rise 200ms ease-out;
 }
@@ -1257,6 +1200,7 @@ html[data-theme="dark"] .border-slate-200 {
      this block exists to remove. */
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
+  box-shadow: 0 4px 14px rgba(3, 8, 20, 0.14);
   animation: help-dialog-rise 200ms ease-out;
 }
 
@@ -1528,12 +1472,5 @@ html[data-theme="dark"] .border-slate-200 {
     transition-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-
-  /* The progress sheen sweeps across the bar and would otherwise settle
-     mid-track; park it just past the end where it is invisible. */
-  .progress-fill.is-animated::after {
-    animation: none !important;
-    transform: translateX(130%);
   }
 }

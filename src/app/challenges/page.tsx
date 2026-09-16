@@ -85,7 +85,7 @@ export default function ChallengesPage(): React.JSX.Element {
       </div>
 
       {/* Calm Progress Stats Section - deliberately streak-free */}
-      <div className="mb-8 grid grid-cols-2 gap-4 rounded-2xl border border-(--line) bg-(--panel) p-5 shadow-xl">
+      <div className="mb-8 grid grid-cols-2 gap-4 rounded-2xl border border-(--line) bg-(--panel) p-5">
         <div className="flex flex-col items-center justify-center p-3 text-center border-r border-(--line)">
           <span className="text-3xl">✅</span>
           <span className="mt-2 text-2xl font-black text-(--accent)">

@@ -92,7 +92,7 @@ export default function CalmPage() {
       </div>
 
       {/* Main player controls custom card */}
-      <div className="mb-8 rounded-2xl border border-(--line) bg-(--panel) p-5 shadow-xl">
+      <div className="mb-8 rounded-2xl border border-(--line) bg-(--panel) p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-(--muted)">
           Player Controls
         </h2>
@@ -142,10 +142,8 @@ export default function CalmPage() {
         {/* Sync breathing animation circle */}
         {active && (
           <div className="mt-6 flex flex-col items-center justify-center border-t border-(--line) pt-6">
-            <div 
-              className={`flex h-14 w-14 items-center justify-center rounded-full bg-(--accent)/20 text-(--accent) ${
-                active === "drone" ? "animate-pulse" : "animate-bounce"
-              }`}
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-(--accent)/20 text-(--accent) animate-pulse"
               style={{
                 animationDuration: active === "drone" ? "8s" : "4s",
               }}

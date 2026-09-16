@@ -280,11 +280,11 @@ export default function SlicerPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 relative">
-      {/* Visual Confetti Notification Overlay */}
+      {/* Completion acknowledgment overlay */}
       {showConfetti && (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs animate-fade-in text-center">
-          <div className="rounded-2xl border-2 border-[var(--accent)] bg-[var(--panel)] p-8 shadow-2xl scale-up relative overflow-hidden max-w-sm mx-4">
-            <span className="text-5xl animate-bounce inline-block">🎉</span>
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs text-center">
+          <div className="rounded-2xl border border-[var(--accent)] bg-[var(--panel)] p-8 relative max-w-sm mx-4">
+            <span className="text-4xl inline-block">✓</span>
             <h2 className="mt-4 text-2xl font-bold tracking-tight text-[var(--foreground)]">Paralysis Smashed!</h2>
             <p className="mt-2 text-sm text-[var(--muted)]">
               You completely rolled through every micro-step of this task. Outstanding ADHD executive momentum!
@@ -297,10 +297,6 @@ export default function SlicerPage() {
                 Heck Yes!
               </button>
             </div>
-            {/* Simple CSS simulated micro-confetti particles */}
-            <div className="absolute top-2 left-6 h-2 w-2 rounded-full bg-amber-400 animate-ping"></div>
-            <div className="absolute bottom-6 right-8 h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping delay-200"></div>
-            <div className="absolute top-12 right-12 h-2 w-2 rounded-full bg-blue-400 animate-ping delay-500"></div>
           </div>
         </div>
       )}
@@ -344,7 +340,7 @@ export default function SlicerPage() {
         {/* Left Column: Creator Form & Task History */}
         <div className="lg:col-span-4 space-y-6">
           
-          <section className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] shadow-md">
+          <section className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
             <h2 className="text-md font-bold mb-4 flex items-center gap-1.5">
               <span>Slice a Task</span>
               <span className="text-xs font-normal text-[var(--muted)]">(Procrastination Buster)</span>
@@ -378,7 +374,7 @@ export default function SlicerPage() {
                       onClick={() => setSelectedDomain(dom.id)}
                       className={`flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all ${
                         selectedDomain === dom.id
-                          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)] scale-102 shadow-xs"
+                          ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]"
                           : "border-[var(--line)] bg-[var(--field)] hover:bg-slate-800 text-slate-500"
                       }`}
                     >
@@ -431,7 +427,7 @@ export default function SlicerPage() {
           </section>
 
           {/* Sliced List History */}
-          <section className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] shadow-sm">
+          <section className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
             <h2 className="text-md font-bold mb-3">Active Slices ({tasks.length})</h2>
             {tasks.length === 0 ? (
               <CalmEmptyState
@@ -510,7 +506,7 @@ export default function SlicerPage() {
         <div className="lg:col-span-8">
           {!activeTask ? (
             <div className="panel flex flex-col items-center justify-center p-12 text-center border border-[var(--line)] bg-[var(--panel)] rounded-2xl min-h-80">
-              <span className="text-5xl animate-pulse">🧘‍♀️</span>
+              <span className="text-5xl">🧘‍♀️</span>
               <h3 className="mt-4 text-lg font-bold">Waiting for an intimidating task</h3>
               <p className="mt-2 text-sm text-[var(--muted)] max-w-sm leading-relaxed">
                 When you slice an issue, we will extract micro-actions here, hide intimidating bulk details, and gamify the activation loop for you.
@@ -520,7 +516,7 @@ export default function SlicerPage() {
             <div className="space-y-6">
               
               {/* Active Header Panel */}
-              <div className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] shadow-sm">
+              <div className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-[var(--line)]">
                   <div>
                     <div className="flex items-center gap-2">
@@ -548,7 +544,7 @@ export default function SlicerPage() {
                       }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-slate-900 shadow-lg ring-0 transition duration-200 ease-in-out ${
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-slate-900 ring-0 transition duration-200 ease-in-out ${
                           focusMode ? "translate-x-5 bg-slate-950" : "translate-x-0 bg-slate-300"
                         }`}
                       />
@@ -575,7 +571,7 @@ export default function SlicerPage() {
 
               {/* Focus Module / Countdown Deck (Visible in both, elevated in Focus Mode) */}
               {!activeTask.completedAt && activeStep && (
-                <div className="panel p-6 rounded-2xl border-2 border-[var(--accent)] bg-[var(--panel)] shadow-lg relative overflow-hidden">
+                <div className="panel p-6 rounded-2xl border border-[var(--accent)] bg-[var(--panel)] relative overflow-hidden">
                   
                   <div className="absolute top-0 right-0 bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-extrabold px-3 py-1 uppercase rounded-bl-lg tracking-wider font-mono">
                     Current Focus Task
@@ -645,7 +641,7 @@ export default function SlicerPage() {
                   <div className="mt-6 flex justify-end">
                     <button
                       onClick={() => handleToggleStep(activeTask.id, activeStep.id)}
-                      className="primary-button flex items-center gap-1.5 text-xs font-bold py-2 px-5 bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-md border-0"
+                      className="primary-button flex items-center gap-1.5 text-xs font-bold py-2 px-5 bg-emerald-500 hover:bg-emerald-400 text-slate-900 border-0"
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
@@ -657,7 +653,7 @@ export default function SlicerPage() {
               )}
 
               {/* Steps Deck Checklist (Hides non-actives if Focus Mode is ON so ADHD minds stay un-intimidated) */}
-              <div className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)] shadow-sm">
+              <div className="panel p-5 rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
                     {focusMode ? "Other Hidden Steps" : "Slices Checklist"}
@@ -681,7 +677,7 @@ export default function SlicerPage() {
                         key={s.id}
                         className={`flex items-start justify-between p-3 rounded-xl border transition-all ${
                           isFocusTarget
-                            ? "border-[var(--accent)] bg-[var(--accent)]/5 shadow-xs"
+                            ? "border-[var(--accent)] bg-[var(--accent)]/5"
                             : s.completed
                             ? "border-[var(--line)] bg-slate-800/20 opacity-50"
                             : "border-[var(--line)] bg-[var(--field)]"

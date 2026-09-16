@@ -217,7 +217,7 @@ export default function NowPage() {
       />
 
       {phase === "setup" && (
-        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
+        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6">
           <label htmlFor="focus-task" className="block text-sm font-semibold text-(--foreground)">
             {C.taskLabel}
           </label>
@@ -264,7 +264,7 @@ export default function NowPage() {
       )}
 
       {phase === "running" && (
-        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
+        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6">
           <p className="text-xs font-semibold uppercase tracking-wider text-(--muted)">{C.focusingOn}</p>
           <p className="mt-1 text-lg font-semibold text-(--foreground)">{task}</p>
 
@@ -293,7 +293,7 @@ export default function NowPage() {
       )}
 
       {phase === "done" && (
-        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
+        <div className="rounded-2xl border border-(--line) bg-(--panel) p-6">
           <p className="text-base text-(--foreground)">
             {lastOutcome === "wrapped-up" ? C.wrappedUpNote : C.stoppedEarlyNote}
           </p>
