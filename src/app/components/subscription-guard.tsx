@@ -164,7 +164,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   if (isBlocked) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-(--background) px-4 py-12 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md space-y-8 rounded-2xl border border-rose-900/30 bg-(--panel) p-8 text-center shadow-2xl">
+        <div className="w-full max-w-md space-y-8 rounded-2xl border border-rose-900/30 bg-(--panel) p-8 text-center">
           <div className="space-y-2">
             <span className="inline-block rounded-full bg-rose-500/10 p-3 text-rose-500">
               <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -186,7 +186,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
           <div className="mt-8 space-y-4">
             <Link
               href="/pricing"
-              className="flex w-full items-center justify-center rounded-full bg-(--accent) px-4 py-3 text-sm font-bold text-(--accent-foreground) transition-all hover:bg-(--accent-strong) shadow-lg hover:shadow-(color:--accent)/20"
+              className="flex w-full items-center justify-center rounded-full bg-(--accent) px-4 py-3 text-sm font-bold text-(--accent-foreground) transition-colors hover:bg-(--accent-strong)"
             >
               Subscribe for $5/month
             </Link>

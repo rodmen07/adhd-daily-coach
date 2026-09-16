@@ -83,7 +83,7 @@ export default function BreathePage() {
       </div>
 
       {/* Pacer card */}
-      <div className="mb-8 rounded-2xl border border-(--line) bg-(--panel) p-6 shadow-xl">
+      <div className="mb-8 rounded-2xl border border-(--line) bg-(--panel) p-6">
         <div className="flex flex-col items-center justify-center">
           <div
             className="flex h-44 w-44 items-center justify-center rounded-full bg-(--accent)/15 transition-transform duration-100 ease-linear"

@@ -23,7 +23,7 @@ export default function PricingPage() {
             Enjoy a completely free, unrestricted 30-day trial. Continue afterward for only $5/month.
           </p>
 
-          <div className="mx-auto max-w-sm rounded-2xl border border-(--accent)/30 bg-(--field) p-6 shadow-xl relative overflow-hidden">
+          <div className="mx-auto max-w-sm rounded-2xl border border-(--accent)/30 bg-(--field) p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 bg-(--accent) text-slate-950 font-bold font-mono text-[9px] px-3 py-1 uppercase rounded-bl-lg tracking-wider">
               30 Days Free
             </div>

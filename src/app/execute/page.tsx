@@ -235,7 +235,7 @@ export default function ExecutePage() {
                   type="button"
                   className={`primary-button transition-all duration-300 ${
                     hasCheckedIn && checkinStatus.type === "ok" && checkinStatus.message.startsWith("Great work")
-                      ? "scale-102 bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse"
+                      ? "bg-emerald-500 hover:bg-emerald-400 text-slate-900"
                       : ""
                   }`}
                   disabled={!canSubmitCheckin}

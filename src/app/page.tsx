@@ -560,7 +560,7 @@ export default function Home() {
                   href="/focus"
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300 group ${
                     !hasPlan
-                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) font-bold"
                       : "border-emerald-500 bg-emerald-500/10 text-emerald-500 hover:border-emerald-400"
                   }`}
                   aria-label="Step 1: Focus"
@@ -580,7 +580,7 @@ export default function Home() {
               </div>
 
               {/* Connecting Line 1 */}
-              <div className="hidden sm:block h-0.5 flex-1 mx-2 bg-gradient-to-r transition-all duration-500" style={{ backgroundImage: hasPlan ? 'linear-gradient(to right, var(--success-strong), var(--success-strong))' : 'linear-gradient(to right, var(--line), var(--line))' }} />
+              <div className="hidden sm:block h-0.5 flex-1 mx-2 transition-colors duration-500" style={{ backgroundColor: hasPlan ? 'var(--success-strong)' : 'var(--line)' }} />
 
               {/* Step 2: Execute */}
               <div className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 flex-1 w-full sm:w-auto">
@@ -588,7 +588,7 @@ export default function Home() {
                   href={hasPlan ? "/execute" : "/focus"}
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300 group ${
                     hasPlan && !hasCheckedIn
-                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) font-bold"
                       : hasCheckedIn
                       ? "border-emerald-500 bg-emerald-500/10 text-emerald-500 hover:border-emerald-400"
                       : "border-(--line) bg-(--field) text-(--muted)"
@@ -608,7 +608,7 @@ export default function Home() {
               </div>
 
               {/* Connecting Line 2 */}
-              <div className="hidden sm:block h-0.5 flex-1 mx-2 bg-gradient-to-r transition-all duration-500" style={{ backgroundImage: hasCheckedIn ? 'linear-gradient(to right, var(--success-strong), var(--success-strong))' : 'linear-gradient(to right, var(--line), var(--line))' }} />
+              <div className="hidden sm:block h-0.5 flex-1 mx-2 transition-colors duration-500" style={{ backgroundColor: hasCheckedIn ? 'var(--success-strong)' : 'var(--line)' }} />
 
               {/* Step 3: Review */}
               <div className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 flex-1 w-full sm:w-auto">
@@ -616,7 +616,7 @@ export default function Home() {
                   href="/review"
                   className={`flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300 group ${
                     hasCheckedIn
-                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.25)] font-bold scale-105"
+                      ? "border-(--accent) bg-(--accent)/10 text-(--accent) font-bold"
                       : "border-(--line) bg-(--field) text-(--muted)"
                   }`}
                   aria-label="Step 3: Review"
@@ -742,7 +742,7 @@ export default function Home() {
           <div className="monetization-panel mt-4" aria-label="Membership status">
             <div className="monetization-copy">
               <div className="flex items-center gap-1.5 mb-1">
-                <svg className="h-4 w-4 text-amber-500 fill-amber-500 animate-pulse" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 text-amber-500 fill-amber-500" viewBox="0 0 24 24">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.87L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                 </svg>
                 <p className="eyebrow !mb-0">Membership</p>

@@ -91,8 +91,8 @@ export default function FocusPage() {
                       aria-pressed={focus === area}
                       disabled={isPlanningLocked}
                       className={`category-chip flex items-center gap-1.5 cursor-pointer hover:border-(--accent)/60 transition-all ${
-                        focus === area 
-                          ? "is-selected border-(--accent) shadow-[0_0_12px_rgba(122,214,183,0.2)]" 
+                        focus === area
+                          ? "is-selected"
                           : "bg-(--field) border-transparent"
                       }`}
                       onClick={() => setFocus(area)}
